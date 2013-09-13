@@ -4,7 +4,7 @@ Bubbles lets you create types with that behave the same way as if you declared t
 
 ## Private Scope
 
-One of the biggest annoyances with JavaScript is the lack of a private scope within an object. The longer the inheritance chain, the harder it is to come up with unique names for things, and the easier it is to clash names with a parent class creating unexpected behavior. With Bubbles, we can give each object a private scope where it cannot be modified by the outside.
+One of the biggest annoyances with JavaScript is the lack of a private scope within an object. The longer the inheritance chain, the harder it is to come up with unique names for things, and the easier it is to clash names with a parent class creating unexpected behavior. With Bubbles, we can give each object a private scope where it cannot be modified by the outside:
 
 ```js
 var Car =
