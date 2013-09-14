@@ -326,3 +326,49 @@ test( "type can be instantiated without using the 'new' operator", function()
     var a = A( 1, 3, 5 );
     equal( result, 9 );
 });
+
+test( "instanceof operator works on public interface", function()
+{
+    var A = bubbles.type();
+    var B = bubbles.type().extend( A );
+    var C = bubbles.type().extend( B );
+
+    var a = new A();
+    equal( a instanceof A, true );
+
+    var b = new B();
+    equal( b instanceof A, true );
+
+    var c = new C();
+    equal( c instanceof A, true );
+});
+
+test( "instanceof operator works on private scope", function()
+{
+    var A = bubbles.type().
+            def({
+                ctor: function() {
+                    equal( this instanceof A, true );
+                }
+            });
+
+    var B = bubbles.type().
+            extend( A ).
+            def({
+                ctor: function() {
+                    equal( this instanceof A, true );
+                }
+            });
+
+    var C = bubbles.type().
+            extend( B ).
+            def({
+                ctor: function() {
+                    equal( this instanceof A, true );
+                }
+            });
+
+    var a = new A();
+    var b = new B();
+    var c = new C();
+});

@@ -5,9 +5,10 @@
  */
 (function (window, undefined)
 {
-    // Until browsers can agree on what "strict" means, we won't use it.
-    // "use strict";
-    var bubbles = window.bubbles = {};
+
+// Until browsers can agree on what "strict" means, we won't use it.
+// "use strict";
+var bubbles = window.bubbles = {};
 
 var foreach = bubbles.forEach = function( items, callback )
 {
@@ -57,6 +58,11 @@ bubbles.type = function( name )
             throw new Error( "Cannot change the base type after members have been defined." );
 
         Type.parent = type;
+
+        type.initializing = true;
+        Type.prototype = new type();
+        type.initializing = false;
+
         return Type;
     };
 
@@ -166,7 +172,7 @@ function used( type, name, parent )
 
 function init( Type, pub, args )
 {
-    var scope = create();
+    var scope = create( Type );
 
     pub.$type = Type;
     scope.self._pub = pub;
@@ -192,9 +198,11 @@ function init( Type, pub, args )
     return scope.self;
 }
 
-function create()
+function create( type )
 {
-    return { self: {}, parent: null };
+    var Scope = function() { };
+    Scope.prototype = type.prototype;
+    return { self: new Scope(), parent: null };
 }
 
 function build( type, scope )
@@ -208,7 +216,7 @@ function build( type, scope )
         )
             throw new Error( "Parent constructor contains parameters and must be called explicitly." );
 
-        scope.parent = create();
+        scope.parent = create( type.parent );
         scope.parent.self._pub = scope.self._pub;
         build( type.parent, scope.parent );
     }
@@ -234,6 +242,7 @@ function method( type, scope, name, member )
     {
         scope.self.ctor = function()
         {
+            var temp = scope.self._super;
             if ( type.parent !== null && type.parent.members.ctor !== undefined )
             {
                 if ( type.parent.members.ctor.params.length > 0 )
@@ -242,7 +251,7 @@ function method( type, scope, name, member )
                     scope.parent.self.ctor();
             }
             member.method.apply( scope.self, arguments );
-            delete scope.self._super;
+            scope.self._super = temp;
         };
     }
     else
@@ -255,9 +264,10 @@ function method( type, scope, name, member )
         {
             var _super = scope.parent.self[ name ];
             scope.self[ name ] = function() {
+                var temp = scope.self._super;
                 scope.self._super = _super;
                 var result = member.method.apply( scope.self, arguments );
-                delete scope.self._super;
+                scope.self._super = temp;
                 return result;
             };
         }
