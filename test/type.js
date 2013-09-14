@@ -281,7 +281,7 @@ test( "grandparent parameterless constructor gets called before parent construct
     equal( message, "hello world!" );
 });
 
-test( "private methods can be called cross-instance", function()
+test( "private methods can be called cross-instance through scope._new", function()
 {
     var A = bubbles.type().
         def({
@@ -371,4 +371,43 @@ test( "instanceof operator works on private scope", function()
     var a = new A();
     var b = new B();
     var c = new C();
+});
+
+test( "private methods can be accessed cross-instance through scope._pry", function()
+{
+    var A = bubbles.type().
+            def({
+                bar: function( a ) {
+                    return this._pry( a ).foo();
+                },
+                _foo: function() {
+                    return "hello";
+                }
+            });
+
+    var a1 = new A();
+    var a2 = new A();
+    equal( a2.bar( a1 ), "hello" );
+});
+
+test( "scope._pry fails on instances of other types", function()
+{
+    var A = bubbles.type().
+            def({
+                _foo: function() { }
+            });
+    var B = bubbles.type().
+            def({
+                bar: function( a ) {
+                    this._pry( a );
+                }
+            });
+
+    var a = new A();
+    var b = new B();
+
+    throws( function()
+    {
+        b.bar();
+    });
 });

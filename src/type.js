@@ -2,10 +2,11 @@
 
 /**
  * @description Defines a type.
- * @param {string} [name] The name of the type.
  * @returns {Type}
+ *
+ * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-bubbles.type = function( name )
+bubbles.type = function()
 {
     var Type = function()
     {
@@ -25,7 +26,6 @@ bubbles.type = function( name )
     Type.initializing = false;
     Type.members = {};
     Type.parent = null;
-    Type.name = name;
     
     /**
      * @description Sets the base type.
@@ -130,6 +130,8 @@ bubbles.type = function( name )
  */
 var fnTest = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
 
+var open = false;
+
 /**
  * @private
  * @description Checks if member name collides with another member.
@@ -152,24 +154,23 @@ function used( type, name, parent )
     return false;
 }
 
+/**
+ * @private
+ * @description Initializes the type.
+ * @param {Type} Type The type to initialize.
+ * @param {object} pub The public interface to initialize on.
+ * @param {array} args Arguments for the constructor.
+ */
 function init( Type, pub, args )
 {
     var scope = create( Type );
 
     pub.$type = Type;
-    scope.self._pub = pub;
-
-    /**
-     * Creates a new instance of the type, but returns the private scope.
-     * This allows access to private methods of other instances of the same type.
-     */
-    scope.self._new = function()
-    {
-        Type.initializing = true;
-        var ret = init( Type, new Type(), arguments );
-        Type.initializing = false;
-        return ret;
+    pub.$scope = function() {
+        if ( open )
+            return scope.self;
     };
+    scope.self._pub = pub;
 
     build( Type, scope );
     expose( Type, scope, pub );
@@ -180,13 +181,50 @@ function init( Type, pub, args )
     return scope.self;
 }
 
-function create( type )
+/**
+ * @private
+ * @description Creates a new private scope.
+ * @param {Type} type
+ */
+function create( Type )
 {
     var Scope = function() { };
-    Scope.prototype = type.prototype;
+    Scope.prototype = Type.prototype;
+
+    /**
+     * Creates a new instance of the type, but returns the private scope.
+     * This allows access to private methods of other instances of the same type.
+     */
+    Scope.prototype._new = function()
+    {
+        Type.initializing = true;
+        var ret = init( Type, new Type(), arguments );
+        Type.initializing = false;
+        return ret;
+    };
+
+    Scope.prototype._pry = function( pub )
+    {
+        if ( pub instanceof Type && pub.$type === Type )
+        {
+            open = true;
+            var ret = pub.$scope();
+            open = false;
+            return ret;
+        }
+        else
+            throw new Error( "Object is not an instance of type." );
+    };
+
     return { self: new Scope(), parent: null };
 }
 
+/**
+ * @private
+ * @description Creates the type members on the instance.
+ * @param {Type} type The instance type.
+ * @param {Scope} scope The private scope of the instance.
+ */
 function build( type, scope )
 {
     if ( type.parent !== null )
@@ -218,6 +256,14 @@ function build( type, scope )
     }
 }
 
+/**
+ * @private
+ * @description Creates a method member.
+ * @param {Type} type
+ * @param {Scope} scope
+ * @param {string} name
+ * @param {object} member
+ */
 function method( type, scope, name, member )
 {
     if ( name === "ctor" )
@@ -245,7 +291,8 @@ function method( type, scope, name, member )
         )
         {
             var _super = scope.parent.self[ name ];
-            scope.self[ name ] = function() {
+            scope.self[ name ] = function()
+            {
                 var temp = scope.self._super;
                 scope.self._super = _super;
                 var result = member.method.apply( scope.self, arguments );
@@ -266,7 +313,7 @@ function method( type, scope, name, member )
  * @private
  * @description Creates references to the public members of the type on the public interface.
  * @param {Type} type The type being instantiated.
- * @param {object} scope The type instance.
+ * @param {Scope} scope The type instance.
  * @param {object} pub The public interface.
  */
 function expose( type, scope, pub )
