@@ -411,3 +411,18 @@ test( "scope._pry fails on instances of other types", function()
         b.bar();
     });
 });
+
+test( "scope methods are not accessible on the public interface", function()
+{
+    var A = bubbles.type();
+    var a = new A();
+    equal( a._new, undefined );
+    equal( a._pry, undefined );
+});
+
+test( "$scope returns undefined unless called from scope._pry", function()
+{
+    var A = bubbles.type();
+    var a = new A();
+    equal( a.$scope(), undefined );
+});

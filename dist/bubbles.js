@@ -207,7 +207,9 @@ function init( Type, pub, args )
 function create( Type )
 {
     var Scope = function() { };
-    Scope.prototype = Type.prototype;
+    Type.initializing = true;
+    Scope.prototype = new Type();
+    Type.initializing = false;
 
     /**
      * Creates a new instance of the type, but returns the private scope.
