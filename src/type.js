@@ -215,7 +215,7 @@ function create( Type )
             return ret;
         }
         else
-            throw new Error( "Object is not an instance of type." );
+            throw new Error( "Cannot pry object. Object is not of the same type." );
     };
 
     return { self: new Scope(), parent: null };
