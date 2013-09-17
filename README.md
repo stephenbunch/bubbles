@@ -101,20 +101,22 @@ equal( a.add( b ), 7 );
 Types are allowed one base type. The coding style mimics John Resig's [Simple Javascript Inheritance](http://ejohn.org/blog/simple-javascript-inheritance/) library:
 
 ```js
-var A = bubbles.type().
-        def({
-          $foo: function() {
-            return "hello"
-          }
-        });
+var A =
+  bubbles.type().
+    def({
+      $foo: function() {
+        return "hello";
+      }
+    });
         
-var B = bubbles.type().
-        extend( A ).
-        def({
-          $foo: function() {
-            return this._super() + " world";
-          }
-        });
+var B =
+  bubbles.type().
+    extend( A ).
+    def({
+      $foo: function() {
+        return this._super() + " world";
+      }
+    });
         
 var b = new B();
 equal( b.foo(), "hello world" );
