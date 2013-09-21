@@ -2,25 +2,25 @@ module( "bubbles.type" );
 
 test( "private methods are hidden", function()
 {
-    var Foo = bubbles.type().
-        def({
-            _bar: function() { }
-        });
+    var A = bubbles.type().
+            def({
+                __bar: function() { }
+            });
 
-    var foo = new Foo();
-    equal( foo.bar, undefined );
+    var a = new A();
+    equal( a.bar, undefined );
 });
 
 test( "methods cannot be defined more than once", function()
 {
-    var Foo = bubbles.type().
-        def({
-            bar: function() {}
-        });
+    var A = bubbles.type().
+            def({
+                bar: function() {}
+            });
 
     throws( function()
     {
-        Foo.def({
+        A.def({
             bar: function() {}
         });
     });
@@ -28,40 +28,39 @@ test( "methods cannot be defined more than once", function()
 
 test( "private methods can be called from public methods", function()
 {
-    var Foo = bubbles.type().
-        def({
-            bar: function( message ) {
-                return this.baz( message + " world" );
-            },
-            _baz: function( message ) {
-                return message + "!";
-            }
-        });
+    var A = bubbles.type().
+            def({
+                bar: function( message ) {
+                    return this.baz( message + " world" );
+                },
+                __baz: function( message ) {
+                    return message + "!";
+                }
+            });
 
-    var foo = new Foo();
-    equal( foo.bar( "hello" ), "hello world!" );
+    var a = new A();
+    equal( a.bar( "hello" ), "hello world!" );
 });
 
 test( "this._pub returns the object as the world sees it", function()
 {
-    var Foo = bubbles.type().
-        def({
-            bar: function() {
-                return this._pub;
-            }
-        });
+    var A = bubbles.type().
+            def({
+                bar: function() {
+                    return this._pub;
+                }
+            });
 
-    var foo = new Foo();
-    equal( foo.bar(), foo );
+    var a = new A();
+    equal( a.bar(), a );
 });
 
 test( "non virtual methods are not overridable", function()
 {
     var A = bubbles.type().
-        def({
-            foo: function() { }
-        });
-
+            def({
+                foo: function() { }
+            });
     var B = bubbles.type().extend( A );
 
     throws( function()
@@ -75,20 +74,19 @@ test( "non virtual methods are not overridable", function()
 test( "methods from the parent are callable from the child", function()
 {
     var A = bubbles.type().
-        def({
-            foo: function() {
-                return "hello";
-            }
-        });
-
+            def({
+                foo: function() {
+                    return "hello";
+                }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            bar: function() {
-                return " world!";
-            }
-        });
-    
+            extend( A ).
+            def({
+                bar: function() {
+                    return " world!";
+                }
+            });
+
     var b = new B();
     equal( b.foo() + b.bar(), "hello world!" );
 });
@@ -96,19 +94,18 @@ test( "methods from the parent are callable from the child", function()
 test( "this._super calls parent method", function()
 {
     var A = bubbles.type().
-        def({
-            $foo: function( message ) {
-                return message + " world";
-            }
-        });
-
+            def({
+                $foo: function( message ) {
+                    return message + " world";
+                }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            $foo: function( message ) {
-                return this._super( message ) + "!";
-            }
-        });
+            extend( A ).
+            def({
+                $foo: function( message ) {
+                    return this._super( message ) + "!";
+                }
+            });
 
     var b = new B();
     equal( b.foo( "hello" ), "hello world!" );
@@ -117,25 +114,24 @@ test( "this._super calls parent method", function()
 test( "private methods don't overwrite each other", function()
 {
     var A = bubbles.type().
-        def({
-            foo: function() {
-                return this.bar();
-            },
-            _bar: function() {
-                return "hello";
-            }
-        });
-
+            def({
+                foo: function() {
+                    return this.bar();
+                },
+                __bar: function() {
+                    return "hello";
+                }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            baz: function() {
-                return this.foo() + this.bar();
-            },
-            _bar: function() {
-                return " world!";
-            }
-        });
+            extend( A ).
+            def({
+                baz: function() {
+                    return this.foo() + this.bar();
+                },
+                __bar: function() {
+                    return " world!";
+                }
+            });
 
     var b = new B();
     equal( b.baz(), "hello world!" );
@@ -144,16 +140,14 @@ test( "private methods don't overwrite each other", function()
 test( "virtual methods can be sealed", function()
 {
     var A = bubbles.type().
-        def({
-            $foo: function() { }
-        });
-
+            def({
+                $foo: function() { }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            foo: function () {}
-        });
-
+            extend( A ).
+            def({
+                foo: function () {}
+            });
     var C = bubbles.type().extend( B );
 
     throws( function()
@@ -167,19 +161,18 @@ test( "virtual methods can be sealed", function()
 test( "parent parameterless constructor gets called", function()
 {
     var A = bubbles.type().
-        def({
-            ctor: function() {
-                i += 2;
-            }
-        });
-
+            def({
+                ctor: function() {
+                    i += 2;
+                }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            ctor: function() {
-                i += 3;
-            }
-        });
+            extend( A ).
+            def({
+                ctor: function() {
+                    i += 3;
+                }
+            });
 
     var i = 0;
     var b = new B();
@@ -189,15 +182,14 @@ test( "parent parameterless constructor gets called", function()
 test( "type instantiation fails because parent constructor contains parameters and child constructor does not explicitly call it", function()
 {
     var A = bubbles.type().
-        def({
-            ctor: function( arg ) { }
-        });
-
-    var B = bubbles.type()
-        .extend( A )
-        .def({
-            ctor: function() { }
-        });
+            def({
+                ctor: function( arg ) { }
+            });
+    var B = bubbles.type().
+            extend( A ).
+            def({
+                ctor: function() { }
+            });
 
     throws( function()
     {
@@ -208,19 +200,18 @@ test( "type instantiation fails because parent constructor contains parameters a
 test( "parent parameterless constructor gets called before child constructor", function() 
 {
     var A = bubbles.type().
-        def({
-            ctor: function() {
-                message += "hello";
-            }
-        });
-
+            def({
+                ctor: function() {
+                    message += "hello";
+                }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            ctor: function( punctuation ) {
-                message += " world" + punctuation;
-            }
-        });
+            extend( A ).
+            def({
+                ctor: function( punctuation ) {
+                    message += " world" + punctuation;
+                }
+            });
 
     var message = "";
     var b = new B( "!" );
@@ -230,20 +221,19 @@ test( "parent parameterless constructor gets called before child constructor", f
 test( "parent constructor with parameters is not automatically called before child constructor", function()
 {
     var A = bubbles.type().
-        def({
-            ctor: function( punctuation ) {
-                message += " world" + punctuation;
-            }
-        });
-
+            def({
+                ctor: function( punctuation ) {
+                    message += " world" + punctuation;
+                }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            ctor: function() {
-                message += "hello";
-                this._super( "!" );
-            }
-        });
+            extend( A ).
+            def({
+                ctor: function() {
+                    message += "hello";
+                    this._super( "!" );
+                }
+            });
 
     var message = "";
     var b = new B();
@@ -253,28 +243,26 @@ test( "parent constructor with parameters is not automatically called before chi
 test( "grandparent parameterless constructor gets called before parent constructor", function()
 {
     var A = bubbles.type().
-        def({
-            ctor: function() {
-                message += " world";
-            }
-        });
-
+            def({
+                ctor: function() {
+                    message += " world";
+                }
+            });
     var B = bubbles.type().
-        extend( A ).
-        def({
-            ctor: function( punctuation ) {
-                message += punctuation;
-            }
-        });
-
+            extend( A ).
+            def({
+                ctor: function( punctuation ) {
+                    message += punctuation;
+                }
+            });
     var C = bubbles.type().
-        extend( B ).
-        def({
-            ctor: function() {
-                message += "hello";
-                this._super( "!" );
-            }
-        });
+            extend( B ).
+            def({
+                ctor: function() {
+                    message += "hello";
+                    this._super( "!" );
+                }
+            });
 
     var message = "";
     var c = new C();
@@ -284,19 +272,19 @@ test( "grandparent parameterless constructor gets called before parent construct
 test( "private methods can be called cross-instance through scope._new", function()
 {
     var A = bubbles.type().
-        def({
-            foo: function() {
-                return this.bar();
-            },
+            def({
+                foo: function() {
+                    return this.bar();
+                },
 
-            _bar: function() {
-                return this._new().baz();
-            },
+                __bar: function() {
+                    return this._new().baz();
+                },
 
-            _baz: function( first ) {
-                return 2;
-            }
-        });
+                __baz: function( first ) {
+                    return 2;
+                }
+            });
 
     var a = new A();
     equal( a.foo(), 2 );
@@ -306,6 +294,7 @@ test( "cannot extend type after members have been defined", function()
 {
     var A = bubbles.type();
     var B = bubbles.type().def({ foo: function() {} });
+
     throws( function()
     {
         B.extend( A );
@@ -315,12 +304,12 @@ test( "cannot extend type after members have been defined", function()
 test( "type can be instantiated without using the 'new' operator", function()
 {
     var A = bubbles.type().
-        def({
-            ctor: function( a, b, c )
-            {
-                result = a + b + c;
-            }
-        })
+            def({
+                ctor: function( a, b, c )
+                {
+                    result = a + b + c;
+                }
+            });
 
     var result = 0;
     var a = A( 1, 3, 5 );
@@ -351,7 +340,6 @@ test( "instanceof operator works on private scope", function()
                     equal( this instanceof A, true );
                 }
             });
-
     var B = bubbles.type().
             extend( A ).
             def({
@@ -359,7 +347,6 @@ test( "instanceof operator works on private scope", function()
                     equal( this instanceof A, true );
                 }
             });
-
     var C = bubbles.type().
             extend( B ).
             def({
@@ -380,7 +367,7 @@ test( "private methods can be accessed cross-instance through scope._pry", funct
                 bar: function( a ) {
                     return this._pry( a ).foo();
                 },
-                _foo: function() {
+                __foo: function() {
                     return "hello";
                 }
             });
@@ -394,7 +381,7 @@ test( "scope._pry fails on instances of other types", function()
 {
     var A = bubbles.type().
             def({
-                _foo: function() { }
+                __foo: function() { }
             });
     var B = bubbles.type().
             def({
@@ -425,4 +412,183 @@ test( "$scope returns undefined unless called from scope._pry", function()
     var A = bubbles.type();
     var a = new A();
     equal( a.$scope(), undefined );
+});
+
+test( "protected methods are accessible from the inside", function()
+{
+    var A = bubbles.type().
+            def({
+                _foo: function() {
+                    return "hello";
+                }
+            });
+    var B = bubbles.type().
+            extend( A ).
+            def({
+                bar: function() {
+                    return this.foo();
+                }
+            });
+
+    var b = new B();
+    equal( b.bar(), "hello" );
+});
+
+test( "protected methods are hidden from the outside", function()
+{
+    var A = bubbles.type().
+            def({
+                _foo: function() { }
+            });
+
+    var a = new A();
+    equal( a.foo, undefined );
+});
+
+test( "protected methods are not overridable by default", function()
+{
+    var A = bubbles.type().
+            def({
+                _foo: function() { }
+            });
+
+    var B = bubbles.type().extend( A );
+
+    throws( function()
+    {
+        B.def({
+            _foo: function() { }
+        });
+    });
+});
+
+test( "protected virtual methods are overridable", function()
+{
+    var A = bubbles.type().
+            def({
+                _$foo: function() {
+                    return "hello";
+                }
+            });
+    var B = bubbles.type().
+            extend( A ).
+            def({
+                _foo: function() {
+                    return this._super() + " world";
+                },
+                bar: function() {
+                    return this.foo();
+                }
+            });
+
+    var b = new B();
+    equal( b.bar(), "hello world" );
+});
+
+test( "protected virtual methods can be sealed", function()
+{
+    var A = bubbles.type().
+            def({
+                _$foo: function() { }
+            });
+    var B = bubbles.type().
+            extend( A ).
+            def({
+                _foo: function() { }
+            });
+    var C = bubbles.type().extend( B );
+
+    throws( function()
+    {
+        C.def({
+            _foo: function() { }
+        })
+    });
+});
+
+test( "protected virtual methods cannot be made public", function()
+{
+    var A = bubbles.type().
+            def({
+                _$foo: function() { }
+            });
+    var B = bubbles.type().extend( A );
+
+    throws( function()
+    {
+        B.def({
+            $foo: function() { }
+        });
+    });
+});
+
+test( "public virtual methods cannot be made protected", function()
+{
+    var A = bubbles.type().
+            def({
+                $foo: function() { }
+            });
+    var B = bubbles.type().extend( A );
+
+    throws( function()
+    {
+        B.def({
+            _$foo: function() { }
+        });
+    });
+});
+
+test( "only methods can be defined", function()
+{
+    var A = bubbles.type();
+    throws( function()
+    {
+        A.def({
+            x: 1
+        });
+    });
+});
+
+test( "constructors cannot be defined twice", function()
+{
+    var A = bubbles.type().
+            def({
+                ctor: function() { }
+            });
+    throws( function()
+    {
+        A.def({
+            ctor: function() { }
+        });
+    });
+});
+
+test( "private members cannot be defined twice", function()
+{
+    var A = bubbles.type().
+            def({
+                __foo: function() { }
+            });
+    throws( function()
+    {
+        A.def({
+            __foo: function() { }
+        });
+    });
+});
+
+test( "constructors do not show up on the private scope or the public interface", function()
+{
+    var A = bubbles.type().
+            def({
+                ctor: function() {
+                    equal( this.ctor, undefined );
+                },
+                foo: function() {
+                    equal( this.ctor, undefined );
+                }
+            });
+    var a = new A();
+    a.foo();
+    equal( a.ctor, undefined );
 });
