@@ -71,7 +71,7 @@ bubbles.type = function()
     {
         foreach( members, function( member, name )
         {
-            if ( getType( member ) !== "function" )
+            if ( !isFunc( member ) )
                 throw new Error( "Cannot define member \"" + name +
                     "\" because it is not a function. Variables should be defined in the constructor." );
 
@@ -135,6 +135,9 @@ bubbles.type = function()
                     params.push( param.trim() );
                 });
             }
+
+            if ( name === "ctor" )
+                Type.$inject = params;
 
             Type.members[ name ] =
             {

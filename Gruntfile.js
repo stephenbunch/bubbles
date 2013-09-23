@@ -16,6 +16,7 @@ module.exports = function( grunt )
                     'src/intro.js',
                     'src/helpers.js',
                     'src/type.js',
+                    'src/composer.js',
                     'src/outro.js'
                 ],
                 dest: 'dist/bubbles.js'

@@ -13,3 +13,7 @@ var getType = bubbles.getType = function( object )
     return Object.prototype.toString.call( object )
         .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
 };
+
+var isFunc = function( object ) {
+    return getType( object ) === "function";
+};
