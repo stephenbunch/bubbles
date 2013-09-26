@@ -14,9 +14,9 @@ module.exports = function( grunt )
             dist: {
                 src: [
                     'src/intro.js',
-                    'src/helpers.js',
+                    'src/utils.js',
                     'src/type.js',
-                    'src/composer.js',
+                    'src/app.js',
                     'src/outro.js'
                 ],
                 dest: 'dist/bubbles.js'

@@ -1,8 +1,8 @@
-module( "bubbles.composer" );
+module( "bubbles.app" );
 
 test( "services can be bound to factories", function()
 {
-    var composer = bubbles.composer().bind( "foo", function() {
+    var app = bubbles.app().bind( "foo", function() {
         return 2;
     });
     var Bar = function( foo )
@@ -11,13 +11,13 @@ test( "services can be bound to factories", function()
             return new Bar( foo );
         this.foo = foo;
     };
-    var bar = composer.get( Bar );
+    var bar = app.get( Bar );
     equal( bar.foo, 2 );
 });
 
 test( "$inject can be used to override dependencies", function()
 {
-    var composer = bubbles.composer().bind( "foo", function() {
+    var app = bubbles.app().bind( "foo", function() {
         return 2;
     });
     var Bar = function( baz )
@@ -27,7 +27,7 @@ test( "$inject can be used to override dependencies", function()
         this.foo = baz;
     };
     Bar.$inject = [ "foo" ];
-    var bar = composer.get( Bar );
+    var bar = app.get( Bar );
     equal( bar.foo, 2 );
 });
 
@@ -46,15 +46,15 @@ test( "injection works with bubbles.type()", function()
                 }
             });
 
-    var composer =
-        bubbles.composer().
+    var app =
+        bubbles.app().
             bind({
                 "a": A,
                 "b": B,
                 "c": C
             });
 
-    var c = composer.get( "c" );
+    var c = app.get( "c" );
     equal( c.baz(), "foobar" );
 });
 

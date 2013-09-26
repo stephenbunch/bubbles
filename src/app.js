@@ -1,5 +1,5 @@
-bubbles.composer =
-    bubbles.type().
+bb.app =
+    bb.type().
     def(
     {
         ctor: function()
@@ -18,11 +18,11 @@ bubbles.composer =
                 bindings = {};
                 bindings[ service ] = factory;
             }
-            foreach( bindings, function( factory, service )
+            bb.each( bindings, function( factory, service )
             {
                 if ( self.container[ service ] !== undefined )
                     throw new Error( "The service \"" + service + "\" has already been bound." );
-                if ( !isFunc( factory ) )
+                if ( !bb.isFunc( factory ) )
                     throw new Error( "The factory to create the service \"" + service + "\" must be a function." );
 
                 self.container[ service ] = {
@@ -43,7 +43,7 @@ bubbles.composer =
         {
             var self = this;
             var binding;
-            if ( isFunc( service ) )
+            if ( bb.isFunc( service ) )
             {
                 binding = {
                     create: service,
@@ -57,7 +57,7 @@ bubbles.composer =
                 binding = self.container[ service ];
             }
             var dependencies = [];
-            foreach( binding.inject, function( dependency )
+            bb.each( binding.inject, function( dependency )
             {
                 dependencies.push( self.get( dependency ) );
             });
@@ -74,7 +74,7 @@ bubbles.composer =
                 var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
                 if ( match !== null )
                 {
-                    foreach( match[1].split( "," ), function( param, index )
+                    bb.each( match[1].split( "," ), function( param, index )
                     {
                         inject.push( param.trim() );
                     });

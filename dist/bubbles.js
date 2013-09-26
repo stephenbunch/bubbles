@@ -8,27 +8,93 @@
 
 // Until browsers can agree on what "strict" means, we won't use it.
 // "use strict";
-var bubbles = window.bubbles = {};
-
-var foreach = bubbles.forEach = function( items, callback )
-{
-    for ( var index in items )
-        callback( items[ index ], index );
-};
+var bb = window.bubbles = {};
 
 /**
- * Gets the internal JavaScript [[Class]] of an object.
- * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+ * Performs a simple merge of two objects.
+ * @param {object} source
+ * @param {object} add
  */
-var getType = bubbles.getType = function( object )
+bb.merge = function( source, add )
 {
-    return Object.prototype.toString.call( object )
-        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
+    var i;
+    for ( i in add )
+    {
+        if ( add[ i ] !== undefined && add[ i ] !== null )
+            source[ i ] = add[ i ];
+    }
 };
 
-var isFunc = function( object ) {
-    return getType( object ) === "function";
-};
+bb.merge( bb,
+{
+    /**
+     * Iterates of an array or object, passing in the item and index / key.
+     * @param {object|array} obj
+     * @param {function} callback
+     */
+    each: function( obj, callback )
+    {
+        var i, value;
+        for ( i in obj )
+        {
+            value = callback.call( obj[ i ], obj[ i ], i );
+            if ( value === false )
+                break;
+        }
+    },
+
+    /**
+     * Iterates a callback a specified number of times, passing 0 to times - 1.
+     * @param {number} times
+     * @param {function} callback
+     */
+    times: function( times, callback )
+    {
+        var i, value;
+        for ( ; i < times; i++ )
+        {
+            value = callback( i );
+            if ( value === false )
+                break;
+        }
+    },
+
+    /**
+     * Gets the internal JavaScript [[Class]] of an object.
+     * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+     */
+    typeOf: function( object )
+    {
+        return Object.prototype.toString.call( object )
+            .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
+    },
+
+    /**
+     * Determines whether an object is a function.
+     */
+    isFunc: function( object ) {
+        return bb.typeOf( object ) === "function";
+    },
+
+    /**
+     * Creates a namespace in an existing space.
+     * @param {string} namespace
+     * @param {object} space
+     */
+    ns: function( namespace, space )
+    {
+        if ( space === undefined )
+            throw new Error( "Cannot create namespace. Space is undefined." );
+
+        var i = 0, names = namespace.split( "." );
+        for ( ; i < names.length; i++ )
+        {
+            space[ names[ i ] ] = space[ names[ i ] ] || {};
+            space = space[ names[ i ] ];
+        }
+        return space;
+    }
+});
 
 ( function() {
 
@@ -38,7 +104,7 @@ var isFunc = function( object ) {
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-bubbles.type = function()
+bb.type = function()
 {
     var Type = function()
     {
@@ -101,9 +167,9 @@ bubbles.type = function()
      */
     Type.def = function( members )
     {
-        foreach( members, function( member, name )
+        bb.each( members, function( member, name )
         {
-            if ( !isFunc( member ) )
+            if ( !bb.isFunc( member ) )
                 throw new Error( "Cannot define member \"" + name +
                     "\" because it is not a function. Variables should be defined in the constructor." );
 
@@ -162,7 +228,7 @@ bubbles.type = function()
             var match = member.toString().match( /^function\s*\(([^())]+)\)/ );
             if ( match !== null )
             {
-                foreach( match[1].split( "," ), function( param, index )
+                bb.each( match[1].split( "," ), function( param, index )
                 {
                     params.push( param.trim() );
                 });
@@ -284,7 +350,7 @@ function create( Type )
     Scope.prototype._pry = function( pub )
     {
         pry = Type;
-        var scope = !!pub.$scope && getType( pub.$scope ) === "function" ? pub.$scope() : null;
+        var scope = !!pub.$scope && bb.isFunc( pub.$scope ) ? pub.$scope() : null;
         pry = null;
         return scope || null;
     };
@@ -314,14 +380,14 @@ function build( type, scope )
         build( type.parent, scope.parent );
     }
 
-    foreach( type.members, function( member, name )
+    bb.each( type.members, function( member, name )
     {
         method( type, scope, name, member );
     });
 
     if ( type.parent !== null )
     {
-        foreach( type.parent.members, function( member, name )
+        bb.each( type.parent.members, function( member, name )
         {
             if ( member.access !== "private" && type.members[ name ] === undefined )
                 scope.self[ name ] = scope.parent.self[ name ];
@@ -397,7 +463,7 @@ function expose( type, scope, pub )
     if ( type.parent !== null )
         expose( type.parent, scope.parent, pub );
 
-    foreach( type.members, function( member, name )
+    bb.each( type.members, function( member, name )
     {
         if ( member.access === "public" )
             pub[ name ] = scope.self[ name ];
@@ -406,8 +472,8 @@ function expose( type, scope, pub )
 
 } () );
 
-bubbles.composer =
-    bubbles.type().
+bb.app =
+    bb.type().
     def(
     {
         ctor: function()
@@ -426,11 +492,11 @@ bubbles.composer =
                 bindings = {};
                 bindings[ service ] = factory;
             }
-            foreach( bindings, function( factory, service )
+            bb.each( bindings, function( factory, service )
             {
                 if ( self.container[ service ] !== undefined )
                     throw new Error( "The service \"" + service + "\" has already been bound." );
-                if ( !isFunc( factory ) )
+                if ( !bb.isFunc( factory ) )
                     throw new Error( "The factory to create the service \"" + service + "\" must be a function." );
 
                 self.container[ service ] = {
@@ -451,7 +517,7 @@ bubbles.composer =
         {
             var self = this;
             var binding;
-            if ( isFunc( service ) )
+            if ( bb.isFunc( service ) )
             {
                 binding = {
                     create: service,
@@ -465,7 +531,7 @@ bubbles.composer =
                 binding = self.container[ service ];
             }
             var dependencies = [];
-            foreach( binding.inject, function( dependency )
+            bb.each( binding.inject, function( dependency )
             {
                 dependencies.push( self.get( dependency ) );
             });
@@ -482,7 +548,7 @@ bubbles.composer =
                 var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
                 if ( match !== null )
                 {
-                    foreach( match[1].split( "," ), function( param, index )
+                    bb.each( match[1].split( "," ), function( param, index )
                     {
                         inject.push( param.trim() );
                     });

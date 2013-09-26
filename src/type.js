@@ -6,7 +6,7 @@
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-bubbles.type = function()
+bb.type = function()
 {
     var Type = function()
     {
@@ -69,9 +69,9 @@ bubbles.type = function()
      */
     Type.def = function( members )
     {
-        foreach( members, function( member, name )
+        bb.each( members, function( member, name )
         {
-            if ( !isFunc( member ) )
+            if ( !bb.isFunc( member ) )
                 throw new Error( "Cannot define member \"" + name +
                     "\" because it is not a function. Variables should be defined in the constructor." );
 
@@ -130,7 +130,7 @@ bubbles.type = function()
             var match = member.toString().match( /^function\s*\(([^())]+)\)/ );
             if ( match !== null )
             {
-                foreach( match[1].split( "," ), function( param, index )
+                bb.each( match[1].split( "," ), function( param, index )
                 {
                     params.push( param.trim() );
                 });
@@ -252,7 +252,7 @@ function create( Type )
     Scope.prototype._pry = function( pub )
     {
         pry = Type;
-        var scope = !!pub.$scope && getType( pub.$scope ) === "function" ? pub.$scope() : null;
+        var scope = !!pub.$scope && bb.isFunc( pub.$scope ) ? pub.$scope() : null;
         pry = null;
         return scope || null;
     };
@@ -282,14 +282,14 @@ function build( type, scope )
         build( type.parent, scope.parent );
     }
 
-    foreach( type.members, function( member, name )
+    bb.each( type.members, function( member, name )
     {
         method( type, scope, name, member );
     });
 
     if ( type.parent !== null )
     {
-        foreach( type.parent.members, function( member, name )
+        bb.each( type.parent.members, function( member, name )
         {
             if ( member.access !== "private" && type.members[ name ] === undefined )
                 scope.self[ name ] = scope.parent.self[ name ];
@@ -365,7 +365,7 @@ function expose( type, scope, pub )
     if ( type.parent !== null )
         expose( type.parent, scope.parent, pub );
 
-    foreach( type.members, function( member, name )
+    bb.each( type.members, function( member, name )
     {
         if ( member.access === "public" )
             pub[ name ] = scope.self[ name ];
