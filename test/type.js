@@ -592,3 +592,22 @@ test( "constructors do not show up on the private scope or the public interface"
     a.foo();
     equal( a.ctor, undefined );
 });
+
+test( "array syntax can be used to specify named constructor dependencies", function()
+{
+    var A = bubbles.type().
+            def({
+                ctor: [ "thing", function( foo )
+                {
+                    this.foo = foo;
+                }],
+                value: function()
+                {
+                    return this.foo;
+                }
+            });
+
+    var app = bubbles.app().bind( "thing", function() { return 2; } );
+    var a = app.get( A );
+    equal( a.value(), 2 );
+});

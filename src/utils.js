@@ -1,44 +1,66 @@
 /**
- * Performs a simple merge of two objects.
+ * @description Performs a simple merge of two or more objects.
  * @param {object} source
- * @param {object} add
+ * @param {params object[]} obj
+ * @returns {object}
  */
-bb.merge = function( source, add )
+bb.merge = function( source, obj /*, obj2, obj3, ... */ )
 {
-    var i;
-    for ( i in add )
+    var i = 0, key;
+    for ( ; i < arguments.length; i++ )
     {
-        if ( add[ i ] !== undefined && add[ i ] !== null )
-            source[ i ] = add[ i ];
+        if ( i === 0 )
+            continue;
+        obj = arguments[ i ];
+        for ( key in obj )
+        {
+            if ( obj[ key ] !== undefined && obj[ key ] !== null )
+                source[ key ] = obj[ key ];
+        }
     }
+    return source;
 };
 
 bb.merge( bb,
 {
     /**
+     * @description
      * Iterates of an array or object, passing in the item and index / key.
+     * Inspired by jQuery.
      * @param {object|array} obj
      * @param {function} callback
      */
     each: function( obj, callback )
     {
-        var i, value;
-        for ( i in obj )
+        var i = 0, value;
+        if ( isArrayLike( obj ) )
         {
-            value = callback.call( obj[ i ], obj[ i ], i );
-            if ( value === false )
-                break;
+            for ( ; i < obj.length; i++ )
+            {
+                value = callback.call( obj[ i ], obj[ i ], i );
+                if ( value === false )
+                    break;
+            }
+        }
+        else
+        {
+            for ( i in obj )
+            {
+                value = callback.call( obj[ i ], obj[ i ], i );
+                if ( value === false )
+                    break;
+            }
         }
     },
 
     /**
-     * Iterates a callback a specified number of times, passing 0 to times - 1.
+     * @description Iterates a callback a specified number of times, passing 0 to times - 1.
      * @param {number} times
      * @param {function} callback
      */
     times: function( times, callback )
     {
-        var i, value;
+        var i = 0, value;
         for ( ; i < times; i++ )
         {
             value = callback( i );
@@ -48,8 +70,11 @@ bb.merge( bb,
     },
 
     /**
+     * @description
      * Gets the internal JavaScript [[Class]] of an object.
      * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+     * @param {object} object
+     * @returns {string}
      */
     typeOf: function( object )
     {
@@ -58,14 +83,16 @@ bb.merge( bb,
     },
 
     /**
-     * Determines whether an object is a function.
+     * @description Determines whether an object is a function.
+     * @param {object}
+     * @returns {boolean}
      */
     isFunc: function( object ) {
         return bb.typeOf( object ) === "function";
     },
 
     /**
-     * Creates a namespace in an existing space.
+     * @description Creates a namespace in an existing space.
      * @param {string} namespace
      * @param {object} space
      */

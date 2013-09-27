@@ -3,54 +3,106 @@
  * (c) 2013 Stephen Bunch https://github.com/stephenbunch/bubbles
  * License: MIT
  */
-(function (window, undefined)
-{
+( function ( window, undefined ) {
 
 // Until browsers can agree on what "strict" means, we won't use it.
 // "use strict";
 var bb = window.bubbles = {};
 
+// This project contains modified snippets from jQuery.
+// Copyright 2005, 2013 jQuery Foundation, Inc. and other contributors
+// Released under the MIT license
+// http://jquery.org/license
+
 /**
- * Performs a simple merge of two objects.
- * @param {object} source
- * @param {object} add
+ * @description
+ * Determines whether an object can be iterated over like an array.
+ * Inspired by jQuery.
+ * @param {object} obj
+ * @returns {boolean}
  */
-bb.merge = function( source, add )
+function isArrayLike( obj )
 {
-    var i;
-    for ( i in add )
+    var length = obj.length,
+        type = bb.typeOf( obj );
+
+    if ( bb.typeOf( obj ) === "window" )
+        return false;
+
+    if ( obj.nodeType === 1 && length )
+        return true;
+
+    return type === "array" ||
+        type !== "function" &&
+        (
+            length === 0 ||
+            typeof length === "number" && length > 0 && ( length - 1 ) in obj
+        );
+}
+
+/**
+ * @description Performs a simple merge of two or more objects.
+ * @param {object} source
+ * @param {params object[]} obj
+ * @returns {object}
+ */
+bb.merge = function( source, obj /*, obj2, obj3, ... */ )
+{
+    var i = 0, key;
+    for ( ; i < arguments.length; i++ )
     {
-        if ( add[ i ] !== undefined && add[ i ] !== null )
-            source[ i ] = add[ i ];
+        if ( i === 0 )
+            continue;
+        obj = arguments[ i ];
+        for ( key in obj )
+        {
+            if ( obj[ key ] !== undefined && obj[ key ] !== null )
+                source[ key ] = obj[ key ];
+        }
     }
+    return source;
 };
 
 bb.merge( bb,
 {
     /**
+     * @description
      * Iterates of an array or object, passing in the item and index / key.
+     * Inspired by jQuery.
      * @param {object|array} obj
      * @param {function} callback
      */
     each: function( obj, callback )
     {
-        var i, value;
-        for ( i in obj )
+        var i = 0, value;
+        if ( isArrayLike( obj ) )
         {
-            value = callback.call( obj[ i ], obj[ i ], i );
-            if ( value === false )
-                break;
+            for ( ; i < obj.length; i++ )
+            {
+                value = callback.call( obj[ i ], obj[ i ], i );
+                if ( value === false )
+                    break;
+            }
+        }
+        else
+        {
+            for ( i in obj )
+            {
+                value = callback.call( obj[ i ], obj[ i ], i );
+                if ( value === false )
+                    break;
+            }
         }
     },
 
     /**
-     * Iterates a callback a specified number of times, passing 0 to times - 1.
+     * @description Iterates a callback a specified number of times, passing 0 to times - 1.
      * @param {number} times
      * @param {function} callback
      */
     times: function( times, callback )
     {
-        var i, value;
+        var i = 0, value;
         for ( ; i < times; i++ )
         {
             value = callback( i );
@@ -60,8 +112,11 @@ bb.merge( bb,
     },
 
     /**
+     * @description
      * Gets the internal JavaScript [[Class]] of an object.
      * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+     * @param {object} object
+     * @returns {string}
      */
     typeOf: function( object )
     {
@@ -70,14 +125,16 @@ bb.merge( bb,
     },
 
     /**
-     * Determines whether an object is a function.
+     * @description Determines whether an object is a function.
+     * @param {object}
+     * @returns {boolean}
      */
     isFunc: function( object ) {
         return bb.typeOf( object ) === "function";
     },
 
     /**
-     * Creates a namespace in an existing space.
+     * @description Creates a namespace in an existing space.
      * @param {string} namespace
      * @param {object} space
      */
@@ -169,6 +226,15 @@ bb.type = function()
     {
         bb.each( members, function( member, name )
         {
+            if ( name === "ctor" )
+            {
+                if ( bb.typeOf( member ) === "array" )
+                {
+                    Type.$inject = member;
+                    member = member.pop();
+                }
+            }
+
             if ( !bb.isFunc( member ) )
                 throw new Error( "Cannot define member \"" + name +
                     "\" because it is not a function. Variables should be defined in the constructor." );
@@ -234,7 +300,7 @@ bb.type = function()
                 });
             }
 
-            if ( name === "ctor" )
+            if ( name === "ctor" && Type.$inject === undefined )
                 Type.$inject = params;
 
             Type.members[ name ] =
@@ -479,8 +545,15 @@ bb.app =
         ctor: function()
         {
             this.container = {};
+            this.namespace = null;
         },
 
+        /**
+         * @description Binds a factory to a service.
+         * @param {string} service
+         * @param {function} factory
+         * @returns {App}
+         */
         bind: function( service, factory )
         {
             var self = this;
@@ -507,16 +580,26 @@ bb.app =
             return self._pub;
         },
 
+        /**
+         * @description Removes a service binding.
+         * @param {string} service
+         * @returns {App}
+         */
         unbind: function( service )
         {
             delete this.container[ service ];
             return this._pub;
         },
 
+        /**
+         * @description Resolves a service and its dependencies.
+         * @param {string|function} service
+         * @returns {object}
+         */
         get: function( service )
         {
             var self = this;
-            var binding;
+            var binding = null;
             if ( bb.isFunc( service ) )
             {
                 binding = {
@@ -527,8 +610,25 @@ bb.app =
             else
             {
                 if ( self.container[ service ] === undefined )
-                    throw new Error( "The service \"" + service + "\" hos not been bound." );
-                binding = self.container[ service ];
+                {
+                    if ( bb.typeOf( service ) === "string" )
+                    {
+                        var names = service.split( "." );
+                        var svc = names.pop();
+                        var ns = bb.ns( names.join( "." ), self.namespace );
+                        if ( ns[ svc ] !== undefined && bb.isFunc( ns[ svc ] ) )
+                        {
+                            binding = {
+                                create: ns[ svc ],
+                                inject: self.getDependencies( ns[ svc ] )
+                            };
+                        }
+                    }
+                    if ( binding === null )
+                        throw new Error( "Service \"" + service + "\" not found." );
+                }
+                else
+                    binding = self.container[ service ];
             }
             var dependencies = [];
             bb.each( binding.inject, function( dependency )
@@ -536,6 +636,43 @@ bb.app =
                 dependencies.push( self.get( dependency ) );
             });
             return binding.create.apply( binding, dependencies );
+        },
+
+        /**
+         * @description Enables automatic binding to a namespace.
+         * @param {object} namespace
+         * @returns {App}
+         */
+        autobind: function( namespace )
+        {
+            this.namespace = namespace;
+            return this._pub;
+        },
+
+        /**
+         * @description Binds a constant to a service.
+         * @param {string} service
+         * @param {mixed} constant
+         * @returns {App}
+         */
+        constant: function( service, constant )
+        {
+            return this.bind( service, function() { return constant; } );
+        },
+
+        /**
+         * @description Loads a module.
+         * @param {params string[]} modules
+         * @returns {App}
+         */
+        require: function( module /*, mod2, mod3, ... */ )
+        {
+            var self = this;
+            bb.each( arguments, function( module )
+            {
+                bb.module.get( module ).load( self._pub );
+            });
+            return self._pub;
         },
 
         __getDependencies: function( method )
@@ -558,4 +695,76 @@ bb.app =
         }
     });
 
-} (window));
+( function() {
+
+var global = {};
+
+/**
+ * Retrieves a module by name, or creates one if it doesn't exist.
+ * @param {string} name
+ */
+bb.module = function( name )
+{
+    if ( global[ name ] === undefined )
+        global[ name ] = new Module( name );
+    return global[ name ];
+};
+
+/**
+ * Retrieves a module by name. Throws an error if the module does not exist.
+ * @param {string} name
+ */
+bb.module.get = function( name )
+{
+    if ( global[ name ] === undefined )
+        throw new Error( "Module \"" + name + "\" not found." );
+    return global[ name ];
+};
+
+var Module =
+    bb.type().
+    def({
+        ctor: function( name )
+        {
+            this.name = name;
+            this._run = [];
+        },
+
+        /**
+         * Adds a callback to be executed when the module is loaded.
+         */
+        run: function( callback )
+        {
+            var func = callback;
+            if ( bb.typeOf( callback ) === "array" )
+            {
+                func = callback.pop();
+                func.$inject = callback;
+            }
+            if ( bb.typeOf( func ) !== "function" )
+                throw new Error( "No callback specified." );
+            this._run.push( func );
+            return this;
+        },
+
+        load: function( app )
+        {
+            bb.each( this._run, function( callback )
+            {
+                // We're not really getting anything. We're just using the app to inject
+                // dependencies into the callback.
+                app.get( callback );
+            });
+            return this;
+        },
+
+        destroy: function()
+        {
+            if ( global[ this.name ] !== undefined )
+                delete global[ this.name ];
+        }
+    });
+
+} () );
+
+} ( window ) );

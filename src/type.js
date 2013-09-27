@@ -71,6 +71,15 @@ bb.type = function()
     {
         bb.each( members, function( member, name )
         {
+            if ( name === "ctor" )
+            {
+                if ( bb.typeOf( member ) === "array" )
+                {
+                    Type.$inject = member;
+                    member = member.pop();
+                }
+            }
+
             if ( !bb.isFunc( member ) )
                 throw new Error( "Cannot define member \"" + name +
                     "\" because it is not a function. Variables should be defined in the constructor." );
@@ -136,7 +145,7 @@ bb.type = function()
                 });
             }
 
-            if ( name === "ctor" )
+            if ( name === "ctor" && Type.$inject === undefined )
                 Type.$inject = params;
 
             Type.members[ name ] =

@@ -5,8 +5,15 @@ bb.app =
         ctor: function()
         {
             this.container = {};
+            this.namespace = null;
         },
 
+        /**
+         * @description Binds a factory to a service.
+         * @param {string} service
+         * @param {function} factory
+         * @returns {App}
+         */
         bind: function( service, factory )
         {
             var self = this;
@@ -33,16 +40,26 @@ bb.app =
             return self._pub;
         },
 
+        /**
+         * @description Removes a service binding.
+         * @param {string} service
+         * @returns {App}
+         */
         unbind: function( service )
         {
             delete this.container[ service ];
             return this._pub;
         },
 
+        /**
+         * @description Resolves a service and its dependencies.
+         * @param {string|function} service
+         * @returns {object}
+         */
         get: function( service )
         {
             var self = this;
-            var binding;
+            var binding = null;
             if ( bb.isFunc( service ) )
             {
                 binding = {
@@ -53,8 +70,25 @@ bb.app =
             else
             {
                 if ( self.container[ service ] === undefined )
-                    throw new Error( "The service \"" + service + "\" hos not been bound." );
-                binding = self.container[ service ];
+                {
+                    if ( bb.typeOf( service ) === "string" )
+                    {
+                        var names = service.split( "." );
+                        var svc = names.pop();
+                        var ns = bb.ns( names.join( "." ), self.namespace );
+                        if ( ns[ svc ] !== undefined && bb.isFunc( ns[ svc ] ) )
+                        {
+                            binding = {
+                                create: ns[ svc ],
+                                inject: self.getDependencies( ns[ svc ] )
+                            };
+                        }
+                    }
+                    if ( binding === null )
+                        throw new Error( "Service \"" + service + "\" not found." );
+                }
+                else
+                    binding = self.container[ service ];
             }
             var dependencies = [];
             bb.each( binding.inject, function( dependency )
@@ -62,6 +96,43 @@ bb.app =
                 dependencies.push( self.get( dependency ) );
             });
             return binding.create.apply( binding, dependencies );
+        },
+
+        /**
+         * @description Enables automatic binding to a namespace.
+         * @param {object} namespace
+         * @returns {App}
+         */
+        autobind: function( namespace )
+        {
+            this.namespace = namespace;
+            return this._pub;
+        },
+
+        /**
+         * @description Binds a constant to a service.
+         * @param {string} service
+         * @param {mixed} constant
+         * @returns {App}
+         */
+        constant: function( service, constant )
+        {
+            return this.bind( service, function() { return constant; } );
+        },
+
+        /**
+         * @description Loads a module.
+         * @param {params string[]} modules
+         * @returns {App}
+         */
+        require: function( module /*, mod2, mod3, ... */ )
+        {
+            var self = this;
+            bb.each( arguments, function( module )
+            {
+                bb.module.get( module ).load( self._pub );
+            });
+            return self._pub;
         },
 
         __getDependencies: function( method )
