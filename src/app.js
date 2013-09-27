@@ -9,12 +9,12 @@ bb.app =
         },
 
         /**
-         * @description Binds a factory to a service.
+         * @description Registers a service.
          * @param {string} service
          * @param {function} factory
          * @returns {App}
          */
-        bind: function( service, factory )
+        register: function( service, factory )
         {
             var self = this;
             var bindings;
@@ -41,11 +41,11 @@ bb.app =
         },
 
         /**
-         * @description Removes a service binding.
+         * @description Unregisters a service.
          * @param {string} service
          * @returns {App}
          */
-        unbind: function( service )
+        unregister: function( service )
         {
             delete this.container[ service ];
             return this._pub;
@@ -56,7 +56,7 @@ bb.app =
          * @param {string|function} service
          * @returns {object}
          */
-        get: function( service )
+        resolve: function( service )
         {
             var self = this;
             var binding = null;
@@ -93,7 +93,7 @@ bb.app =
             var dependencies = [];
             bb.each( binding.inject, function( dependency )
             {
-                dependencies.push( self.get( dependency ) );
+                dependencies.push( self.resolve( dependency ) );
             });
             return binding.create.apply( binding, dependencies );
         },
@@ -103,7 +103,7 @@ bb.app =
          * @param {object} namespace
          * @returns {App}
          */
-        autobind: function( namespace )
+        use: function( namespace )
         {
             this.namespace = namespace;
             return this._pub;
@@ -117,7 +117,7 @@ bb.app =
          */
         constant: function( service, constant )
         {
-            return this.bind( service, function() { return constant; } );
+            return this.register( service, function() { return constant; } );
         },
 
         /**

@@ -2,7 +2,7 @@ module( "bubbles.app" );
 
 test( "services can be bound to factories", function()
 {
-    var app = bubbles.app().bind( "foo", function() {
+    var app = bubbles.app().register( "foo", function() {
         return 2;
     });
     var Bar = function( foo )
@@ -11,13 +11,13 @@ test( "services can be bound to factories", function()
             return new Bar( foo );
         this.foo = foo;
     };
-    var bar = app.get( Bar );
+    var bar = app.resolve( Bar );
     equal( bar.foo, 2 );
 });
 
 test( "$inject can be used to override dependencies", function()
 {
-    var app = bubbles.app().bind( "foo", function() {
+    var app = bubbles.app().register( "foo", function() {
         return 2;
     });
     var Bar = function( baz )
@@ -27,7 +27,7 @@ test( "$inject can be used to override dependencies", function()
         this.foo = baz;
     };
     Bar.$inject = [ "foo" ];
-    var bar = app.get( Bar );
+    var bar = app.resolve( Bar );
     equal( bar.foo, 2 );
 });
 
@@ -48,17 +48,17 @@ test( "injection works with bubbles.type()", function()
 
     var app =
         bubbles.app().
-            bind({
+            register({
                 "a": A,
                 "b": B,
                 "c": C
             });
 
-    var c = app.get( "c" );
+    var c = app.resolve( "c" );
     equal( c.baz(), "foobar" );
 });
 
-test( "autobind automatically finds dependencies", function()
+test( "app.use() automatically finds dependencies", function()
 {
     var ns = {};
     var baz = bubbles.ns( "foo.bar.baz", ns );
@@ -76,7 +76,7 @@ test( "autobind automatically finds dependencies", function()
                 return this.a.value() + this.b.value();
             }
         })
-    var app = bubbles.app().autobind( ns );
-    var c = app.get( baz.C );
+    var app = bubbles.app().use( ns );
+    var c = app.resolve( baz.C );
     equal( c.value(), 3 );
 });
