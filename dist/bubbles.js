@@ -702,6 +702,7 @@ var global = {};
 /**
  * Retrieves a module by name, or creates one if it doesn't exist.
  * @param {string} name
+ * @returns {Module}
  */
 bb.module = function( name )
 {
@@ -713,12 +714,22 @@ bb.module = function( name )
 /**
  * Retrieves a module by name. Throws an error if the module does not exist.
  * @param {string} name
+ * @returns {Module}
  */
 bb.module.get = function( name )
 {
     if ( global[ name ] === undefined )
         throw new Error( "Module \"" + name + "\" not found." );
     return global[ name ];
+};
+
+bb.module.destroy = function( module /*, mod2, mod3, ... */ )
+{
+    bb.each( arguments, function( module )
+    {
+        if ( global[ module ] !== undefined )
+            global[ module ].destroy();
+    });
 };
 
 var Module =
@@ -744,7 +755,7 @@ var Module =
             if ( bb.typeOf( func ) !== "function" )
                 throw new Error( "No callback specified." );
             this._run.push( func );
-            return this;
+            return this._pub;
         },
 
         load: function( app )
@@ -753,9 +764,9 @@ var Module =
             {
                 // We're not really getting anything. We're just using the app to inject
                 // dependencies into the callback.
-                app.get( callback );
+                app.resolve( callback );
             });
-            return this;
+            return this._pub;
         },
 
         destroy: function()

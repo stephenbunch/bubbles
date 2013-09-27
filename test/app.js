@@ -15,7 +15,7 @@ test( "services can be bound to factories", function()
     equal( bar.foo, 2 );
 });
 
-test( "$inject can be used to override dependencies", function()
+test( "`$inject` can be used to override dependencies", function()
 {
     var app = bubbles.app().register( "foo", function() {
         return 2;
@@ -31,7 +31,7 @@ test( "$inject can be used to override dependencies", function()
     equal( bar.foo, 2 );
 });
 
-test( "injection works with bubbles.type()", function()
+test( "injection works with `bubbles.type`", function()
 {
     var A = bubbles.type().def({ foo: function() { return "foo"; } });
     var B = bubbles.type().def({ bar: function() { return "bar"; } });
@@ -58,7 +58,7 @@ test( "injection works with bubbles.type()", function()
     equal( c.baz(), "foobar" );
 });
 
-test( "app.use() automatically finds dependencies", function()
+test( "`use` automatically finds dependencies", function()
 {
     var ns = {};
     var baz = bubbles.ns( "foo.bar.baz", ns );
@@ -79,4 +79,50 @@ test( "app.use() automatically finds dependencies", function()
     var app = bubbles.app().use( ns );
     var c = app.resolve( baz.C );
     equal( c.value(), 3 );
+});
+
+test( "`require` loads selected modules", function()
+{
+    var count = 0;
+    bubbles.module( "foo" ).run( function()
+    {
+        count += 1;
+    });
+    bubbles.module( "foo" ).run( function()
+    {
+        count += 2;
+    });
+    bubbles.module( "bar" ).run( function()
+    {
+        count += 4;
+    });
+    bubbles.app().require( "foo", "bar" );
+
+    equal( count, 7 );
+
+    bubbles.module.destroy( "foo", "bar" );
+});
+
+test( "constants can be registered", function()
+{
+    var app = bubbles.app().constant( "foo", 2 );
+    var out = 0;
+    app.resolve( function( foo )
+    {
+        out = foo;
+    });
+    equal( out, 2 );
+});
+
+test( "module dependencies are resolved", function()
+{
+    bubbles.module( "foo" ).run( [ "bar", function( bar )
+    {
+        bar.x = 2;
+    }]);
+    var baz = {};
+    var app = bubbles.app().constant( "bar", baz );
+    app.require( "foo" );
+    equal( baz.x, 2 );
+    bubbles.module.destroy( "foo" );
 });

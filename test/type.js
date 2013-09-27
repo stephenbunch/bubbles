@@ -597,7 +597,7 @@ test( "array syntax can be used to specify named constructor dependencies", func
 {
     var A = bubbles.type().
             def({
-                ctor: [ "thing", function( foo )
+                ctor: [ "bar", function( foo )
                 {
                     this.foo = foo;
                 }],
@@ -607,7 +607,7 @@ test( "array syntax can be used to specify named constructor dependencies", func
                 }
             });
 
-    var app = bubbles.app().register( "thing", function() { return 2; } );
+    var app = bubbles.app().register( "bar", function() { return 2; } );
     var a = app.resolve( A );
     equal( a.value(), 2 );
 });
