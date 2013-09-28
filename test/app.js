@@ -81,26 +81,26 @@ test( "`use` automatically finds dependencies", function()
     equal( c.value(), 3 );
 });
 
-test( "`require` loads selected modules", function()
+test( "`require` loads selected bubbles", function()
 {
-    var count = 0;
-    bubbles.module( "foo" ).run( function()
+    var called = 0;
+    bubbles.create( "foo", function()
     {
-        count += 1;
+        called += 1;
     });
-    bubbles.module( "foo" ).run( function()
+    bubbles.create( "foo", function()
     {
-        count += 2;
+        called += 2;
     });
-    bubbles.module( "bar" ).run( function()
+    bubbles.create( "bar", function()
     {
-        count += 4;
+        called += 4;
     });
     bubbles.app().require( "foo", "bar" );
 
-    equal( count, 7 );
+    equal( called, 7 );
 
-    bubbles.module.destroy( "foo", "bar" );
+    bubbles.destroy( "foo", "bar" );
 });
 
 test( "constants can be registered", function()
@@ -114,9 +114,9 @@ test( "constants can be registered", function()
     equal( out, 2 );
 });
 
-test( "module dependencies are resolved", function()
+test( "bubble dependencies are resolved", function()
 {
-    bubbles.module( "foo" ).run( [ "bar", function( bar )
+    bubbles.create( "foo", [ "bar", function( bar )
     {
         bar.x = 2;
     }]);
@@ -124,5 +124,5 @@ test( "module dependencies are resolved", function()
     var app = bubbles.app().constant( "bar", baz );
     app.require( "foo" );
     equal( baz.x, 2 );
-    bubbles.module.destroy( "foo" );
+    bubbles.destroy( "foo" );
 });

@@ -40,6 +40,16 @@ function isArrayLike( obj )
         );
 }
 
+function makeArray( obj )
+{
+    var result = [];
+    bb.each( obj, function( item )
+    {
+        result.push( item );
+    });
+    return result;
+}
+
 /**
  * @description Performs a simple merge of two or more objects.
  * @param {object} source
@@ -661,16 +671,16 @@ bb.app =
         },
 
         /**
-         * @description Loads a module.
-         * @param {params string[]} modules
+         * @description Loads a bubble.
+         * @param {params string[]} bubbles
          * @returns {App}
          */
-        require: function( module /*, mod2, mod3, ... */ )
+        require: function( bubbles /*, arg1, arg2, ... */ )
         {
             var self = this;
-            bb.each( arguments, function( module )
+            bb.each( arguments, function( bubble )
             {
-                bb.module.get( module ).load( self._pub );
+                bb.run( bubble, self._pub );
             });
             return self._pub;
         },
@@ -695,86 +705,152 @@ bb.app =
         }
     });
 
-( function() {
-
-var global = {};
-
-/**
- * Retrieves a module by name, or creates one if it doesn't exist.
- * @param {string} name
- * @returns {Module}
- */
-bb.module = function( name )
-{
-    if ( global[ name ] === undefined )
-        global[ name ] = new Module( name );
-    return global[ name ];
-};
-
-/**
- * Retrieves a module by name. Throws an error if the module does not exist.
- * @param {string} name
- * @returns {Module}
- */
-bb.module.get = function( name )
-{
-    if ( global[ name ] === undefined )
-        throw new Error( "Module \"" + name + "\" not found." );
-    return global[ name ];
-};
-
-bb.module.destroy = function( module /*, mod2, mod3, ... */ )
-{
-    bb.each( arguments, function( module )
-    {
-        if ( global[ module ] !== undefined )
-            global[ module ].destroy();
-    });
-};
-
-var Module =
+bb.hub =
     bb.type().
     def({
-        ctor: function( name )
+        ctor: function( context )
         {
-            this.name = name;
-            this._run = [];
+            var self = this;
+            self.context = context || self._pub;
+            self.handlers = {};
         },
 
-        /**
-         * Adds a callback to be executed when the module is loaded.
-         */
-        run: function( callback )
+        on: function( name, handler )
         {
-            var func = callback;
-            if ( bb.typeOf( callback ) === "array" )
-            {
-                func = callback.pop();
-                func.$inject = callback;
-            }
-            if ( bb.typeOf( func ) !== "function" )
-                throw new Error( "No callback specified." );
-            this._run.push( func );
-            return this._pub;
-        },
-
-        load: function( app )
-        {
-            bb.each( this._run, function( callback )
-            {
-                // We're not really getting anything. We're just using the app to inject
-                // dependencies into the callback.
-                app.resolve( callback );
+            var self = this;
+            name = self.parse( name );
+            if ( self.handlers[ name.name ] === undefined )
+                self.handlers[ name.name ] = [];
+            self.handlers[ name.name ].push({
+                ns: name.ns,
+                callback: handler
             });
-            return this._pub;
+            return self._pub;
         },
 
-        destroy: function()
+        off: function( name )
         {
-            if ( global[ this.name ] !== undefined )
-                delete global[ this.name ];
+            var self = this;
+            name = self.parse( name );
+            if ( name.ns === null )
+                delete self.handlers[ name.name ];
+            else
+            {
+                if ( self.handlers[ name.name ] !== undefined )
+                {
+                    bb.each( self.handlers[ name.name ], function( handler, index )
+                    {
+                        if ( self.match( name.ns, handler.ns ) )
+                            self.handlers[ name.name ].splice( index, 1 );
+                    });
+                }
+            }
+            return self._pub;
+        },
+
+        fire: function( name )
+        {
+            var self = this,
+                args = makeArray( arguments );
+            name = self.parse( name );
+            args.shift();
+            if ( self.handlers[ name.name ] !== undefined )
+            {
+                if ( name.ns === null )
+                {
+                    bb.each( self.handlers[ name.name ], function( handler )
+                    {
+                        handler.callback.apply( self.context, args );
+                    });
+                }
+                else
+                {
+                    bb.each( self.handlers[ name.name ], function( handler )
+                    {
+                        if ( self.match( name.ns, handler.ns ) )
+                            handler.callback.apply( self.context, args );
+                    });
+                }
+            }
+            return self._pub;
+        },
+
+        __parse: function( name )
+        {
+            var dot = name.indexOf( "." );
+            var result = {};
+            if ( dot > -1 )
+            {
+                result.name = name.substr( 0, dot );
+                result.ns = name.substr( dot + 1 );
+            }
+            else
+            {
+                result.name = name;
+                result.ns = null;
+            }
+            return result;
+        },
+
+        __match: function( ns, target )
+        {
+            return ns === target ||
+                !!ns &&
+                !!target &&
+                target.length > ns.length &&
+                target.indexOf( ns ) === 0 &&
+                target[ ns.length ] === ".";
         }
     });
+
+( function() {
+
+var hub = bb.hub( window );
+
+bb.merge( bb,
+{
+    /**
+     * @description Creates a new bubble. Named dependency syntax is supported.
+     * @param {string} name
+     * @param {function|array} callback
+     */
+    create: function( name, callback )
+    {
+        var func = callback;
+        if ( bb.typeOf( callback ) === "array" )
+        {
+            func = callback.pop();
+            func.$inject = callback;
+        }
+        if ( bb.typeOf( func ) !== "function" )
+            throw new Error( "No callback specified." );
+        hub.on( "run." + name, function( app )
+        {
+            app.resolve( func );
+        });
+        return bb;
+    },
+
+    /**
+     * @description Destroys a bubble.
+     * @param {string} name
+     */
+    destroy: function( name )
+    {
+        hub.off( "run." + name );
+        return bb;
+    },
+
+    /**
+     * @description Runs a bubble.
+     * @param {App} app
+     */
+    run: function( name, app )
+    {
+        hub.fire( "run." + name, app );
+        return bb;
+    }
+});
 
 } () );
 

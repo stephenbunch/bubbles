@@ -53,12 +53,12 @@ test( "bubbles.each over object", function()
 
 test( "bubbles.times", function()
 {
-    var count = 0;
+    var called = 0;
     bubbles.times( 5, function( i )
     {
-        count += i;
+        called += i;
     });
-    equal( count, 10 );
+    equal( called, 10 );
 });
 
 test( "bubbles.ns", function()

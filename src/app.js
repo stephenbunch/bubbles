@@ -121,16 +121,16 @@ bb.app =
         },
 
         /**
-         * @description Loads a module.
-         * @param {params string[]} modules
+         * @description Loads a bubble.
+         * @param {params string[]} bubbles
          * @returns {App}
          */
-        require: function( module /*, mod2, mod3, ... */ )
+        require: function( bubbles /*, arg1, arg2, ... */ )
         {
             var self = this;
-            bb.each( arguments, function( module )
+            bb.each( arguments, function( bubble )
             {
-                bb.module.get( module ).load( self._pub );
+                bb.run( bubble, self._pub );
             });
             return self._pub;
         },

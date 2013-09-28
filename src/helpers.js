@@ -23,3 +23,13 @@ function isArrayLike( obj )
             typeof length === "number" && length > 0 && ( length - 1 ) in obj
         );
 }
+
+function makeArray( obj )
+{
+    var result = [];
+    bb.each( obj, function( item )
+    {
+        result.push( item );
+    });
+    return result;
+}
