@@ -53,12 +53,12 @@ test( "bubbles.each over object", function()
 
 test( "bubbles.times", function()
 {
-    var called = 0;
+    var out = 0;
     bubbles.times( 5, function( i )
     {
-        called += i;
+        out += i;
     });
-    equal( called, 10 );
+    equal( out, 10 );
 });
 
 test( "bubbles.ns", function()
@@ -67,4 +67,14 @@ test( "bubbles.ns", function()
     var baz = bubbles.ns( "foo.bar.baz", namespace );
     baz.qux = 2;
     equal( namespace.foo.bar.baz.qux, 2 );
+});
+
+test( "bubbles.times over a range", function()
+{
+    var out = 0;
+    bubbles.times( [2, 4], function( i )
+    {
+        out += i;
+    });
+    equal( out, 9 );
 });

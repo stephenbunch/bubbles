@@ -55,12 +55,17 @@ bb.merge( bb,
 
     /**
      * @description Iterates a callback a specified number of times, passing 0 to times - 1.
-     * @param {number} times
+     * @param {number|array} times
      * @param {function} callback
      */
     times: function( times, callback )
     {
         var i = 0, value;
+        if ( isArrayLike( times ) )
+        {
+            i = times[0];
+            times = times[1] + 1;
+        }
         for ( ; i < times; i++ )
         {
             value = callback( i );
