@@ -103,7 +103,7 @@ test( "`require` loads selected bubbles", function()
     bubbles.remove( "foo", "bar" );
 });
 
-test( "constants can be registered", function()
+test( "single constants can be registered", function()
 {
     var app = bubbles.app().constant( "foo", 2 );
     var out = 0;
@@ -125,4 +125,21 @@ test( "bubble dependencies are resolved", function()
     app.require( "foo" );
     equal( baz.x, 2 );
     bubbles.remove( "foo" );
+});
+
+test( "hash of constants can be registered", function()
+{
+    var app = bubbles.app().constant({
+        foo: 2,
+        bar: 3
+    });
+    var f = 0;
+    var b = 0;
+    app.resolve( function( foo, bar )
+    {
+        f = foo;
+        b = bar;
+    });
+    equal( f, 2 );
+    equal( b, 3 );
 });

@@ -117,7 +117,17 @@ bb.app =
          */
         constant: function( service, constant )
         {
-            return this.register( service, function() { return constant; } );
+            var self = this;
+            if ( arguments.length === 1 )
+            {
+                bb.each( service, function( constant, service )
+                {
+                    self.register( service, function() { return constant; } );
+                });
+                return self._pub;
+            }
+            else
+                return self.register( service, function() { return constant; } );
         },
 
         /**
