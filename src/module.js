@@ -5,11 +5,11 @@ var hub = bb.hub( window );
 bb.merge( bb,
 {
     /**
-     * @description Creates a new bubble. Named dependency syntax is supported.
+     * @description Creates a new module. Named dependency syntax is supported.
      * @param {string} name
      * @param {function|array} callback
      */
-    create: function( name, callback )
+    add: function( name, callback )
     {
         var func = callback;
         if ( bb.typeOf( callback ) === "array" )
@@ -27,17 +27,17 @@ bb.merge( bb,
     },
 
     /**
-     * @description Destroys a bubble.
+     * @description Destroys a module.
      * @param {string} name
      */
-    destroy: function( name )
+    remove: function( name )
     {
         hub.off( "run." + name );
         return bb;
     },
 
     /**
-     * @description Runs a bubble.
+     * @description Loads a module.
      * @param {App} app
      */
     run: function( name, app )

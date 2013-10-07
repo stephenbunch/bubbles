@@ -84,15 +84,15 @@ test( "`use` automatically finds dependencies", function()
 test( "`require` loads selected bubbles", function()
 {
     var called = 0;
-    bubbles.create( "foo", function()
+    bubbles.add( "foo", function()
     {
         called += 1;
     });
-    bubbles.create( "foo", function()
+    bubbles.add( "foo", function()
     {
         called += 2;
     });
-    bubbles.create( "bar", function()
+    bubbles.add( "bar", function()
     {
         called += 4;
     });
@@ -100,7 +100,7 @@ test( "`require` loads selected bubbles", function()
 
     equal( called, 7 );
 
-    bubbles.destroy( "foo", "bar" );
+    bubbles.remove( "foo", "bar" );
 });
 
 test( "constants can be registered", function()
@@ -116,7 +116,7 @@ test( "constants can be registered", function()
 
 test( "bubble dependencies are resolved", function()
 {
-    bubbles.create( "foo", [ "bar", function( bar )
+    bubbles.add( "foo", [ "bar", function( bar )
     {
         bar.x = 2;
     }]);
@@ -124,5 +124,5 @@ test( "bubble dependencies are resolved", function()
     var app = bubbles.app().constant( "bar", baz );
     app.require( "foo" );
     equal( baz.x, 2 );
-    bubbles.destroy( "foo" );
+    bubbles.remove( "foo" );
 });

@@ -19,7 +19,7 @@ module.exports = function( grunt )
                     'src/type.js',
                     'src/app.js',
                     'src/hub.js',
-                    'src/bubble.js',
+                    'src/module.js',
                     'src/outro.js'
                 ],
                 dest: 'dist/bubbles.js'
