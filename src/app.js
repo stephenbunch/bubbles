@@ -71,7 +71,7 @@ bb.app =
             {
                 if ( self.container[ service ] === undefined )
                 {
-                    if ( bb.typeOf( service ) === "string" )
+                    if ( bb.typeOf( service ) === "string" && self.namespace !== null )
                     {
                         var names = service.split( "." );
                         var svc = names.pop();

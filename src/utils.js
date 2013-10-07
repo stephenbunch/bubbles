@@ -103,7 +103,7 @@ bb.merge( bb,
      */
     ns: function( namespace, space )
     {
-        if ( space === undefined )
+        if ( space === undefined || space === null )
             throw new Error( "Cannot create namespace. Space is undefined." );
 
         var i = 0, names = namespace.split( "." );
