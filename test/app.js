@@ -165,3 +165,10 @@ test( "resolve can pass regular arguments", function()
     }], 5 );
     equal( out, 7 );
 });
+
+test( "resolve with '$' prepended returns provider", function()
+{
+    var app = bubbles.app().constant( "foo", 2 );
+    var provider = app.resolve( "$foo" );
+    equal( provider(), 2 );
+});

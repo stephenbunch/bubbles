@@ -61,6 +61,7 @@ bb.app =
         {
             var self = this;
             var binding = null;
+            var lazy = false;
             if ( bb.isFunc( service ) )
             {
                 binding = {
@@ -77,36 +78,39 @@ bb.app =
             }
             else
             {
-                if ( self.container[ service ] === undefined )
+                if ( self.container[ service ] !== undefined )
+                    binding = self.container[ service ];
+                else
                 {
-                    if ( bb.typeOf( service ) === "string" && self.namespace !== null )
+                    if ( bb.typeOf( service ) === "string" )
                     {
-                        var names = service.split( "." );
-                        var svc = names.pop();
-                        var ns = bb.ns( names.join( "." ), self.namespace );
-                        if ( ns[ svc ] !== undefined && bb.isFunc( ns[ svc ] ) )
+                        binding = self.findBinding( service );
+                        if ( binding === null && service !== "$" && service.match( /^\$/ ) !== null )
                         {
-                            binding = {
-                                create: ns[ svc ],
-                                inject: self.getDependencies( ns[ svc ] )
-                            };
+                            lazy = true;
+                            binding =
+                                self.container[ service.substr( 1 ) ] !== undefined ?
+                                self.container[ service.substr( 1 ) ] :
+                                self.findBinding( service.substr( 1 ) );
                         }
                     }
                     if ( binding === null )
                         throw new Error( "Service \"" + service + "\" not found." );
                 }
-                else
-                    binding = self.container[ service ];
             }
             var dependencies = [];
             bb.each( binding.inject, function( dependency )
             {
                 dependencies.push( self.resolve( dependency ) );
             });
-            var args = makeArray( arguments );
-            args.shift( 0 );
-            args = dependencies.concat( args );
-            return binding.create.apply( binding, args );
+            var provider = function()
+            {
+                var args = makeArray( arguments );
+                args.shift( 0 );
+                args = dependencies.concat( args );
+                return binding.create.apply( binding, args );
+            };
+            return lazy ? provider : provider.apply( this, arguments );
         },
 
         /**
@@ -142,11 +146,11 @@ bb.app =
         },
 
         /**
-         * @description Loads a bubble.
-         * @param {params string[]} bubbles
+         * @description Loads a module.
+         * @param {params string[]} modules
          * @returns {App}
          */
-        require: function( bubbles /*, arg1, arg2, ... */ )
+        require: function( /* module0, module1, module2, ... */ )
         {
             var self = this;
             bb.each( arguments, function( bubble )
@@ -162,5 +166,23 @@ bb.app =
             if ( method.$inject !== undefined )
                 inject = method.$inject;
             return inject;
+        },
+
+        __findBinding: function( name )
+        {
+            var self = this;
+            if ( self.namespace === null )
+                return null;
+            var names = name.split( "." );
+            var svc = names.pop();
+            var ns = bb.ns( names.join( "." ), self.namespace );
+            if ( ns[ svc ] !== undefined && bb.isFunc( ns[ svc ] ) )
+            {
+                return {
+                    create: ns[ svc ],
+                    inject: self.getDependencies( ns[ svc ] )
+                };
+            }
+            return null;
         }
     });

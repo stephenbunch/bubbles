@@ -96,6 +96,11 @@ bb.merge( bb,
         return bb.typeOf( object ) === "function";
     },
 
+    /**
+     * @description Determines whether an object is an array.
+     * @param {object}
+     * @returns {boolean}
+     */
     isArray: function( object ) {
         return bb.typeOf( object ) === "array";
     },
