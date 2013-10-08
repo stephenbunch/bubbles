@@ -53,10 +53,11 @@ bb.app =
 
         /**
          * @description Resolves a service and its dependencies.
-         * @param {string|function} service
+         * @param {string|function|array} service
+         * @param {params object[]} args
          * @returns {object}
          */
-        resolve: function( service )
+        resolve: function( service /*, arg0, arg1, arg2, ... */ )
         {
             var self = this;
             var binding = null;
@@ -102,7 +103,10 @@ bb.app =
             {
                 dependencies.push( self.resolve( dependency ) );
             });
-            return binding.create.apply( binding, dependencies );
+            var args = makeArray( arguments );
+            args.shift( 0 );
+            args = dependencies.concat( args );
+            return binding.create.apply( binding, args );
         },
 
         /**

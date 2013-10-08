@@ -154,3 +154,14 @@ test( "array syntax can be resolved", function()
     }]);
     equal( out, 2 );
 });
+
+test( "resolve can pass regular arguments", function()
+{
+    var app = bubbles.app().constant( "foo", 2 );
+    var out = 0;
+    app.resolve( [ "foo", function( a, b )
+    {
+        out = a + b;
+    }], 5 );
+    equal( out, 7 );
+});
