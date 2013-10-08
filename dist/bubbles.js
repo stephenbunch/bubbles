@@ -646,13 +646,13 @@ bb.app =
                     if ( bb.typeOf( service ) === "string" )
                     {
                         binding = self.findBinding( service );
-                        if ( binding === null && service !== "$" && service.match( /^\$/ ) !== null )
+                        if ( binding === null && service !== "f`" && service.match( /^f`/ ) !== null )
                         {
                             lazy = true;
                             binding =
-                                self.container[ service.substr( 1 ) ] !== undefined ?
-                                self.container[ service.substr( 1 ) ] :
-                                self.findBinding( service.substr( 1 ) );
+                                self.container[ service.substr( 2 ) ] !== undefined ?
+                                self.container[ service.substr( 2 ) ] :
+                                self.findBinding( service.substr( 2 ) );
                         }
                     }
                     if ( binding === null )
