@@ -172,3 +172,10 @@ test( "resolve with '$' prepended returns provider", function()
     var provider = app.resolve( "$foo" );
     equal( provider(), 2 );
 });
+
+test( "resolve provider with arguments", function()
+{
+    var app = bubbles.app().register( "foo", function( a ) { return a + 2; } );
+    var provider = app.resolve( "$foo" );
+    equal( provider( 5 ), 7 );
+});

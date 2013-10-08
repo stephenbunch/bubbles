@@ -664,14 +664,13 @@ bb.app =
             {
                 dependencies.push( self.resolve( dependency ) );
             });
+            var args = makeArray( arguments );
+            args.shift( 0 );
             var provider = function()
             {
-                var args = makeArray( arguments );
-                args.shift( 0 );
-                args = dependencies.concat( args );
-                return binding.create.apply( binding, args );
+                return binding.create.apply( binding, dependencies.concat( makeArray( arguments ) ) );
             };
-            return lazy ? provider : provider.apply( this, arguments );
+            return lazy ? provider : provider.apply( this, args );
         },
 
         /**
