@@ -96,6 +96,10 @@ bb.merge( bb,
         return bb.typeOf( object ) === "function";
     },
 
+    isArray: function( object ) {
+        return bb.typeOf( object ) === "array";
+    },
+
     /**
      * @description Creates a namespace in an existing space.
      * @param {string} namespace

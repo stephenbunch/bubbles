@@ -145,9 +145,6 @@ bb.type = function()
                 });
             }
 
-            if ( name === "ctor" && Type.$inject === undefined )
-                Type.$inject = params;
-
             Type.members[ name ] =
             {
                 access: access,

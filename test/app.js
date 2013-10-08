@@ -11,7 +11,7 @@ test( "services can be bound to factories", function()
             return new Bar( foo );
         this.foo = foo;
     };
-    var bar = app.resolve( Bar );
+    var bar = app.resolve( [ "foo", Bar ] );
     equal( bar.foo, 2 );
 });
 
@@ -37,10 +37,10 @@ test( "injection works with `bubbles.type`", function()
     var B = bubbles.type().def({ bar: function() { return "bar"; } });
     var C = bubbles.type().
             def({
-                ctor: function( a, b ) {
+                ctor: [ "a", "b", function( a, b ) {
                     this.a = a;
                     this.b = b;
-                },
+                }],
                 baz: function() {
                     return this.a.foo() + this.b.bar();
                 }
@@ -107,10 +107,10 @@ test( "single constants can be registered", function()
 {
     var app = bubbles.app().constant( "foo", 2 );
     var out = 0;
-    app.resolve( function( foo )
+    app.resolve( [ "foo", function( foo )
     {
         out = foo;
-    });
+    }]);
     equal( out, 2 );
 });
 
@@ -135,11 +135,22 @@ test( "hash of constants can be registered", function()
     });
     var f = 0;
     var b = 0;
-    app.resolve( function( foo, bar )
+    app.resolve( [ "foo", "bar", function( foo, bar )
     {
         f = foo;
         b = bar;
-    });
+    }]);
     equal( f, 2 );
     equal( b, 3 );
+});
+
+test( "array syntax can be resolved", function()
+{
+    var app = bubbles.app().constant( "foo", 2 );
+    var out = 0;
+    app.resolve( [ "foo", function( x )
+    {
+        out = x;
+    }]);
+    equal( out, 2 );
 });

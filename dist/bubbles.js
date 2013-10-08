@@ -148,6 +148,10 @@ bb.merge( bb,
         return bb.typeOf( object ) === "function";
     },
 
+    isArray: function( object ) {
+        return bb.typeOf( object ) === "array";
+    },
+
     /**
      * @description Creates a namespace in an existing space.
      * @param {string} namespace
@@ -314,9 +318,6 @@ bb.type = function()
                     params.push( param.trim() );
                 });
             }
-
-            if ( name === "ctor" && Type.$inject === undefined )
-                Type.$inject = params;
 
             Type.members[ name ] =
             {
@@ -622,6 +623,13 @@ bb.app =
                     inject: self.getDependencies( service )
                 };
             }
+            else if ( bb.isArray( service ) )
+            {
+                binding = {
+                    create: service.pop(),
+                    inject: service
+                };
+            }
             else
             {
                 if ( self.container[ service ] === undefined )
@@ -705,17 +713,6 @@ bb.app =
             var inject = [];
             if ( method.$inject !== undefined )
                 inject = method.$inject;
-            else
-            {
-                var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
-                if ( match !== null )
-                {
-                    bb.each( match[1].split( "," ), function( param, index )
-                    {
-                        inject.push( param.trim() );
-                    });
-                }
-            }
             return inject;
         }
     });
