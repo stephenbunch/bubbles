@@ -1,3 +1,5 @@
+var PROVIDER = "bubbles.provider`";
+
 /**
  * @description
  * Determines whether an object can be iterated over like an array.

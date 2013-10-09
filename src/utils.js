@@ -122,5 +122,10 @@ bb.merge( bb,
             space = space[ names[ i ] ];
         }
         return space;
+    },
+
+    provider: function( service )
+    {
+        return PROVIDER + service;
     }
 });

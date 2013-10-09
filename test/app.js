@@ -166,16 +166,16 @@ test( "resolve can pass regular arguments", function()
     equal( out, 7 );
 });
 
-test( "resolve with 'f`' prepended returns provider", function()
+test( "resolve with bubbles.provider returns provider", function()
 {
     var app = bubbles.app().constant( "foo", 2 );
-    var provider = app.resolve( "f`foo" );
+    var provider = app.resolve( bubbles.provider( "foo" ) );
     equal( provider(), 2 );
 });
 
 test( "resolve provider with arguments", function()
 {
     var app = bubbles.app().register( "foo", function( a ) { return a + 2; } );
-    var provider = app.resolve( "f`foo" );
+    var provider = app.resolve( bubbles.provider( "foo" ) );
     equal( provider( 5 ), 7 );
 });

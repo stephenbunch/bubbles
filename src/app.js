@@ -85,13 +85,13 @@ bb.app =
                     if ( bb.typeOf( service ) === "string" )
                     {
                         binding = self.findBinding( service );
-                        if ( binding === null && service !== "f`" && service.match( /^f`/ ) !== null )
+                        if ( binding === null && service !== PROVIDER && service.match( new RegExp( "^" + PROVIDER ) ) !== null )
                         {
                             lazy = true;
                             binding =
-                                self.container[ service.substr( 2 ) ] !== undefined ?
-                                self.container[ service.substr( 2 ) ] :
-                                self.findBinding( service.substr( 2 ) );
+                                self.container[ service.substr( PROVIDER.length ) ] !== undefined ?
+                                self.container[ service.substr( PROVIDER.length ) ] :
+                                self.findBinding( service.substr( PROVIDER.length ) );
                         }
                     }
                     if ( binding === null )
