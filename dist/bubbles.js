@@ -359,7 +359,8 @@ bb.type = function()
                         },
                         set: function( value ) {
                             this._value = value;
-                        }
+                        },
+                        value: member
                     };
                 }
                 bb.each( [ member.get, member.set ], function( accessor, index )
@@ -387,6 +388,7 @@ bb.type = function()
                             throw new Error( ( index === 0 ? "Get" : "Set" ) + " accessor for property \"" + name + "\" must be a function." );
                     }    
                 });
+                Type.members[ name ].value = member.value !== undefined ? member.value : null;
             }
         });
 
@@ -638,7 +640,7 @@ function property( type, scope, name, member )
         }
     }
 
-    var _value = null;
+    var _value = member.value;
     var accessors = {};
     if ( member.get !== undefined )
     {
@@ -702,7 +704,8 @@ function expose( type, scope, pub )
 
 /**
  * @private
- * @description Adds a property to an object.
+ * @description
+ * Adds a property to an object.
  * http://johndyer.name/native-browser-get-set-properties-in-javascript/
  * @param {object} obj
  * @param {string} name

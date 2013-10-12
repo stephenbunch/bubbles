@@ -749,5 +749,24 @@ describe( "bubbles.type", function()
             b.foo = "world";
             expect( b.foo ).toBe( "hello world!" );
         });
+
+        it( "can specify a default value", function()
+        {
+            var A = bubbles.type().def({
+                foo: 2
+            });
+            var B = bubbles.type().def({
+                foo: {
+                    value: 3,
+                    get: function() {
+                        return this._value;
+                    }
+                }
+            });
+            var a = new A();
+            var b = new B();
+            expect( a.foo ).toBe( 2 );
+            expect( b.foo ).toBe( 3 );
+        });
     });
 });
