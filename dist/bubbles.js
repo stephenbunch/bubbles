@@ -213,7 +213,6 @@ bb.type = function()
     // http://stackoverflow.com/a/4867755/740996
     try {
         Object.defineProperty( {}, "x", {} );
-        throw new Error("test");
     } catch ( e ) {
         Type.prototype = document.createElement( "fake" );
     }
