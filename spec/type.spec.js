@@ -17,17 +17,6 @@ describe( "bubbles.type", function()
             }).toThrow();
         });
 
-        it( "can only define methods", function()
-        {
-            var A = bubbles.type();
-            expect( function()
-            {
-                A.def({
-                    x: 1
-                });
-            }).toThrow();
-        });
-
         it( "should support the array syntax for specifing constructor dependencies", function()
         {
             var A = bubbles.type().
@@ -45,6 +34,62 @@ describe( "bubbles.type", function()
             var app = bubbles.app().register( "bar", function() { return 2; } );
             var a = app.resolve( A );
             expect( a.value() ).toBe( 2 );
+        });
+
+        it( "should throw an error if the constructor is a defined and no method is provided", function()
+        {
+            expect( function()
+            {
+                bubbles.type().def({ ctor: null });
+            }).toThrow();
+            expect( function()
+            {
+                bubbles.type().def({ ctor: [ "foo", "bar" ] });
+            }).toThrow();
+        });
+
+        it( "should throw an error if a property's get accessor is not a method", function()
+        {
+            expect( function()
+            {
+                bubbles.type().def({
+                    foo: {
+                        get: "bar",
+                        set: function() {}
+                    }
+                });
+            }).toThrow();
+        });
+
+        it( "should throw an error if a property's set accessor is not a method", function()
+        {
+            expect( function()
+            {
+                bubbles.type().def({
+                    foo: {
+                        get: function() {},
+                        set: "bar"
+                    }
+                });
+            }).toThrow();
+        });
+
+        it( "should throw an error if a property's read/write capabilities are redefined", function()
+        {
+            var A = bubbles.type().def({
+                $foo: {
+                    get: function() {}
+                }
+            });
+            var B = bubbles.type().extend( A );
+            expect( function()
+            {
+                B.def({
+                    foo: {
+                        set: function() {}
+                    }
+                });
+            }).toThrow();
         });
     });
 
@@ -642,6 +687,67 @@ describe( "bubbles.type", function()
                 var a = new A();
                 expect( a.$scope() ).toBe( undefined );
             });
+        });
+    });
+
+    describe( "properties", function()
+    {
+        it( "can read and write values", function() {
+            var A = bubbles.type().
+                    def({
+                        foo: null
+                    });
+            var a = new A();
+            a.foo = "hello";
+            expect( a.foo ).toBe( "hello" );
+        });
+
+        it( "should support custom get and set accessors", function()
+        {
+            var A = bubbles.type().
+                    def({
+                        foo: {
+                            get: function() {
+                                return this._value * 2;
+                            },
+                            set: function( value ) {
+                                this._value = value * 2;
+                            }
+                        }
+                    });
+            var a = new A();
+            a.foo = 2;
+            expect( a.foo ).toBe( 8 );
+        });
+
+        it( "can be extended", function()
+        {
+            var A = bubbles.type().
+                    def({
+                        $foo: {
+                            get: function() {
+                                return "hello " + this._value;
+                            },
+                            set: function( value ) {
+                                this._value = value;
+                            }
+                        }
+                    });
+            var B = bubbles.type().
+                    extend( A ).
+                    def({
+                        foo: {
+                            get: function() {
+                                return this._super();
+                            },
+                            set: function( value ) {
+                                this._super( value + "!" );
+                            }
+                        }
+                    });
+            var b = new B();
+            b.foo = "world";
+            expect( b.foo ).toBe( "hello world!" );
         });
     });
 });

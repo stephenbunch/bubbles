@@ -209,6 +209,15 @@ bb.type = function()
             init( Type, this, arguments );
     };
 
+    // IE8 only supports Object.defineProperty on DOM objects.
+    // http://stackoverflow.com/a/4867755/740996
+    try {
+        Object.defineProperty( {}, "x", {} );
+        throw new Error("test");
+    } catch ( e ) {
+        Type.prototype = document.createElement( "fake" );
+    }
+
     Type.initializing = false;
     Type.members = {};
     Type.parent = null;
@@ -264,11 +273,9 @@ bb.type = function()
                     Type.$inject = member;
                     member = member.pop();
                 }
+                if ( !bb.isFunc( member ) )
+                    throw new Error( "Constructor must be a function." );
             }
-
-            if ( !bb.isFunc( member ) )
-                throw new Error( "Cannot define member \"" + name +
-                    "\" because it is not a function. Variables should be defined in the constructor." );
 
             // determines the member's visibility ( public | private )
             var access = "public";
@@ -317,28 +324,70 @@ bb.type = function()
                 throw new Error( "Cannot change access modifier of member \"" + name + "\" from " +
                     Type.parent.members[ name ].access + " to " + access + "." );
 
-
-            // determines whether the method needs the _super variable
-            var callsuper = fnTest.test( member );
-
-            var params = [];
-            var match = member.toString().match( /^function\s*\(([^())]+)\)/ );
-            if ( match !== null )
-            {
-                bb.each( match[1].split( "," ), function( param, index )
-                {
-                    params.push( param.trim() );
-                });
-            }
-
             Type.members[ name ] =
             {
                 access: access,
-                method: member,
-                callsuper: callsuper,
-                virtual: virtual,
-                params: params
+                virtual: virtual
             };
+
+            if ( bb.isFunc( member ) )
+            {
+                var params = [];
+                var match = member.toString().match( /^function\s*\(([^())]+)\)/ );
+                if ( match !== null )
+                {
+                    bb.each( match[1].split( "," ), function( param, index )
+                    {
+                        params.push( param.trim() );
+                    });
+                }
+                bb.merge( Type.members[ name ],
+                {
+                    method: member,
+                    params: params,
+                    callsuper: fnTest.test( member )
+                });
+            }
+            else
+            {
+                if ( member === null || !bb.isFunc( member.get ) && !bb.isFunc( member.set ) )
+                {
+                    member =
+                    {
+                        get: function() {
+                            return this._value;
+                        },
+                        set: function( value ) {
+                            this._value = value;
+                        }
+                    };
+                }
+                bb.each( [ member.get, member.set ], function( accessor, index )
+                {
+                    var method = index === 0 ? "get" : "set";
+                    if ( accessor !== undefined )
+                    {
+                        if (
+                            Type.parent !== null &&
+                            Type.parent.members[ name ] !== undefined &&
+                            Type.parent.members[ name ].access !== "private" &&
+                            Type.parent.members[ name ][ method ] === undefined
+                        )
+                            throw new Error( "Cannot change read/write definition of property \"" + name + "\"." );
+
+                        if ( bb.isFunc( accessor ) )
+                        {
+                            Type.members[ name ][ method ] =
+                            {
+                                method: accessor,
+                                callsuper: fnTest.test( accessor )
+                            };
+                        }
+                        else
+                            throw new Error( ( index === 0 ? "Get" : "Set" ) + " accessor for property \"" + name + "\" must be a function." );
+                    }    
+                });
+            }
         });
 
         return Type;
@@ -476,7 +525,10 @@ function build( type, scope )
 
     bb.each( type.members, function( member, name )
     {
-        method( type, scope, name, member );
+        if ( member.method !== undefined )
+            method( type, scope, name, member );
+        else
+            property( type, scope, name, member );
     });
 
     if ( type.parent !== null )
@@ -547,6 +599,70 @@ function method( type, scope, name, member )
 
 /**
  * @private
+ * @description Creates a property member.
+ * @param {Type} type
+ * @param {Scope} scope
+ * @param {string} name
+ * @param {object} member
+ */
+function property( type, scope, name, member )
+{
+    function accessor( method, _super )
+    {
+        if ( _super === null )
+        {
+            return function()
+            {
+                var temp = scope.self._value;
+                scope.self._value = _value;
+                var result = method.apply( scope.self, arguments );
+                _value = scope.self._value;
+                scope.self._value = temp;
+                return result;
+            };
+        }
+        else
+        {
+            return function()
+            {
+                var tempSuper = scope.self._super;
+                var tempValue = scope.self._value;
+                scope.self._super = _super;
+                scope.self._value = _value;
+                var result = method.apply( scope.self, arguments );
+                scope.self._super = tempSuper;
+                _value = scope.self._value;
+                scope.self._value = tempValue;
+                return result;
+            };
+        }
+    }
+
+    var _value = null;
+    var accessors = {};
+    if ( member.get !== undefined )
+    {
+        accessors.get = accessor(
+            member.get.method,
+            !member.get.callsuper || scope.parent === null ? null : function( value ) {
+                return scope.parent.self[ name ];
+            }
+        );
+    }
+    if ( member.set !== undefined )
+    {
+        accessors.set = accessor(
+            member.set.method,
+            !member.set.callsuper || scope.parent === null ? null : function( value ) {
+                scope.parent.self[ name ] = value;
+            }
+        );
+    }
+    addProperty( scope.self, name, accessors );
+}
+
+/**
+ * @private
  * @description Creates references to the public members of the type on the public interface.
  * @param {Type} type The type being instantiated.
  * @param {Scope} scope The type instance.
@@ -559,9 +675,55 @@ function expose( type, scope, pub )
 
     bb.each( type.members, function( member, name )
     {
-        if ( member.access === "public" )
+        if ( member.access !== "public" )
+            return;
+
+        if ( member.method !== undefined )
             pub[ name ] = scope.self[ name ];
+        else
+        {
+            var accessors = {};
+            if ( member.get !== undefined )
+            {
+                accessors.get = function() {
+                    return scope.self[ name ];
+                };
+            }
+            if ( member.set !== undefined )
+            {
+                accessors.set = function( value ) {
+                    scope.self[ name ] = value;
+                };
+            }
+            addProperty( pub, name, accessors );
+        }
     });
+}
+
+/**
+ * @private
+ * @description Adds a property to an object.
+ * http://johndyer.name/native-browser-get-set-properties-in-javascript/
+ * @param {object} obj
+ * @param {string} name
+ * @param {object} accessors
+ */
+function addProperty( obj, name, accessors )
+{
+    accessors.configurable = true;
+
+    // modern browsers, IE9+, and IE8 (must be a DOM object)
+    if ( Object.defineProperty )
+        Object.defineProperty( obj, name, accessors );
+
+    // older mozilla
+    else if ( obj.__defineGetter__ )
+    {
+        obj.__defineGetter__( name, accessors.get );
+        obj.__defineSetter__( name, accessors.set );
+    }
+    else
+        throw new Error( "JavaScript properties are not supported by this browser." );
 }
 
 } () );
