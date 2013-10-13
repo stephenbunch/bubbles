@@ -26,6 +26,11 @@ function isArrayLike( obj )
         );
 }
 
+/**
+ * @description Turns an object into a true array.
+ * @param {object} obj
+ * @returns {array}
+ */
 function makeArray( obj )
 {
     var result = [];
