@@ -82,25 +82,21 @@ describe( "bubbles.app", function()
 
     describe( "app.require", function()
     {
-        it( "should run specified modules", function()
+        it( "should run module", function()
         {
-            var called = 0;
-            bubbles.add( "foo", function()
+            bubbles.add( "foo", function( exports )
             {
-                called += 1;
+                exports.bar = 1;
             });
-            bubbles.add( "foo", function()
+            bubbles.add( "foo", function( exports )
             {
-                called += 2;
+                exports.baz = 2;
             });
-            bubbles.add( "bar", function()
-            {
-                called += 4;
-            });
-            bubbles.app().require( "foo", "bar" );
+            var foo = bubbles.app().require( "foo" );
 
-            expect( called ).toBe( 7 );
-            bubbles.remove( "foo", "bar" );
+            expect( foo.bar ).toBe( 1 );
+            expect( foo.baz ).toBe( 2 );
+            bubbles.remove( "foo" );
         });
 
         it( "should resolve module dependencies", function()

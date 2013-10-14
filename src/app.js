@@ -146,17 +146,12 @@ bb.app =
 
         /**
          * @description Loads a module.
-         * @param {params string[]} modules
-         * @returns {App}
+         * @param {string} module
+         * @returns {object}
          */
-        require: function( /* module0, module1, module2, ... */ )
+        require: function( module )
         {
-            var self = this;
-            bb.each( arguments, function( bubble )
-            {
-                bb.run( bubble, self._pub );
-            });
-            return self._pub;
+            return bb.run( module, this._pub );
         },
 
         __getDependencies: function( method )

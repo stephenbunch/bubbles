@@ -19,9 +19,9 @@ bb.merge( bb,
         }
         if ( bb.typeOf( func ) !== "function" )
             throw new Error( "No callback specified." );
-        hub.on( "run." + name, function( app )
+        hub.on( "run." + name, function( app, exports )
         {
-            app.resolve( func );
+            app.resolve( func, exports );
         });
         return bb;
     },
@@ -42,8 +42,9 @@ bb.merge( bb,
      */
     run: function( name, app )
     {
-        hub.fire( "run." + name, app );
-        return bb;
+        var exports = {};
+        hub.fire( "run." + name, app, exports );
+        return exports;
     }
 });
 

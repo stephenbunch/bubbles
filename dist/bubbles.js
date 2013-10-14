@@ -1,5 +1,5 @@
 /*!
- * Bubbles v0.1.0
+ * bubbles v0.1.0
  * (c) 2013 Stephen Bunch https://github.com/stephenbunch/bubbles
  * License: MIT
  */
@@ -884,17 +884,12 @@ bb.app =
 
         /**
          * @description Loads a module.
-         * @param {params string[]} modules
-         * @returns {App}
+         * @param {string} module
+         * @returns {object}
          */
-        require: function( /* module0, module1, module2, ... */ )
+        require: function( module )
         {
-            var self = this;
-            bb.each( arguments, function( bubble )
-            {
-                bb.run( bubble, self._pub );
-            });
-            return self._pub;
+            return bb.run( module, this._pub );
         },
 
         __getDependencies: function( method )
@@ -1043,9 +1038,9 @@ bb.merge( bb,
         }
         if ( bb.typeOf( func ) !== "function" )
             throw new Error( "No callback specified." );
-        hub.on( "run." + name, function( app )
+        hub.on( "run." + name, function( app, exports )
         {
-            app.resolve( func );
+            app.resolve( func, exports );
         });
         return bb;
     },
@@ -1066,8 +1061,9 @@ bb.merge( bb,
      */
     run: function( name, app )
     {
-        hub.fire( "run." + name, app );
-        return bb;
+        var exports = {};
+        hub.fire( "run." + name, app, exports );
+        return exports;
     }
 });
 
