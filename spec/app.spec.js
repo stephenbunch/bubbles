@@ -93,14 +93,14 @@ describe( "bubbles.app", function()
         it( "can be listed as a dependency", function()
         {
             var app = bubbles.app().constant( "foo", 2 );
-            var provider = app.resolve( bubbles.provider( "foo" ) );
+            var provider = app.resolve( bubbles.providerOf( "foo" ) );
             expect( provider() ).toBe( 2 );
         });
 
         it( "should forward additional arguments to the underlying service provider", function()
         {
             var app = bubbles.app().register( "foo", function( a ) { return a + 2; } );
-            var provider = app.resolve( bubbles.provider( "foo" ) );
+            var provider = app.resolve( bubbles.providerOf( "foo" ) );
             expect( provider( 5 ) ).toBe( 7 );
         });
     });

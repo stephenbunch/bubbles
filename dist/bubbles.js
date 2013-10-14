@@ -183,7 +183,7 @@ bb.merge( bb,
         return space;
     },
 
-    provider: function( service )
+    providerOf: function( service )
     {
         return PROVIDER + service;
     }
