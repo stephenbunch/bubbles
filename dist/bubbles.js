@@ -222,14 +222,8 @@ bb.type = function( name )
     if ( arguments.length > 0 )
         bb.types[ name ] = Type;
 
-    // IE8 only supports Object.defineProperty on DOM objects.
-    // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
-    // http://stackoverflow.com/a/4867755/740996
-    try {
-        Object.defineProperty( {}, "x", {} );
-    } catch ( e ) {
+    if ( ie8 )
         Type.prototype = document.createElement( "fake" );
-    }
 
     Type.members = {};
     Type.parent = null;
@@ -425,6 +419,16 @@ var pry = null;
 
 // A global flag to control execution of type initializers.
 var runInit = true;
+
+// IE8 only supports Object.defineProperty on DOM objects.
+// http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
+// http://stackoverflow.com/a/4867755/740996
+var ie8 = false;
+try {
+    Object.defineProperty( {}, "x", {} );
+} catch ( e ) {
+    ie8 = true;
+}
 
 /**
  * @private
@@ -626,33 +630,30 @@ function property( type, scope, name, member )
 {
     function accessor( method, _super )
     {
-        if ( _super === null )
+        return function()
         {
-            return function()
+            var tempSuper = scope.self._super;
+            var tempValue = scope.self._value;
+            scope.self._super = _super;
+            
+            addProperty( scope.self, "_value",
             {
-                var temp = scope.self._value;
-                scope.self._value = _value;
-                var result = method.apply( scope.self, arguments );
-                _value = scope.self._value;
-                scope.self._value = temp;
-                return result;
-            };
-        }
-        else
-        {
-            return function()
-            {
-                var tempSuper = scope.self._super;
-                var tempValue = scope.self._value;
-                scope.self._super = _super;
-                scope.self._value = _value;
-                var result = method.apply( scope.self, arguments );
-                scope.self._super = tempSuper;
-                _value = scope.self._value;
-                scope.self._value = tempValue;
-                return result;
-            };
-        }
+                get: function() {
+                    return _value;
+                },
+                set: function( value ) {
+                    _value = value;
+                }
+            });
+            
+            var result = method.apply( scope.self, arguments );
+            scope.self._super = tempSuper;
+
+            delete scope.self._value;
+            scope.self._value = tempValue;
+
+            return result;
+        };
     }
 
     var _value = member.value;

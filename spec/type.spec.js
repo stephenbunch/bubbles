@@ -768,5 +768,24 @@ describe( "bubbles.type", function()
             expect( a.foo ).toBe( 2 );
             expect( b.foo ).toBe( 3 );
         });
+
+        it( "can be read immediately after being set", function()
+        {
+            var out = null;
+            var A = bubbles.type().def({
+                foo: {
+                    get: function() {
+                        return this._value;
+                    },
+                    set: function( value ) {
+                        this._value = value;
+                        out = this.foo;
+                    }
+                }
+            });
+            var a = new A();
+            a.foo = "hello";
+            expect( out ).toBe( "hello" );
+        });
     });
 });
