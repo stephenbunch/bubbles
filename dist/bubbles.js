@@ -191,28 +191,36 @@ bb.merge( bb,
 
 ( function() {
 
+bb.types = {};
+
 /**
  * @description Defines a new type.
  * @returns {Type}
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-bb.type = function()
+bb.type = function( name )
 {
+    if ( arguments.length > 0 && bb.types[ name ] !== undefined )
+        return bb.types[ name ];
+
+    var runInitFromNew = true;
     var Type = function()
     {
         if ( !( this instanceof Type ) )
         {
-            Type.initializing = true;
+            runInitFromNew = false;
             var t = new Type();
             init( Type, t, arguments );
-            Type.initializing = false;
+            runInitFromNew = true;
             return t;
         }
-
-        if ( !Type.initializing )
+        if ( runInit && runInitFromNew )
             init( Type, this, arguments );
     };
+
+    if ( arguments.length > 0 )
+        bb.types[ name ] = Type;
 
     // IE8 only supports Object.defineProperty on DOM objects.
     // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
@@ -223,7 +231,6 @@ bb.type = function()
         Type.prototype = document.createElement( "fake" );
     }
 
-    Type.initializing = false;
     Type.members = {};
     Type.parent = null;
     
@@ -241,9 +248,9 @@ bb.type = function()
 
         Type.parent = type;
 
-        type.initializing = true;
+        runInit = false;
         Type.prototype = new type();
-        type.initializing = false;
+        runInit = true;
 
         return Type;
     };
@@ -416,6 +423,9 @@ var fnTest = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
 // and call $scope to extract the private scope.
 var pry = null;
 
+// A global flag to control execution of type initializers.
+var runInit = true;
+
 /**
  * @private
  * @description Checks if member name collides with another member.
@@ -478,9 +488,9 @@ function init( Type, pub, args )
 function create( Type )
 {
     var Scope = function() { };
-    Type.initializing = true;
+    runInit = false;
     Scope.prototype = new Type();
-    Type.initializing = false;
+    runInit = true;
 
     /**
      * Creates a new instance of the type, but returns the private scope.
@@ -488,9 +498,9 @@ function create( Type )
      */
     Scope.prototype._new = function()
     {
-        Type.initializing = true;
+        runInit = false;
         var ret = init( Type, new Type(), arguments );
-        Type.initializing = false;
+        runInit = true;
         return ret;
     };
 
@@ -743,16 +753,15 @@ bb.app =
         ctor: function()
         {
             this.container = {};
-            this.namespace = null;
         },
 
         /**
          * @description Registers a service.
          * @param {string} service
-         * @param {function} factory
+         * @param {function} provider
          * @returns {App}
          */
-        register: function( service, factory )
+        register: function( service, provider )
         {
             var self = this;
             var bindings;
@@ -761,18 +770,18 @@ bb.app =
             else
             {
                 bindings = {};
-                bindings[ service ] = factory;
+                bindings[ service ] = provider;
             }
-            bb.each( bindings, function( factory, service )
+            bb.each( bindings, function( provider, service )
             {
                 if ( self.container[ service ] !== undefined )
-                    throw new Error( "The service \"" + service + "\" has already been bound." );
-                if ( !bb.isFunc( factory ) )
-                    throw new Error( "The factory to create the service \"" + service + "\" must be a function." );
+                    throw new Error( "The service \"" + service + "\" has already been registered." );
+                if ( !bb.isFunc( provider ) )
+                    throw new Error( "The provider for service \"" + service + "\" must be a function." );
 
                 self.container[ service ] = {
-                    create: factory,
-                    inject: self.getDependencies( factory )
+                    create: provider,
+                    inject: self.getDependencies( provider )
                 };
             });
             return self._pub;
@@ -822,14 +831,11 @@ bb.app =
                 {
                     if ( bb.typeOf( service ) === "string" )
                     {
-                        binding = self.findBinding( service );
                         if ( binding === null && service !== PROVIDER && service.match( new RegExp( "^" + PROVIDER ) ) !== null )
                         {
                             lazy = true;
-                            binding =
-                                self.container[ service.substr( PROVIDER.length ) ] !== undefined ?
-                                self.container[ service.substr( PROVIDER.length ) ] :
-                                self.findBinding( service.substr( PROVIDER.length ) );
+                            if ( self.container[ service.substr( PROVIDER.length ) ] !== undefined )
+                                binding = self.container[ service.substr( PROVIDER.length ) ];
                         }
                     }
                     if ( binding === null )
@@ -843,22 +849,10 @@ bb.app =
             });
             var args = makeArray( arguments );
             args.shift( 0 );
-            var provider = function()
-            {
+            var provider = function() {
                 return binding.create.apply( binding, dependencies.concat( makeArray( arguments ) ) );
             };
             return lazy ? provider : provider.apply( this, args );
-        },
-
-        /**
-         * @description Enables automatic binding to a namespace.
-         * @param {object} namespace
-         * @returns {App}
-         */
-        use: function( namespace )
-        {
-            this.namespace = namespace;
-            return this._pub;
         },
 
         /**
@@ -882,14 +876,14 @@ bb.app =
                 return self.register( service, function() { return constant; } );
         },
 
-        /**
-         * @description Loads a module.
-         * @param {string} module
-         * @returns {object}
-         */
-        require: function( module )
+        autoRegister: function()
         {
-            return bb.run( module, this._pub );
+            var self = this;
+            bb.each( bb.types, function( type, name )
+            {
+                self.register( name, type );
+            });
+            return self._pub;
         },
 
         __getDependencies: function( method )
@@ -898,24 +892,6 @@ bb.app =
             if ( method.$inject !== undefined )
                 inject = method.$inject;
             return inject;
-        },
-
-        __findBinding: function( name )
-        {
-            var self = this;
-            if ( self.namespace === null )
-                return null;
-            var names = name.split( "." );
-            var svc = names.pop();
-            var ns = bb.ns( names.join( "." ), self.namespace );
-            if ( ns[ svc ] !== undefined && bb.isFunc( ns[ svc ] ) )
-            {
-                return {
-                    create: ns[ svc ],
-                    inject: self.getDependencies( ns[ svc ] )
-                };
-            }
-            return null;
         }
     });
 
@@ -1016,57 +992,5 @@ bb.hub =
                 target[ ns.length ] === ".";
         }
     });
-
-( function() {
-
-var hub = bb.hub( window );
-
-bb.merge( bb,
-{
-    /**
-     * @description Creates a new module. Named dependency syntax is supported.
-     * @param {string} name
-     * @param {function|array} callback
-     */
-    add: function( name, callback )
-    {
-        var func = callback;
-        if ( bb.typeOf( callback ) === "array" )
-        {
-            func = callback.pop();
-            func.$inject = callback;
-        }
-        if ( bb.typeOf( func ) !== "function" )
-            throw new Error( "No callback specified." );
-        hub.on( "run." + name, function( app, exports )
-        {
-            app.resolve( func, exports );
-        });
-        return bb;
-    },
-
-    /**
-     * @description Destroys a module.
-     * @param {string} name
-     */
-    remove: function( name )
-    {
-        hub.off( "run." + name );
-        return bb;
-    },
-
-    /**
-     * @description Loads a module.
-     * @param {App} app
-     */
-    run: function( name, app )
-    {
-        var exports = {};
-        hub.fire( "run." + name, app, exports );
-        return exports;
-    }
-});
-
-} () );
 
 } ( window ) );

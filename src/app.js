@@ -5,16 +5,15 @@ bb.app =
         ctor: function()
         {
             this.container = {};
-            this.namespace = null;
         },
 
         /**
          * @description Registers a service.
          * @param {string} service
-         * @param {function} factory
+         * @param {function} provider
          * @returns {App}
          */
-        register: function( service, factory )
+        register: function( service, provider )
         {
             var self = this;
             var bindings;
@@ -23,18 +22,18 @@ bb.app =
             else
             {
                 bindings = {};
-                bindings[ service ] = factory;
+                bindings[ service ] = provider;
             }
-            bb.each( bindings, function( factory, service )
+            bb.each( bindings, function( provider, service )
             {
                 if ( self.container[ service ] !== undefined )
-                    throw new Error( "The service \"" + service + "\" has already been bound." );
-                if ( !bb.isFunc( factory ) )
-                    throw new Error( "The factory to create the service \"" + service + "\" must be a function." );
+                    throw new Error( "The service \"" + service + "\" has already been registered." );
+                if ( !bb.isFunc( provider ) )
+                    throw new Error( "The provider for service \"" + service + "\" must be a function." );
 
                 self.container[ service ] = {
-                    create: factory,
-                    inject: self.getDependencies( factory )
+                    create: provider,
+                    inject: self.getDependencies( provider )
                 };
             });
             return self._pub;
@@ -84,14 +83,11 @@ bb.app =
                 {
                     if ( bb.typeOf( service ) === "string" )
                     {
-                        binding = self.findBinding( service );
                         if ( binding === null && service !== PROVIDER && service.match( new RegExp( "^" + PROVIDER ) ) !== null )
                         {
                             lazy = true;
-                            binding =
-                                self.container[ service.substr( PROVIDER.length ) ] !== undefined ?
-                                self.container[ service.substr( PROVIDER.length ) ] :
-                                self.findBinding( service.substr( PROVIDER.length ) );
+                            if ( self.container[ service.substr( PROVIDER.length ) ] !== undefined )
+                                binding = self.container[ service.substr( PROVIDER.length ) ];
                         }
                     }
                     if ( binding === null )
@@ -105,22 +101,10 @@ bb.app =
             });
             var args = makeArray( arguments );
             args.shift( 0 );
-            var provider = function()
-            {
+            var provider = function() {
                 return binding.create.apply( binding, dependencies.concat( makeArray( arguments ) ) );
             };
             return lazy ? provider : provider.apply( this, args );
-        },
-
-        /**
-         * @description Enables automatic binding to a namespace.
-         * @param {object} namespace
-         * @returns {App}
-         */
-        use: function( namespace )
-        {
-            this.namespace = namespace;
-            return this._pub;
         },
 
         /**
@@ -144,14 +128,14 @@ bb.app =
                 return self.register( service, function() { return constant; } );
         },
 
-        /**
-         * @description Loads a module.
-         * @param {string} module
-         * @returns {object}
-         */
-        require: function( module )
+        autoRegister: function()
         {
-            return bb.run( module, this._pub );
+            var self = this;
+            bb.each( bb.types, function( type, name )
+            {
+                self.register( name, type );
+            });
+            return self._pub;
         },
 
         __getDependencies: function( method )
@@ -160,23 +144,5 @@ bb.app =
             if ( method.$inject !== undefined )
                 inject = method.$inject;
             return inject;
-        },
-
-        __findBinding: function( name )
-        {
-            var self = this;
-            if ( self.namespace === null )
-                return null;
-            var names = name.split( "." );
-            var svc = names.pop();
-            var ns = bb.ns( names.join( "." ), self.namespace );
-            if ( ns[ svc ] !== undefined && bb.isFunc( ns[ svc ] ) )
-            {
-                return {
-                    create: ns[ svc ],
-                    inject: self.getDependencies( ns[ svc ] )
-                };
-            }
-            return null;
         }
     });

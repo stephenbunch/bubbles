@@ -55,73 +55,6 @@ describe( "bubbles.app", function()
             var c = app.resolve( "c" );
             expect( c.baz() ).toBe( "foobar" );
         });
-
-        it( "should automatically find dependencies when given a namespace", function()
-        {
-            var ns = {};
-            var baz = bubbles.ns( "foo.bar.baz", ns );
-            baz.A = bubbles.type().def({ value: function() { return 1; } });
-            baz.B = bubbles.type().def({ value: function() { return 2; } });
-            baz.C =
-                bubbles.type().
-                def({
-                    ctor: [ "foo.bar.baz.A", "foo.bar.baz.B", function( a, b )
-                    {
-                        this.a = a;
-                        this.b = b;
-                    }],
-                    value: function() {
-                        return this.a.value() + this.b.value();
-                    }
-                })
-            var app = bubbles.app().use( ns );
-            var c = app.resolve( baz.C );
-            expect( c.value() ).toBe( 3 );
-        });
-    });
-
-    describe( "app.require", function()
-    {
-        it( "should run module", function()
-        {
-            bubbles.add( "foo", function( exports )
-            {
-                exports.bar = 1;
-            });
-            bubbles.add( "foo", function( exports )
-            {
-                exports.baz = 2;
-            });
-            var foo = bubbles.app().require( "foo" );
-
-            expect( foo.bar ).toBe( 1 );
-            expect( foo.baz ).toBe( 2 );
-            bubbles.remove( "foo" );
-        });
-
-        it( "should resolve module dependencies", function()
-        {
-            bubbles.add( "foo", [ "bar", function( bar )
-            {
-                bar.x = 2;
-            }]);
-            var baz = {};
-            var app = bubbles.app().constant( "bar", baz );
-            app.require( "foo" );
-            expect( baz.x ).toBe( 2 );
-            bubbles.remove( "foo" );
-        });
-
-        it( "should forward additional arguments to the bound service provider", function()
-        {
-            var app = bubbles.app().constant( "foo", 2 );
-            var out = 0;
-            app.resolve( [ "foo", function( a, b )
-            {
-                out = a + b;
-            }], 5 );
-            expect( out ).toBe( 7 );
-        });
     });
 
     describe( "app.constant", function()
@@ -169,6 +102,23 @@ describe( "bubbles.app", function()
             var app = bubbles.app().register( "foo", function( a ) { return a + 2; } );
             var provider = app.resolve( bubbles.provider( "foo" ) );
             expect( provider( 5 ) ).toBe( 7 );
+        });
+    });
+
+    describe( "app.autoRegister", function()
+    {
+        it( "should register named types", function()
+        {
+            var called = 0;
+            var Foo = bb.type( "Foo" ).def({
+                ctor: function() {
+                    called += 1;
+                }
+            });
+            var app = bb.app().autoRegister();
+            var foo = app.resolve( "Foo" );
+            expect( called ).toBe( 1 );
+            delete bb.types.Foo;
         });
     });
 });

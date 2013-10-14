@@ -1,27 +1,35 @@
 ( function() {
 
+bb.types = {};
+
 /**
  * @description Defines a new type.
  * @returns {Type}
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-bb.type = function()
+bb.type = function( name )
 {
+    if ( arguments.length > 0 && bb.types[ name ] !== undefined )
+        return bb.types[ name ];
+
+    var runInitFromNew = true;
     var Type = function()
     {
         if ( !( this instanceof Type ) )
         {
-            Type.initializing = true;
+            runInitFromNew = false;
             var t = new Type();
             init( Type, t, arguments );
-            Type.initializing = false;
+            runInitFromNew = true;
             return t;
         }
-
-        if ( !Type.initializing )
+        if ( runInit && runInitFromNew )
             init( Type, this, arguments );
     };
+
+    if ( arguments.length > 0 )
+        bb.types[ name ] = Type;
 
     // IE8 only supports Object.defineProperty on DOM objects.
     // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
@@ -32,7 +40,6 @@ bb.type = function()
         Type.prototype = document.createElement( "fake" );
     }
 
-    Type.initializing = false;
     Type.members = {};
     Type.parent = null;
     
@@ -50,9 +57,9 @@ bb.type = function()
 
         Type.parent = type;
 
-        type.initializing = true;
+        runInit = false;
         Type.prototype = new type();
-        type.initializing = false;
+        runInit = true;
 
         return Type;
     };
@@ -225,6 +232,9 @@ var fnTest = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
 // and call $scope to extract the private scope.
 var pry = null;
 
+// A global flag to control execution of type initializers.
+var runInit = true;
+
 /**
  * @private
  * @description Checks if member name collides with another member.
@@ -287,9 +297,9 @@ function init( Type, pub, args )
 function create( Type )
 {
     var Scope = function() { };
-    Type.initializing = true;
+    runInit = false;
     Scope.prototype = new Type();
-    Type.initializing = false;
+    runInit = true;
 
     /**
      * Creates a new instance of the type, but returns the private scope.
@@ -297,9 +307,9 @@ function create( Type )
      */
     Scope.prototype._new = function()
     {
-        Type.initializing = true;
+        runInit = false;
         var ret = init( Type, new Type(), arguments );
-        Type.initializing = false;
+        runInit = true;
         return ret;
     };
 
