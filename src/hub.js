@@ -11,12 +11,16 @@ bb.hub =
         on: function( name, handler )
         {
             var self = this;
-            name = self.parse( name );
-            if ( self.handlers[ name.name ] === undefined )
-                self.handlers[ name.name ] = [];
-            self.handlers[ name.name ].push({
-                ns: name.ns,
-                callback: handler
+            var names = name.split( " " );
+            bb.each( names, function( name )
+            {
+                name = self.parse( name );
+                if ( self.handlers[ name.name ] === undefined )
+                    self.handlers[ name.name ] = [];
+                self.handlers[ name.name ].push({
+                    ns: name.ns,
+                    callback: handler
+                });
             });
             return self._pub;
         },
@@ -24,20 +28,24 @@ bb.hub =
         off: function( name )
         {
             var self = this;
-            name = self.parse( name );
-            if ( name.ns === null )
-                delete self.handlers[ name.name ];
-            else
+            var names = name.split( " " );
+            bb.each( names, function( name )
             {
-                if ( self.handlers[ name.name ] !== undefined )
+                name = self.parse( name );
+                if ( name.ns === null )
+                    delete self.handlers[ name.name ];
+                else
                 {
-                    bb.each( self.handlers[ name.name ], function( handler, index )
+                    if ( self.handlers[ name.name ] !== undefined )
                     {
-                        if ( self.match( name.ns, handler.ns ) )
-                            self.handlers[ name.name ].splice( index, 1 );
-                    });
+                        bb.each( self.handlers[ name.name ], function( handler, index )
+                        {
+                            if ( self.match( name.ns, handler.ns ) )
+                                self.handlers[ name.name ].splice( index, 1 );
+                        });
+                    }
                 }
-            }
+            });
             return self._pub;
         },
 

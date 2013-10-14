@@ -64,6 +64,19 @@ describe( "bubbles.hub", function()
             hub.fire( "foo.bar" );
             expect( called ).toBe( 3 );
         });
+
+        it( "can add a handler to multiple events", function()
+        {
+            var hub = bubbles.hub();
+            var called = 0;
+            hub.on( "foo bar", function()
+            {
+                called++;
+            });
+            hub.fire( "foo" );
+            hub.fire( "bar" );
+            expect( called ).toBe( 2 );
+        });
     });
 
     describe( "hub.off", function()
@@ -100,7 +113,25 @@ describe( "bubbles.hub", function()
             hub.fire( "foo.bar" );
             expect( called ).toBe( 0 );
         });
-    });  
+
+        it( "can remove a handler from multiple events", function()
+        {
+            var hub = bubbles.hub();
+            var out = "";
+            hub.on( "foo", function()
+            {
+                out += "hello";
+            });
+            hub.on( "bar", function()
+            {
+                out += " world";
+            });
+            hub.off( "foo bar" );
+            hub.fire( "foo" );
+            hub.fire( "bar" );
+            expect( out ).toBe( "" );
+        });
+    });
 
     describe( "hub.fire", function()
     {
