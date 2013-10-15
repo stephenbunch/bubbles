@@ -616,17 +616,20 @@ describe( "type", function()
                 expect( a._pry ).toBe( undefined );
             });
 
-            it( "should accept null", function()
+            it( "should return input if failed", function()
             {
                 var out = 0;
                 var A = type().def({
-                    foo: function() {
-                        out = this._pry( null );
+                    foo: function( test ) {
+                        out = this._pry( test );
                     }
                 });
                 var a = new A();
-                a.foo();
+                a.foo( null );
                 expect( out ).toBe( null );
+
+                a.foo( "hello" );
+                expect( out ).toBe( "hello" );
             });
         });
 
