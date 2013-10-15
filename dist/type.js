@@ -445,7 +445,7 @@ function create( Type )
     fn._pry = function( pub )
     {
         pry = Type;
-        var scope = !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
+        var scope = !!pub && !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
         pry = null;
         return scope || null;
     };

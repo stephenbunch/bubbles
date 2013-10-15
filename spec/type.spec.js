@@ -609,33 +609,24 @@ describe( "type", function()
                 expect( a2.bar( a1 ) ).toBe( "hello" );
             });
 
-            it( "should throw an error if the given instance is not of the same type", function()
-            {
-                var A = type().
-                        def({
-                            __foo: function() { }
-                        });
-                var B = type().
-                        def({
-                            bar: function( a ) {
-                                this._pry( a );
-                            }
-                        });
-
-                var a = new A();
-                var b = new B();
-
-                expect( function()
-                {
-                    b.bar();
-                }).toThrow();
-            });
-
             it( "should not be accessible on the public interface", function()
             {
                 var A = type();
                 var a = new A();
                 expect( a._pry ).toBe( undefined );
+            });
+
+            it( "should accept null", function()
+            {
+                var out = 0;
+                var A = type().def({
+                    foo: function() {
+                        out = this._pry( null );
+                    }
+                });
+                var a = new A();
+                a.foo();
+                expect( out ).toBe( null );
             });
         });
 
