@@ -1,4 +1,4 @@
-# typejs
+# TypeJS
 
 Be sure to check out the [wiki](../../wiki)!
 
