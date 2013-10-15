@@ -627,8 +627,14 @@ function property( type, scope, name, member )
                 get: function() {
                     return _value;
                 },
-                set: function( value ) {
+                set: function( value )
+                {
+                    var changed = value !== _value;
+                    if ( changed )
+                        scope.self._publish( "/" + name + "/beforechange" );
                     _value = value;
+                    if ( changed )
+                        scope.self._publish( "/" + name + "/afterchange" );
                 }
             });
             
@@ -655,20 +661,12 @@ function property( type, scope, name, member )
     }
     if ( member.set !== undefined )
     {
-        var set = accessor(
+        accessors.set = accessor(
             member.set.method,
             !member.set.callsuper || scope.parent === null ? null : function( value ) {
                 scope.parent.self[ name ] = value;
             }
         );
-        accessors.set = function( value )
-        {
-            var current = _value;
-            set( value );
-            if ( _value !== current )
-                scope.self._publish( "/" + name + "/change" );
-            return _value;
-        };
     }
     addProperty( scope.self, name, accessors );
 }

@@ -685,7 +685,7 @@ describe( "type", function()
                 var called = 0;
                 var A = type().def({
                     ctor: function() {
-                        this._subscribe( "/foo/change", this.changed );
+                        this._subscribe( "/foo/afterchange", this.changed );
                     },
                     foo: null,
                     changed: function() {
