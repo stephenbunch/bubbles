@@ -102,6 +102,9 @@ var type = window.type = function( name )
         if ( Object.keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
 
+        if ( typeOf( Base ) === "string" )
+            Base = type( Base );
+        
         Type.parent = Base;
 
         mode &= ~RUN_INIT;

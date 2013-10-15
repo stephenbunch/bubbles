@@ -130,6 +130,16 @@ describe( "type", function()
                 B.extend( A );
             }).toThrow();
         });
+
+        it( "should accept strings", function()
+        {
+            type( "A" ).def({ foo: 2 });
+            type( "B" ).extend( "A" );
+            var b = type( "B" )();
+            expect( b.foo ).toBe( 2 );
+            type.destroy( "A" );
+            type.destroy( "B" );
+        });
     });
 
     describe( "instanceof operator", function()
