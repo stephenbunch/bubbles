@@ -9,25 +9,37 @@ var type = window.type = function( name )
     if ( arguments.length > 0 && types[ name ] !== undefined )
         return types[ name ];
 
-    var runInitFromNew = true;
+    var Scope = null;
+    var run = true;
     var Type = function()
     {
+        if ( ( mode & SCOPE ) === SCOPE )
+        {
+            if ( Scope === null )
+            {
+                mode &= ~SCOPE;
+                Scope = scope( Type );
+                mode |= SCOPE;
+            }
+            return { self: new Scope(), parent: null };
+        }
+
         if ( !( this instanceof Type ) )
         {
-            runInitFromNew = false;
-            var t = new Type();
-            init( Type, t, arguments );
-            runInitFromNew = true;
-            return t;
+            run = false;
+            var pub = new Type();
+            init( Type, pub, arguments );
+            run = true;
+            return pub;
         }
-        if ( runInit && runInitFromNew )
+        if ( mode === RUN_INIT && run )
             init( Type, this, arguments );
     };
 
     if ( arguments.length > 0 )
         types[ name ] = Type;
 
-    if ( ie8 )
+    if ( IE8 )
         Type.prototype = document.createElement( "fake" );
 
     Type.members = {};
@@ -47,9 +59,9 @@ var type = window.type = function( name )
 
         Type.parent = Base;
 
-        runInit = false;
+        mode &= ~RUN_INIT;
         Type.prototype = new Base();
-        runInit = true;
+        mode |= RUN_INIT;
 
         return Type;
     };

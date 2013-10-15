@@ -677,6 +677,26 @@ describe( "type", function()
                 expect( a.$scope() ).toBe( undefined );
             });
         });
+
+        describe( "this._subscribe", function()
+        {
+            it( "should subscribe to a topic", function()
+            {
+                var called = 0;
+                var A = type().def({
+                    ctor: function() {
+                        this._subscribe( "/foo/change", this.changed );
+                    },
+                    foo: null,
+                    changed: function() {
+                        called++;
+                    }
+                });
+                var a = new A();
+                a.foo = 2;
+                expect( called ).toBe( 1 );
+            });
+        });
     });
 
     describe( "properties", function()

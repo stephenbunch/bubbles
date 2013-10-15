@@ -26,16 +26,18 @@ var fnTest = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
 var pry = null;
 
 // A global flag to control execution of type initializers.
-var runInit = true;
+var RUN_INIT = 1;
+var SCOPE = 2;
+var mode = RUN_INIT;
 
 // IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
 // http://stackoverflow.com/a/4867755/740996
-var ie8 = false;
+var IE8 = false;
 try {
     Object.defineProperty( {}, "x", {} );
 } catch ( e ) {
-    ie8 = true;
+    IE8 = true;
 }
 
 var PROVIDER = "provider`";
@@ -52,25 +54,37 @@ var type = window.type = function( name )
     if ( arguments.length > 0 && types[ name ] !== undefined )
         return types[ name ];
 
-    var runInitFromNew = true;
+    var Scope = null;
+    var run = true;
     var Type = function()
     {
+        if ( ( mode & SCOPE ) === SCOPE )
+        {
+            if ( Scope === null )
+            {
+                mode &= ~SCOPE;
+                Scope = scope( Type );
+                mode |= SCOPE;
+            }
+            return { self: new Scope(), parent: null };
+        }
+
         if ( !( this instanceof Type ) )
         {
-            runInitFromNew = false;
-            var t = new Type();
-            init( Type, t, arguments );
-            runInitFromNew = true;
-            return t;
+            run = false;
+            var pub = new Type();
+            init( Type, pub, arguments );
+            run = true;
+            return pub;
         }
-        if ( runInit && runInitFromNew )
+        if ( mode === RUN_INIT && run )
             init( Type, this, arguments );
     };
 
     if ( arguments.length > 0 )
         types[ name ] = Type;
 
-    if ( ie8 )
+    if ( IE8 )
         Type.prototype = document.createElement( "fake" );
 
     Type.members = {};
@@ -90,9 +104,9 @@ var type = window.type = function( name )
 
         Type.parent = Base;
 
-        runInit = false;
+        mode &= ~RUN_INIT;
         Type.prototype = new Base();
-        runInit = true;
+        mode |= RUN_INIT;
 
         return Type;
     };
@@ -379,6 +393,87 @@ function isArray( object ) {
 
 /**
  * @private
+ * @description Builds a private scope type definition.
+ * @param {Type} type
+ */
+function scope( Type )
+{
+    var Scope = function() { };
+    mode &= ~RUN_INIT;
+    Scope.prototype = new Type();
+    mode |= RUN_INIT;
+
+    var fn = Scope.prototype;
+
+    /**
+     * @description
+     * Creates a new instance of the type, but returns the private scope.
+     * This allows access to private methods of other instances of the same type.
+     */
+    fn._new = function()
+    {
+        mode &= ~RUN_INIT;
+        var ret = init( Type, new Type(), arguments );
+        mode |= RUN_INIT;
+        return ret;
+    };
+
+    /**
+     * @description Gets the private scope of the type instance.
+     */
+    fn._pry = function( pub )
+    {
+        pry = Type;
+        var scope = !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
+        pry = null;
+        return scope || null;
+    };
+
+    /**
+     * Based on the jQuery pub/sub plugin by Peter Higgins.
+     * https://github.com/phiggins42/bloody-jquery-plugins/blob/master/pubsub.js
+     */
+
+    var cache = {};
+
+    fn._publish = function( topic, args )
+    {
+        if ( cache[ topic ] )
+        {
+            var i = 0, len = cache[ topic ].length;
+            args = args || [];
+            for ( ; i < len; i++ )
+                cache[ topic ][ i ].apply( this, args );
+        }
+    };
+
+    fn._subscribe = function( topic, callback )
+    {
+        if ( !cache[ topic ] )
+            cache[ topic ] = [];
+        cache[ topic ].push( callback );
+    };
+
+    fn._unsubscribe = function( topic, callback )
+    {
+        var i = 0;
+        if ( cache[ topic ] )
+        {
+            if ( callback )
+            {
+                i = cache[ topic ].indexOf( callback );
+                if ( i > -1 )
+                    cache[ topic ].splice( i, 1 );
+            }
+            else
+                cache[ topic ] = undefined;
+        }
+    };
+    return Scope;
+}
+
+/**
+ * @private
  * @description Initializes the type.
  * @param {Type} type The type to initialize.
  * @param {object} pub The public interface to initialize on.
@@ -386,8 +481,9 @@ function isArray( object ) {
  */
 function init( type, pub, args )
 {
-    var scope = create( type );
-
+    mode |= SCOPE;
+    var scope = type();
+    mode &= ~SCOPE;
     pub.$type = type;
 
     /**
@@ -412,44 +508,6 @@ function init( type, pub, args )
 
 /**
  * @private
- * @description Creates a new private scope.
- * @param {Type} Type
- */
-function create( Type )
-{
-    var Scope = function() { };
-    runInit = false;
-    Scope.prototype = new Type();
-    runInit = true;
-
-    /**
-     * Creates a new instance of the type, but returns the private scope.
-     * This allows access to private methods of other instances of the same type.
-     */
-    Scope.prototype._new = function()
-    {
-        runInit = false;
-        var ret = init( Type, new Type(), arguments );
-        runInit = true;
-        return ret;
-    };
-
-    /**
-     * Gets the private scope of the type instance.
-     */
-    Scope.prototype._pry = function( pub )
-    {
-        pry = Type;
-        var scope = !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
-        pry = null;
-        return scope || null;
-    };
-
-    return { self: new Scope(), parent: null };
-}
-
-/**
- * @private
  * @description Creates the type members on the instance.
  * @param {Type} type The instance type.
  * @param {Scope} scope The private scope of the instance.
@@ -465,7 +523,9 @@ function build( type, scope )
         )
             throw new Error( "Parent constructor contains parameters and must be called explicitly." );
 
-        scope.parent = create( type.parent );
+        mode |= SCOPE;
+        scope.parent = type.parent();
+        mode &= ~SCOPE;
         scope.parent.self._pub = scope.self._pub;
         build( type.parent, scope.parent );
     }
@@ -595,12 +655,20 @@ function property( type, scope, name, member )
     }
     if ( member.set !== undefined )
     {
-        accessors.set = accessor(
+        var set = accessor(
             member.set.method,
             !member.set.callsuper || scope.parent === null ? null : function( value ) {
                 scope.parent.self[ name ] = value;
             }
         );
+        accessors.set = function( value )
+        {
+            var current = _value;
+            set( value );
+            if ( _value !== current )
+                scope.self._publish( "/" + name + "/change" );
+            return _value;
+        };
     }
     addProperty( scope.self, name, accessors );
 }
