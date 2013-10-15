@@ -38,17 +38,17 @@ var type = window.type = function( name )
      * @param {Type} type
      * @returns {Type}
      */
-    Type.extend = function( type )
+    Type.extend = function( Base )
     {
         // Since name collision detection happens when the type is defined, we must prevent people
         // from changing the inheritance hierarchy after defining members.
         if ( Object.keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
 
-        Type.parent = type;
+        Type.parent = Base;
 
         runInit = false;
-        Type.prototype = new type();
+        Type.prototype = new Base();
         runInit = true;
 
         return Type;

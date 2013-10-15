@@ -5,8 +5,7 @@
  */
 ( function ( window, undefined ) {
 
-// Until browsers can agree on what "strict" means, we won't use it.
-// "use strict";
+"use strict";
 
 // This project contains modified snippets from jQuery.
 // Copyright 2005, 2013 jQuery Foundation, Inc. and other contributors
@@ -82,17 +81,17 @@ var type = window.type = function( name )
      * @param {Type} type
      * @returns {Type}
      */
-    Type.extend = function( type )
+    Type.extend = function( Base )
     {
         // Since name collision detection happens when the type is defined, we must prevent people
         // from changing the inheritance hierarchy after defining members.
         if ( Object.keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
 
-        Type.parent = type;
+        Type.parent = Base;
 
         runInit = false;
-        Type.prototype = new type();
+        Type.prototype = new Base();
         runInit = true;
 
         return Type;
@@ -414,13 +413,13 @@ function init( type, pub, args )
 /**
  * @private
  * @description Creates a new private scope.
- * @param {Type} type
+ * @param {Type} Type
  */
-function create( type )
+function create( Type )
 {
     var Scope = function() { };
     runInit = false;
-    Scope.prototype = new type();
+    Scope.prototype = new Type();
     runInit = true;
 
     /**
@@ -430,7 +429,7 @@ function create( type )
     Scope.prototype._new = function()
     {
         runInit = false;
-        var ret = init( type, new type(), arguments );
+        var ret = init( Type, new Type(), arguments );
         runInit = true;
         return ret;
     };
@@ -440,7 +439,7 @@ function create( type )
      */
     Scope.prototype._pry = function( pub )
     {
-        pry = type;
+        pry = Type;
         var scope = !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
         pry = null;
         return scope || null;

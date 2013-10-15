@@ -34,13 +34,13 @@ function init( type, pub, args )
 /**
  * @private
  * @description Creates a new private scope.
- * @param {Type} type
+ * @param {Type} Type
  */
-function create( type )
+function create( Type )
 {
     var Scope = function() { };
     runInit = false;
-    Scope.prototype = new type();
+    Scope.prototype = new Type();
     runInit = true;
 
     /**
@@ -50,7 +50,7 @@ function create( type )
     Scope.prototype._new = function()
     {
         runInit = false;
-        var ret = init( type, new type(), arguments );
+        var ret = init( Type, new Type(), arguments );
         runInit = true;
         return ret;
     };
@@ -60,7 +60,7 @@ function create( type )
      */
     Scope.prototype._pry = function( pub )
     {
-        pry = type;
+        pry = Type;
         var scope = !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
         pry = null;
         return scope || null;
