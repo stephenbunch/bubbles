@@ -1,14 +1,12 @@
-describe( "bubbles.type", function()
+describe( "type", function()
 {
     describe( "type.def", function()
     {
         it( "should throw an error when overriding a method that is not virtual", function()
         {
-            var A = bubbles.type().
-                    def({
-                        bar: function() {}
-                    });
-
+            var A = type().def({
+                bar: function() {}
+            });
             expect( function()
             {
                 A.def({
@@ -19,20 +17,18 @@ describe( "bubbles.type", function()
 
         it( "should support the array syntax for specifing constructor dependencies", function()
         {
-            var A = bubbles.type().
-                    def({
-                        ctor: [ "bar", function( foo )
-                        {
-                            this.foo = foo;
-                        }],
-                        value: function()
-                        {
-                            return this.foo;
-                        }
-                    });
-
-            var app = bubbles.app().register( "bar", function() { return 2; } );
-            var a = app.resolve( A );
+            var A = type().def({
+                ctor: [ "bar", function( foo )
+                {
+                    this.foo = foo;
+                }],
+                value: function()
+                {
+                    return this.foo;
+                }
+            });
+            var injector = type.injector().register( "bar", function() { return 2; } );
+            var a = injector.resolve( A );
             expect( a.value() ).toBe( 2 );
         });
 
@@ -40,11 +36,11 @@ describe( "bubbles.type", function()
         {
             expect( function()
             {
-                bubbles.type().def({ ctor: null });
+                type().def({ ctor: null });
             }).toThrow();
             expect( function()
             {
-                bubbles.type().def({ ctor: [ "foo", "bar" ] });
+                type().def({ ctor: [ "foo", "bar" ] });
             }).toThrow();
         });
 
@@ -52,7 +48,7 @@ describe( "bubbles.type", function()
         {
             expect( function()
             {
-                bubbles.type().def({
+                type().def({
                     foo: {
                         get: "bar",
                         set: function() {}
@@ -65,7 +61,7 @@ describe( "bubbles.type", function()
         {
             expect( function()
             {
-                bubbles.type().def({
+                type().def({
                     foo: {
                         get: function() {},
                         set: "bar"
@@ -76,12 +72,12 @@ describe( "bubbles.type", function()
 
         it( "should throw an error if a property's read/write capabilities are redefined", function()
         {
-            var A = bubbles.type().def({
+            var A = type().def({
                 $foo: {
                     get: function() {}
                 }
             });
-            var B = bubbles.type().extend( A );
+            var B = type().extend( A );
             expect( function()
             {
                 B.def({
@@ -97,16 +93,12 @@ describe( "bubbles.type", function()
     {
         it( "should throw an error if the parent constructor contains parameters and child constructor does not explicitly call it", function()
         {
-            var A = bubbles.type().
-                    def({
-                        ctor: function( arg ) { }
-                    });
-            var B = bubbles.type().
-                    extend( A ).
-                    def({
-                        ctor: function() { }
-                    });
-
+            var A = type().def({
+                ctor: function( arg ) { }
+            });
+            var B = type().extend( A ).def({
+                ctor: function() { }
+            });
             expect( function()
             {
                 var b = new B();
@@ -115,14 +107,12 @@ describe( "bubbles.type", function()
 
         it( "should work without the 'new' operator", function()
         {
-            var A = bubbles.type().
-                    def({
-                        ctor: function( a, b, c )
-                        {
-                            result = a + b + c;
-                        }
-                    });
-
+            var A = type().def({
+                ctor: function( a, b, c )
+                {
+                    result = a + b + c;
+                }
+            });
             var result = 0;
             var a = A( 1, 3, 5 );
             expect( result ).toBe( 9 );
@@ -133,9 +123,8 @@ describe( "bubbles.type", function()
     {
         it( "should throw an error if members have already been defined", function()
         {
-            var A = bubbles.type();
-            var B = bubbles.type().def({ foo: function() {} });
-
+            var A = type();
+            var B = type().def({ foo: function() {} });
             expect( function()
             {
                 B.extend( A );
@@ -147,9 +136,9 @@ describe( "bubbles.type", function()
     {
         it( "should work on the public interface", function()
         {
-            var A = bubbles.type();
-            var B = bubbles.type().extend( A );
-            var C = bubbles.type().extend( B );
+            var A = type();
+            var B = type().extend( A );
+            var C = type().extend( B );
 
             var a = new A();
             expect( a instanceof A ).toBe( true );
@@ -164,14 +153,14 @@ describe( "bubbles.type", function()
         it( "should work on the private scope", function()
         {
             var out = "";
-            var A = bubbles.type().
+            var A = type().
                     def({
                         ctor: function() {
                             out += "a";
                             expect( this instanceof A ).toBe( true );
                         }
                     });
-            var B = bubbles.type().
+            var B = type().
                     extend( A ).
                     def({
                         ctor: function() {
@@ -179,7 +168,7 @@ describe( "bubbles.type", function()
                             expect( this instanceof A ).toBe( true );
                         }
                     });
-            var C = bubbles.type().
+            var C = type().
                     extend( B ).
                     def({
                         ctor: function() {
@@ -200,13 +189,13 @@ describe( "bubbles.type", function()
     {
         it( "should be accessible from the child", function()
         {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         foo: function() {
                             return "hello";
                         }
                     });
-            var B = bubbles.type().
+            var B = type().
                     extend( A ).
                     def({
                         bar: function() {
@@ -223,13 +212,13 @@ describe( "bubbles.type", function()
     {
         it( "should call the parent constructor if it is parameterless", function()
         {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         ctor: function() {
                             out += "hello";
                         }
                     });
-            var B = bubbles.type().
+            var B = type().
                     extend( A ).
                     def({
                         ctor: function() {
@@ -244,13 +233,13 @@ describe( "bubbles.type", function()
 
         it( "should not call the parent constructor if it contains parameters", function()
         {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         ctor: function( punctuation ) {
                             message += " world" + punctuation;
                         }
                     });
-            var B = bubbles.type().
+            var B = type().
                     extend( A ).
                     def({
                         ctor: function() {
@@ -266,20 +255,20 @@ describe( "bubbles.type", function()
 
         it( "should call the grandparent constructor when the parent constructor is called if it is parameterless", function()
         {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         ctor: function() {
                             message += " world";
                         }
                     });
-            var B = bubbles.type().
+            var B = type().
                     extend( A ).
                     def({
                         ctor: function( punctuation ) {
                             message += punctuation;
                         }
                     });
-            var C = bubbles.type().
+            var C = type().
                     extend( B ).
                     def({
                         ctor: function() {
@@ -295,7 +284,7 @@ describe( "bubbles.type", function()
 
         it( "cannot be defined twice", function()
         {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         ctor: function() { }
                     });
@@ -310,7 +299,7 @@ describe( "bubbles.type", function()
         it( "should not show up on the private scope or the public interface", function()
         {
             var out = "";
-            var A = bubbles.type().
+            var A = type().
                     def({
                         ctor: function() {
                             out += "ctor";
@@ -334,7 +323,7 @@ describe( "bubbles.type", function()
         {
             it( "should be hidden", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             __bar: function() { }
                         });
@@ -345,7 +334,7 @@ describe( "bubbles.type", function()
 
             it( "can be accessible from the inside", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             bar: function( message ) {
                                 return this.baz( message + " world" );
@@ -361,7 +350,7 @@ describe( "bubbles.type", function()
 
             it( "should not overwrite private parent methods with the same name", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             foo: function() {
                                 return this.bar();
@@ -370,7 +359,7 @@ describe( "bubbles.type", function()
                                 return "hello";
                             }
                         });
-                var B = bubbles.type().
+                var B = type().
                         extend( A ).
                         def({
                             baz: function() {
@@ -387,7 +376,7 @@ describe( "bubbles.type", function()
 
             it( "can be called cross-instance through scope._new", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             foo: function() {
                                 return this.bar();
@@ -408,7 +397,7 @@ describe( "bubbles.type", function()
 
             it( "cannot be defined twice", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             __foo: function() { }
                         });
@@ -425,13 +414,13 @@ describe( "bubbles.type", function()
         {
             it( "should be accessible from the inside", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             _foo: function() {
                                 return "hello";
                             }
                         });
-                var B = bubbles.type().
+                var B = type().
                         extend( A ).
                         def({
                             bar: function() {
@@ -445,7 +434,7 @@ describe( "bubbles.type", function()
 
             it( "should be hidden from the outside", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             _foo: function() { }
                         });
@@ -456,12 +445,12 @@ describe( "bubbles.type", function()
 
             it( "should not be overridable by default", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             _foo: function() { }
                         });
 
-                var B = bubbles.type().extend( A );
+                var B = type().extend( A );
 
                 expect( function()
                 {
@@ -476,16 +465,16 @@ describe( "bubbles.type", function()
         {
             it( "can be sealed", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             $foo: function() { }
                         });
-                var B = bubbles.type().
+                var B = type().
                         extend( A ).
                         def({
                             foo: function () {}
                         });
-                var C = bubbles.type().extend( B );
+                var C = type().extend( B );
 
                 expect( function()
                 {
@@ -500,13 +489,13 @@ describe( "bubbles.type", function()
         {
             it( "should be overridable", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             _$foo: function() {
                                 return "hello";
                             }
                         });
-                var B = bubbles.type().
+                var B = type().
                         extend( A ).
                         def({
                             _foo: function() {
@@ -523,16 +512,16 @@ describe( "bubbles.type", function()
 
             it( "can be sealed", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             _$foo: function() { }
                         });
-                var B = bubbles.type().
+                var B = type().
                         extend( A ).
                         def({
                             _foo: function() { }
                         });
-                var C = bubbles.type().extend( B );
+                var C = type().extend( B );
 
                 expect( function()
                 {
@@ -544,11 +533,11 @@ describe( "bubbles.type", function()
 
             it( "cannot be made public", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             _$foo: function() { }
                         });
-                var B = bubbles.type().extend( A );
+                var B = type().extend( A );
 
                 expect( function()
                 {
@@ -563,11 +552,11 @@ describe( "bubbles.type", function()
         {
             it( "cannot be made protected", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             $foo: function() { }
                         });
-                var B = bubbles.type().extend( A );
+                var B = type().extend( A );
 
                 expect( function()
                 {
@@ -585,7 +574,7 @@ describe( "bubbles.type", function()
         {
             it( "should not be accessible on the public interface", function()
             {
-                var A = bubbles.type();
+                var A = type();
                 var a = new A();
                 expect( a._new ).toBe( undefined );
             });
@@ -595,7 +584,7 @@ describe( "bubbles.type", function()
         {
             it( "should return the private scope of the given instance", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             bar: function( a ) {
                                 return this._pry( a ).foo();
@@ -612,11 +601,11 @@ describe( "bubbles.type", function()
 
             it( "should throw an error if the given instance is not of the same type", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             __foo: function() { }
                         });
-                var B = bubbles.type().
+                var B = type().
                         def({
                             bar: function( a ) {
                                 this._pry( a );
@@ -634,7 +623,7 @@ describe( "bubbles.type", function()
 
             it( "should not be accessible on the public interface", function()
             {
-                var A = bubbles.type();
+                var A = type();
                 var a = new A();
                 expect( a._pry ).toBe( undefined );
             });
@@ -644,7 +633,7 @@ describe( "bubbles.type", function()
         {
             it( "should return the public interface", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             bar: function() {
                                 return this._pub;
@@ -660,13 +649,13 @@ describe( "bubbles.type", function()
         {
             it( "should call the parent method", function()
             {
-                var A = bubbles.type().
+                var A = type().
                         def({
                             $foo: function( message ) {
                                 return message + " world";
                             }
                         });
-                var B = bubbles.type().
+                var B = type().
                         extend( A ).
                         def({
                             $foo: function( message ) {
@@ -683,7 +672,7 @@ describe( "bubbles.type", function()
         {
             it( "should return undefined unless called from scope._pry", function()
             {
-                var A = bubbles.type();
+                var A = type();
                 var a = new A();
                 expect( a.$scope() ).toBe( undefined );
             });
@@ -693,7 +682,7 @@ describe( "bubbles.type", function()
     describe( "properties", function()
     {
         it( "can read and write values", function() {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         foo: null
                     });
@@ -704,7 +693,7 @@ describe( "bubbles.type", function()
 
         it( "should support custom get and set accessors", function()
         {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         foo: {
                             get: function() {
@@ -722,7 +711,7 @@ describe( "bubbles.type", function()
 
         it( "can be extended", function()
         {
-            var A = bubbles.type().
+            var A = type().
                     def({
                         $foo: {
                             get: function() {
@@ -733,7 +722,7 @@ describe( "bubbles.type", function()
                             }
                         }
                     });
-            var B = bubbles.type().
+            var B = type().
                     extend( A ).
                     def({
                         foo: {
@@ -752,10 +741,10 @@ describe( "bubbles.type", function()
 
         it( "can specify a default value", function()
         {
-            var A = bubbles.type().def({
+            var A = type().def({
                 foo: 2
             });
-            var B = bubbles.type().def({
+            var B = type().def({
                 foo: {
                     value: 3,
                     get: function() {
@@ -772,7 +761,7 @@ describe( "bubbles.type", function()
         it( "can be read immediately after being set", function()
         {
             var out = null;
-            var A = bubbles.type().def({
+            var A = type().def({
                 foo: {
                     get: function() {
                         return this._value;

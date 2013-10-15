@@ -7,27 +7,26 @@ module.exports = function( grunt )
             options: {
                 banner: '/*!\n' +
                     ' * <%= pkg.name %> v<%= pkg.version %>\n' +
-                    ' * (c) 2013 Stephen Bunch https://github.com/stephenbunch/bubbles\n' +
+                    ' * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs\n' +
                     ' * License: MIT\n' +
                     ' */\n'
             },
             dist: {
                 src: [
                     'src/intro.js',
-                    'src/helpers.js',
-                    'src/utils.js',
                     'src/type.js',
-                    'src/app.js',
-                    'src/hub.js',
-                    'src/module.js',
+                    'src/misc.js',
+                    'src/build.js',
+                    'src/inject.js',
+                    'src/util.js',
                     'src/outro.js'
                 ],
-                dest: 'dist/bubbles.js'
+                dest: 'dist/type.js'
             }
         },
 
         jshint: {
-            dist: [ 'dist/bubbles.js' ]
+            dist: [ 'dist/type.js' ]
         },
 
         uglify: {
@@ -35,14 +34,14 @@ module.exports = function( grunt )
                 banner: '/*! <%= pkg.name %> v<%= pkg.version %> */\n'
             },
             dist: {
-                src: 'dist/bubbles.js',
-                dest: 'dist/bubbles.min.js'
+                src: 'dist/type.js',
+                dest: 'dist/type.min.js'
             }
         },
 
         jasmine: {
             all: {
-                src: 'dist/bubbles.js',
+                src: 'dist/type.js',
                 options: {
                     specs: 'spec/**/*.spec.js'
                 }
