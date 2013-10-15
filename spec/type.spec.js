@@ -743,6 +743,25 @@ describe( "type", function()
                 b.bar();
                 expect( out ).toBe( "hello world" );
             });
+
+            it( "should not publish cross-instance", function()
+            {
+                var called = 0;
+                var A = type().def({
+                    ctor: function() {
+                        this._subscribe( "/foo", this.triggered );
+                    },
+                    foo: function() {
+                        this._publish( "/foo" );
+                    },
+                    __triggered: function() {
+                        called++;
+                    }
+                });
+                var a = new A();
+                a.foo();
+                expect( called ).toBe( 1 );
+            });
         });
     });
 

@@ -13,17 +13,6 @@ var type = window.type = function( name )
     var run = true;
     var Type = function()
     {
-        if ( ( mode & SCOPE ) === SCOPE )
-        {
-            if ( Scope === null )
-            {
-                mode &= ~SCOPE;
-                Scope = scope( Type );
-                mode |= SCOPE;
-            }
-            return { self: new Scope(), parent: null };
-        }
-
         if ( !( this instanceof Type ) )
         {
             run = false;
@@ -32,7 +21,7 @@ var type = window.type = function( name )
             run = true;
             return pub;
         }
-        if ( mode === RUN_INIT && run )
+        if ( inits && run )
             init( Type, this, arguments );
     };
 
@@ -59,12 +48,12 @@ var type = window.type = function( name )
 
         if ( typeOf( Base ) === "string" )
             Base = type( Base );
-        
+
         Type.parent = Base;
 
-        mode &= ~RUN_INIT;
+        inits = false;
         Type.prototype = new Base();
-        mode |= RUN_INIT;
+        inits = true;
 
         return Type;
     };

@@ -1,32 +1,63 @@
 /**
  * @private
- * @description Builds a private scope type definition.
- * @param {Type} type
+ * @description Initializes the type.
+ * @param {Type} type The type to initialize.
+ * @param {object} pub The public interface to initialize on.
+ * @param {array} args Arguments for the constructor.
  */
-function scope( Type )
+function init( type, pub, args )
+{
+    var scope = create( type );
+    pub.$type = type;
+
+    /**
+     * @internal
+     * Use in conjunction with _pry to expose the private scope.
+     */
+    pub.$scope = function() {
+        if ( pry === type )
+            return scope.self;
+    };
+
+    scope.self._pub = pub;
+
+    build( type, scope );
+    expose( type, scope, pub );
+
+    if ( scope.self.ctor !== undefined )
+        scope.self.ctor.apply( scope.self, args );
+
+    return scope.self;
+}
+
+/**
+ * @private
+ * @description Creates a new private scope.
+ * @param {Type} Type
+ */
+function create( Type )
 {
     var Scope = function() { };
-    mode &= ~RUN_INIT;
+    inits = false;
     Scope.prototype = new Type();
-    mode |= RUN_INIT;
+    inits = true;
 
     var fn = Scope.prototype;
 
     /**
-     * @description
      * Creates a new instance of the type, but returns the private scope.
      * This allows access to private methods of other instances of the same type.
      */
     fn._new = function()
     {
-        mode &= ~RUN_INIT;
+        inits = false;
         var ret = init( Type, new Type(), arguments );
-        mode |= RUN_INIT;
+        inits = true;
         return ret;
     };
 
     /**
-     * @description Gets the private scope of the type instance.
+     * Gets the private scope of the type instance.
      */
     fn._pry = function( pub )
     {
@@ -76,41 +107,8 @@ function scope( Type )
                 cache[ topic ] = undefined;
         }
     };
-    return Scope;
-}
 
-/**
- * @private
- * @description Initializes the type.
- * @param {Type} type The type to initialize.
- * @param {object} pub The public interface to initialize on.
- * @param {array} args Arguments for the constructor.
- */
-function init( type, pub, args )
-{
-    mode |= SCOPE;
-    var scope = type();
-    mode &= ~SCOPE;
-    pub.$type = type;
-
-    /**
-     * @internal
-     * Use in conjunction with _pry to expose the private scope.
-     */
-    pub.$scope = function() {
-        if ( pry === type )
-            return scope.self;
-    };
-
-    scope.self._pub = pub;
-
-    build( type, scope );
-    expose( type, scope, pub );
-
-    if ( scope.self.ctor !== undefined )
-        scope.self.ctor.apply( scope.self, args );
-
-    return scope.self;
+    return { self: new Scope(), parent: null };
 }
 
 /**
@@ -130,9 +128,7 @@ function build( type, scope )
         )
             throw new Error( "Parent constructor contains parameters and must be called explicitly." );
 
-        mode |= SCOPE;
-        scope.parent = type.parent();
-        mode &= ~SCOPE;
+        scope.parent = create( type.parent );
         scope.parent.self._pub = scope.self._pub;
         build( type.parent, scope.parent );
     }
