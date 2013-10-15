@@ -685,16 +685,53 @@ describe( "type", function()
                 var called = 0;
                 var A = type().def({
                     ctor: function() {
-                        this._subscribe( "/foo/afterchange", this.changed );
+                        this._subscribe( "/foo", this.triggered );
                     },
-                    foo: null,
-                    changed: function() {
+                    foo: function() {
+                        this._publish( "/foo" );
+                    },
+                    __triggered: function() {
                         called++;
                     }
                 });
                 var a = new A();
-                a.foo = 2;
+                a.foo();
                 expect( called ).toBe( 1 );
+            });
+        });
+
+        describe( "this._publish", function()
+        {
+            it( "should only publish to itself", function()
+            {
+                var out = "";
+                var A = type().def({
+                    ctor: function() {
+                        this._subscribe( "/foo", this.triggered );
+                    },
+                    foo: function() {
+                        this._publish( "/foo" );
+                    },
+                    __triggered: function() {
+                        out += "hello";
+                    }
+                });
+                var B = type().extend( A ).def({
+                    ctor: function() {
+                        this._subscribe( "/foo", this.triggered );
+                    },
+                    bar: function() {
+                        this._publish( "/foo" );
+                    },
+                    __triggered: function() {
+                        out += " world";
+                    }
+                });
+                var b = new B();
+                b.foo();
+                expect( out ).toBe( "hello" );
+                b.bar();
+                expect( out ).toBe( "hello world" );
             });
         });
     });
