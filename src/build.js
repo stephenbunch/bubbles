@@ -234,7 +234,7 @@ function property( type, scope, name, member )
                 {
                     var changed = value !== _value;
                     if ( changed )
-                        scope.self._publish( "/" + name + "/beforechange" );
+                        scope.self._publish( "/" + name + "/beforechange", [ value ]);
                     _value = value;
                     if ( changed )
                         scope.self._publish( "/" + name + "/afterchange" );
