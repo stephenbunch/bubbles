@@ -35,3 +35,28 @@ try {
 
 var PROVIDER = "provider`";
 var types = {};
+var PUBLIC = "public";
+var PRIVATE = "private";
+var PROTECTED = "protected";
+var CTOR = "ctor";
+var STRING = "string";
+var ARRAY = "array";
+
+var GET_ACCESS = {
+    "__": PRIVATE,
+    "_": PROTECTED
+};
+var IS_VIRTUAL = {
+    "$": true,
+    "_$": true
+};
+var GET_PREFIX = {
+    "__": 2,
+    "_$": 2,
+    "_" : 1,
+    "$" : 1
+};
+var ACCESS = {};
+ACCESS[ PUBLIC ] = 1;
+ACCESS[ PROTECTED ] = 2;
+ACCESS[ PRIVATE ] = 3;

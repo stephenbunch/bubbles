@@ -147,7 +147,7 @@ function build( type, scope )
     {
         each( type.parent.members, function( member, name )
         {
-            if ( member.access !== "private" && type.members[ name ] === undefined )
+            if ( member.access !== PRIVATE && type.members[ name ] === undefined )
                 scope.self[ name ] = scope.parent.self[ name ];
         });
     }
@@ -318,7 +318,7 @@ function expose( type, scope, pub )
 
     each( type.members, function( member, name )
     {
-        if ( member.access !== "public" )
+        if ( member.access !== PUBLIC )
             return;
 
         if ( member.method !== undefined )
@@ -336,14 +336,14 @@ function expose( type, scope, pub )
         else
         {
             var accessors = {};
-            if ( member.get !== undefined )
+            if ( member.get !== undefined && member.get.access === PUBLIC )
             {
                 accessors.get = function()
                 {
                     return scope.self[ name ];
                 };
             }
-            if ( member.set !== undefined )
+            if ( member.set !== undefined && member.set.access === PUBLIC )
             {
                 accessors.set = function( value )
                 {

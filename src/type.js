@@ -46,7 +46,7 @@ var type = window.type = function( name )
         if ( Object.keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
 
-        if ( typeOf( Base ) === "string" )
+        if ( typeOf( Base ) === STRING )
             Base = type( Base );
 
         Type.parent = Base;
@@ -85,9 +85,9 @@ var type = window.type = function( name )
 
             validateMember( Type, info );
 
-            if ( name === "ctor" )
+            if ( name === CTOR )
             {
-                if ( typeOf( member ) === "array" )
+                if ( isArray( member ) )
                 {
                     Type.$inject = member;
                     member = member.pop();
@@ -102,62 +102,9 @@ var type = window.type = function( name )
             };
 
             if ( isFunc( member ) )
-            {
-                var params = [];
-                var match = member.toString().match( /^function\s*\(([^())]+)\)/ );
-                if ( match !== null )
-                {
-                    each( match[1].split( "," ), function( param, index )
-                    {
-                        params.push( param.trim() );
-                    });
-                }
-                Type.members[ name ].method = member;
-                Type.members[ name ].params = params;
-                Type.members[ name ].callsuper = fnTest.test( member );
-            }
+                defineMethod( Type, name, member );
             else
-            {
-                if ( member === null || !isFunc( member.get ) && !isFunc( member.set ) )
-                {
-                    member =
-                    {
-                        get: function() {
-                            return this._value;
-                        },
-                        set: function( value ) {
-                            this._value = value;
-                        },
-                        value: member
-                    };
-                }
-                each( [ member.get, member.set ], function( accessor, index )
-                {
-                    var method = index === 0 ? "get" : "set";
-                    if ( accessor !== undefined )
-                    {
-                        if (
-                            Type.parent !== null &&
-                            Type.parent.members[ name ] !== undefined &&
-                            Type.parent.members[ name ].access !== "private" &&
-                            Type.parent.members[ name ][ method ] === undefined
-                        )
-                            throw new Error( "Cannot change read/write definition of property \"" + name + "\"." );
-
-                        if ( isFunc( accessor ) )
-                        {
-                            Type.members[ name ][ method ] =
-                            {
-                                method: accessor,
-                                callsuper: fnTest.test( accessor )
-                            };
-                        }
-                        else
-                            throw new Error( ( index === 0 ? "Get" : "Set" ) + " accessor for property \"" + name + "\" must be a function." );
-                    }    
-                });
-                Type.members[ name ].value = member.value !== undefined ? member.value : null;
-            }
+                defineProperty( Type, info, member );
         });
 
         return Type;
@@ -172,7 +119,7 @@ var type = window.type = function( name )
 
             validateMember( Type, info );
 
-            if ( name === "ctor" )
+            if ( name === CTOR )
                 throw new Error( "Event cannot be named \"ctor\"." );
 
             if ( info.isVirtual )
@@ -189,27 +136,12 @@ var type = window.type = function( name )
     return Type;
 };
 
-var GET_ACCESS = {
-    "__": "private",
-    "_": "protected"
-};
-var IS_VIRTUAL = {
-    "$": true,
-    "_$": true
-};
-var GET_PREFIX = {
-    "__": 2,
-    "_$": 2,
-    "_" : 1,
-    "$" : 1
-};
-
 function parseMember( name )
 {        
     var twoLetter = name.substr( 0, 2 );
 
     // determines the member's visibility (public|private)
-    var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || "public";
+    var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || PUBLIC;
 
     // determines whether the method can be overridden
     var isVirtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
@@ -218,9 +150,9 @@ function parseMember( name )
     name = name.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ name[0] ] || 0 );
 
     // "ctor" is a special name for the constructor method
-    if ( name === "ctor" )
+    if ( name === CTOR )
     {
-        access = "private";
+        access = PRIVATE;
         isVirtual = false;
     }
 
@@ -239,13 +171,15 @@ function validateMember( type, info )
 
     // make sure the access modifier isn't being changed
     if (
-        info.access !== "private" &&
+        info.access !== PRIVATE &&
         type.parent !== null &&
         type.parent.members[ info.name ] !== undefined &&
         type.parent.members[ info.name ].access !== info.access
     )
+    {
         throw new Error( "Cannot change access modifier of member \"" + name + "\" from " +
             type.parent.members[ name ].access + " to " + info.access + "." );
+    }
 }
 
 /**
@@ -260,11 +194,129 @@ function isUsed( type, name, parent )
 {
     if (
         type.members[ name ] !== undefined &&
-        ( !parent || type.members[ name ].access !== "private" ) &&
+        ( !parent || type.members[ name ].access !== PRIVATE ) &&
         ( !parent || !type.members[ name ].isVirtual )
     )
         return true;
     if ( type.parent !== null )
         return isUsed( type.parent, name, true );
     return false;
+}
+
+/**
+ * @private
+ * @description Defines a method on the type.
+ * @param {Type} type
+ * @param {string} name
+ * @param {function} method
+ */
+function defineMethod( type, name, method )
+{
+    var params = [];
+    var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
+    if ( match !== null )
+    {
+        each( match[1].split( "," ), function( param, index )
+        {
+            params.push( param.trim() );
+        });
+    }
+    type.members[ name ].method = method;
+    type.members[ name ].params = params;
+    type.members[ name ].callsuper = fnTest.test( method );
+}
+
+/**
+ * @private
+ * @description Defines a property on the type.
+ * @param {Type} Type
+ * @param {string} name
+ * @param {object} property
+ */
+function defineProperty( Type, info, property )
+{
+    if ( property === null || property.get === undefined && property.set === undefined )
+        property = { value: property };
+
+    each( property, function( method, type )
+    {
+        type = type.toLowerCase();
+        var twoLetter = type.substr( 0, 2 );
+        if ( IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ type[0] ] )
+            throw new Error( "Property accessors cannot be virtual." );
+
+        var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ type[0] ] || info.access;
+        if ( ACCESS[ access ] < ACCESS[ info.access ] )
+            throw new Error( "Property accessors cannot have a lower access modifier than the property itself." );
+
+        type = type.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ type[0] ] || 0 );
+
+        if ( type !== "get" && type !== "set" )
+            return;
+
+        if (
+            Type.parent !== null &&
+            Type.parent.members[ info.name ] !== undefined &&
+            Type.parent.members[ info.name ][ type ] !== undefined &&
+            Type.parent.members[ info.name ][ type ].access !== access
+        )
+        {
+            throw new Error( "Cannot change access modifier of \"" + type + "\" accessor for property \"" + info.name +
+                "\" from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
+        }
+
+        if ( method !== null && !isFunc( method ) )
+        {
+            throw new Error( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property \"" +
+                info.name + "\" must be a function or null (uses default implementation.)" );
+        }
+        
+        property[ type ] =
+        {
+            access: access,
+            method: method
+        };
+    });
+
+    if ( property.get === undefined && property.set === undefined )
+    {
+        property.get = { access: info.access };
+        property.set = { access: info.access };
+    }
+
+    if ( property.get !== undefined && !isFunc( property.get.method ) )
+    {
+        property.get.method = function() {
+            return this._value;
+        };
+    }
+    if ( property.set !== undefined && !isFunc( property.set.method ) )
+    {
+        property.set.method = function( value ) {
+            this._value = value;
+        };
+    }
+
+    each([ property.get, property.set ], function( accessor, index )
+    {
+        if ( accessor === undefined ) return;
+
+        var type = index === 0 ? "get" : "set";
+        if (
+            Type.parent !== null &&
+            Type.parent.members[ info.name ] !== undefined &&
+            Type.parent.members[ info.name ].access !== PRIVATE &&
+            Type.parent.members[ info.name ][ type ] === undefined
+        )
+            throw new Error( "Cannot change read/write definition of property \"" + info.name + "\"." );
+
+        Type.members[ info.name ][ type ] =
+        {
+            access: accessor.access,
+            method: accessor.method,
+            callsuper: fnTest.test( accessor.method )
+        };
+    });
+
+    Type.members[ info.name ].value = property.value !== undefined ? property.value : null;
 }
