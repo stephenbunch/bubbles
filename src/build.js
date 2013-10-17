@@ -136,9 +136,11 @@ function build( type, scope )
     each( type.members, function( member, name )
     {
         if ( member.method !== undefined )
-            method( type, scope, name, member );
+            buildMethod( type, scope, name, member );
+        else if ( member.isEvent )
+            buildEvent( type, scope, name );
         else
-            property( type, scope, name, member );
+            buildProperty( type, scope, name, member );
     });
 
     if ( type.parent !== null )
@@ -159,7 +161,7 @@ function build( type, scope )
  * @param {string} name
  * @param {object} member
  */
-function method( type, scope, name, member )
+function buildMethod( type, scope, name, member )
 {
     if ( name === "ctor" )
     {
@@ -215,7 +217,7 @@ function method( type, scope, name, member )
  * @param {string} name
  * @param {object} member
  */
-function property( type, scope, name, member )
+function buildProperty( type, scope, name, member )
 {
     function accessor( method, _super )
     {
@@ -227,9 +229,11 @@ function property( type, scope, name, member )
             
             addProperty( scope.self, "_value",
             {
-                get: function() {
+                get: function()
+                {
                     return _value;
                 },
+
                 set: function( value )
                 {
                     var changed = value !== _value;
@@ -274,6 +278,32 @@ function property( type, scope, name, member )
     addProperty( scope.self, name, accessors );
 }
 
+function buildEvent( type, scope, name )
+{
+    var handlers = [];
+    scope.self[ name ] =
+    {
+        addHandler: function( handler )
+        {
+            handlers.push( handler );
+        },
+
+        removeHandler: function( handler )
+        {
+            var i = handlers.indexOf( handler );
+            if ( i > -1 )
+                handlers.splice( i, 1 );
+        },
+
+        raise: function()
+        {
+            var i = 0, len = handlers.length;
+            for ( ; i < len; i++ )
+                handlers[ i ].apply( scope.self._pub, arguments );
+        }
+    };
+}
+
 /**
  * @private
  * @description Creates references to the public members of the type on the public interface.
@@ -292,19 +322,31 @@ function expose( type, scope, pub )
             return;
 
         if ( member.method !== undefined )
+        {
             pub[ name ] = scope.self[ name ];
+        }
+        else if ( member.isEvent )
+        {
+            pub[ name ] =
+            {
+                addHandler: scope.self[ name ].addHandler,
+                removeHandler: scope.self[ name ].removeHandler
+            };
+        }
         else
         {
             var accessors = {};
             if ( member.get !== undefined )
             {
-                accessors.get = function() {
+                accessors.get = function()
+                {
                     return scope.self[ name ];
                 };
             }
             if ( member.set !== undefined )
             {
-                accessors.set = function( value ) {
+                accessors.set = function( value )
+                {
                     scope.self[ name ] = value;
                 };
             }

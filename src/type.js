@@ -80,6 +80,11 @@ var type = window.type = function( name )
     {
         each( members, function( member, name )
         {
+            var info = parseMember( name );
+            name = info.name;
+
+            validateMember( Type, info );
+
             if ( name === "ctor" )
             {
                 if ( typeOf( member ) === "array" )
@@ -91,57 +96,9 @@ var type = window.type = function( name )
                     throw new Error( "Constructor must be a function." );
             }
 
-            // determines the member's visibility ( public | private )
-            var access = "public";
-
-            // determines whether the method can be overridden
-            var virtual = false;
-
-            if ( name.match( /^__/ ) !== null )
-            {
-                access = "private";
-                name = name.substr( 2 );
-            }
-            else if ( name.match( /^_\$/ ) !== null )
-            {
-                access = "protected";
-                virtual = true;
-                name = name.substr( 2 );
-            }
-            else if ( name.match( /^_/ ) !== null )
-            {
-                access = "protected";
-                name = name.substr( 1 );
-            }
-            else if ( name.match( /^\$/ ) !== null )
-            {
-                virtual = true;
-                name = name.substr( 1 );
-            }
-
-            if ( name === "ctor" )
-            {
-                access = "private";
-                virtual = false;
-            }
-
-            // check for name collision
-            if ( used( Type, name ) )
-                throw new Error( "Member \"" + name + "\" is already defined." );
-
-            if (
-                access !== "private" &&
-                Type.parent !== null &&
-                Type.parent.members[ name ] !== undefined &&
-                Type.parent.members[ name ].access !== access
-            )
-                throw new Error( "Cannot change access modifier of member \"" + name + "\" from " +
-                    Type.parent.members[ name ].access + " to " + access + "." );
-
-            Type.members[ name ] =
-            {
-                access: access,
-                virtual: virtual
+            Type.members[ name ] = {
+                access: info.access,
+                isVirtual: info.isVirtual
             };
 
             if ( isFunc( member ) )
@@ -206,8 +163,90 @@ var type = window.type = function( name )
         return Type;
     };
 
+    Type.events = function( events )
+    {
+        each( events, function( name )
+        {
+            var info = parseMember( name );
+            name = info.name;
+
+            validateMember( Type, info );
+
+            if ( name === "ctor" )
+                throw new Error( "Event cannot be named \"ctor\"." );
+
+            if ( info.isVirtual )
+                throw new Error( "Events cannot be virtual." );
+
+            Type.members[ name ] = {
+                access: info.access,
+                isEvent: true
+            };
+        });
+        return Type;
+    };
+
     return Type;
 };
+
+var GET_ACCESS = {
+    "__": "private",
+    "_": "protected"
+};
+var IS_VIRTUAL = {
+    "$": true,
+    "_$": true
+};
+var GET_PREFIX = {
+    "__": 2,
+    "_$": 2,
+    "_" : 1,
+    "$" : 1
+};
+
+function parseMember( name )
+{        
+    var twoLetter = name.substr( 0, 2 );
+
+    // determines the member's visibility (public|private)
+    var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || "public";
+
+    // determines whether the method can be overridden
+    var isVirtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
+
+    // trim away the modifiers
+    name = name.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ name[0] ] || 0 );
+
+    // "ctor" is a special name for the constructor method
+    if ( name === "ctor" )
+    {
+        access = "private";
+        isVirtual = false;
+    }
+
+    return {
+        access: access,
+        isVirtual: isVirtual,
+        name: name
+    };
+}
+
+function validateMember( type, info )
+{
+    // check for name collision
+    if ( isUsed( type, info.name ) )
+        throw new Error( "Member \"" + info.name + "\" is already defined." );
+
+    // make sure the access modifier isn't being changed
+    if (
+        info.access !== "private" &&
+        type.parent !== null &&
+        type.parent.members[ info.name ] !== undefined &&
+        type.parent.members[ info.name ].access !== info.access
+    )
+        throw new Error( "Cannot change access modifier of member \"" + name + "\" from " +
+            type.parent.members[ name ].access + " to " + info.access + "." );
+}
 
 /**
  * @private
@@ -217,15 +256,15 @@ var type = window.type = function( name )
  * @param {bool} [parent] True if the type being checked is a base type.
  * @returns {bool}
  */
-function used( type, name, parent )
+function isUsed( type, name, parent )
 {
     if (
         type.members[ name ] !== undefined &&
         ( !parent || type.members[ name ].access !== "private" ) &&
-        ( !parent || !type.members[ name ].virtual )
+        ( !parent || !type.members[ name ].isVirtual )
     )
         return true;
     if ( type.parent !== null )
-        return used( type.parent, name, true );
+        return isUsed( type.parent, name, true );
     return false;
 }
