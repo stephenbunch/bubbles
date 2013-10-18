@@ -97,6 +97,13 @@ var type = window.type = function( name )
                 {
                     Type.$inject = member;
                     member = member.pop();
+                    if ( Type.$inject[0] === "..." )
+                    {
+                        if ( Type.parent === null || !Type.parent.$inject || Type.parent.$inject.length === 0 )
+                            throw new Error( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
+                        Type.$inject.splice( 0, 1 );
+                        Type.$inject = Type.parent.$inject.concat( Type.$inject );
+                    }
                 }
                 if ( !isFunc( member ) )
                     throw new Error( "Constructor must be a function." );

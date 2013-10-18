@@ -30,7 +30,39 @@ describe( "type.def", function()
         expect( a.value() ).toBe( 2 );
     });
 
-    it( "should throw an error if the constructor is a defined and no method is provided", function()
+    it( "should auto fill base type dependencies when '...' is the first element", function()
+    {
+        var A = type().def({
+            ctor: [ "foo", function( foo, bar )
+            {
+                this.foo = foo;
+                this.bar = bar;
+            }],
+            foo: null,
+            bar: null
+        });
+        var B = type().extend( A ).def({
+            ctor: [ "...", "baz", function( foo, baz, bar, qux )
+            {
+                this._super( foo, bar );
+                this.baz = baz;
+                this.qux = qux;
+            }],
+            baz: null,
+            qux: null
+        });
+        var injector = type.injector().constant({
+            foo: 1,
+            baz: 3
+        });
+        var b = injector.resolve( B, 2, 4 );
+        expect( b.foo ).toBe( 1 );
+        expect( b.bar ).toBe( 2 );
+        expect( b.baz ).toBe( 3 );
+        expect( b.qux ).toBe( 4 );
+    });
+
+    it( "should throw an error if the constructor is defined and no method is provided", function()
     {
         expect( function()
         {
