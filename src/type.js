@@ -13,6 +13,12 @@ var type = window.type = function( name )
     var run = true;
     var Type = function()
     {
+        if ( ( inits & SCOPE ) === SCOPE )
+        {
+            if ( Scope === null )
+                Scope = defineScope( Type );
+            return { self: new Scope(), parent: null };
+        }
         if ( !( this instanceof Type ) )
         {
             run = false;
@@ -21,7 +27,7 @@ var type = window.type = function( name )
             run = true;
             return pub;
         }
-        if ( inits && run )
+        if ( ( inits & PUB ) === PUB && run )
             init( Type, this, arguments );
     };
 
@@ -51,9 +57,9 @@ var type = window.type = function( name )
 
         Type.parent = Base;
 
-        inits = false;
+        inits &= ~PUB;
         Type.prototype = new Base();
-        inits = true;
+        inits |= PUB;
 
         return Type;
     };
@@ -135,6 +141,46 @@ var type = window.type = function( name )
 
     return Type;
 };
+
+/**
+ * @private
+ * @description Creates a new private scope.
+ * @param {Type} Type
+ */
+function defineScope( Type )
+{
+    var Scope = function() { };
+    inits &= ~( PUB | SCOPE );
+    Scope.prototype = new Type();
+    inits |= PUB | SCOPE;
+
+    var fn = Scope.prototype;
+
+    /**
+     * Creates a new instance of the type, but returns the private scope.
+     * This allows access to private methods of other instances of the same type.
+     */
+    fn._new = function()
+    {
+        inits &= ~PUB;
+        var ret = init( Type, new Type(), arguments );
+        inits |= PUB;
+        return ret;
+    };
+
+    /**
+     * Gets the private scope of the type instance.
+     */
+    fn._pry = function( pub )
+    {
+        pry = Type;
+        var scope = !!pub && !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
+        pry = null;
+        return scope || pub;
+    };
+
+    return Scope;
+}
 
 /**
  * @description Gets the member info by parsing the member name.

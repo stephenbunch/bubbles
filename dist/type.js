@@ -26,7 +26,9 @@ var fnTest = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
 var pry = null;
 
 // A global flag to control execution of type initializers.
-var inits = true;
+var PUB = 1;
+var SCOPE = 2;
+var inits = PUB;
 
 // IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
@@ -81,6 +83,12 @@ var type = window.type = function( name )
     var run = true;
     var Type = function()
     {
+        if ( ( inits & SCOPE ) === SCOPE )
+        {
+            if ( Scope === null )
+                Scope = defineScope( Type );
+            return { self: new Scope(), parent: null };
+        }
         if ( !( this instanceof Type ) )
         {
             run = false;
@@ -89,7 +97,7 @@ var type = window.type = function( name )
             run = true;
             return pub;
         }
-        if ( inits && run )
+        if ( ( inits & PUB ) === PUB && run )
             init( Type, this, arguments );
     };
 
@@ -119,9 +127,9 @@ var type = window.type = function( name )
 
         Type.parent = Base;
 
-        inits = false;
+        inits &= ~PUB;
         Type.prototype = new Base();
-        inits = true;
+        inits |= PUB;
 
         return Type;
     };
@@ -203,6 +211,46 @@ var type = window.type = function( name )
 
     return Type;
 };
+
+/**
+ * @private
+ * @description Creates a new private scope.
+ * @param {Type} Type
+ */
+function defineScope( Type )
+{
+    var Scope = function() { };
+    inits &= ~( PUB | SCOPE );
+    Scope.prototype = new Type();
+    inits |= PUB | SCOPE;
+
+    var fn = Scope.prototype;
+
+    /**
+     * Creates a new instance of the type, but returns the private scope.
+     * This allows access to private methods of other instances of the same type.
+     */
+    fn._new = function()
+    {
+        inits &= ~PUB;
+        var ret = init( Type, new Type(), arguments );
+        inits |= PUB;
+        return ret;
+    };
+
+    /**
+     * Gets the private scope of the type instance.
+     */
+    fn._pry = function( pub )
+    {
+        pry = Type;
+        var scope = !!pub && !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
+        pry = null;
+        return scope || pub;
+    };
+
+    return Scope;
+}
 
 /**
  * @description Gets the member info by parsing the member name.
@@ -524,7 +572,9 @@ function isArray( object ) {
  */
 function init( type, pub, args )
 {
-    var scope = create( type );
+    inits |= SCOPE;
+    var scope = type();
+    inits &= ~SCOPE;
     pub.$type = type;
 
     /**
@@ -549,87 +599,6 @@ function init( type, pub, args )
 
 /**
  * @private
- * @description Creates a new private scope.
- * @param {Type} Type
- */
-function create( Type )
-{
-    var Scope = function() { };
-    inits = false;
-    Scope.prototype = new Type();
-    inits = true;
-
-    var fn = Scope.prototype;
-
-    /**
-     * Creates a new instance of the type, but returns the private scope.
-     * This allows access to private methods of other instances of the same type.
-     */
-    fn._new = function()
-    {
-        inits = false;
-        var ret = init( Type, new Type(), arguments );
-        inits = true;
-        return ret;
-    };
-
-    /**
-     * Gets the private scope of the type instance.
-     */
-    fn._pry = function( pub )
-    {
-        pry = Type;
-        var scope = !!pub && !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
-        pry = null;
-        return scope || pub;
-    };
-
-    /**
-     * Based on the jQuery pub/sub plugin by Peter Higgins.
-     * https://github.com/phiggins42/bloody-jquery-plugins/blob/master/pubsub.js
-     */
-
-    var cache = {};
-
-    fn._publish = function( topic, args )
-    {
-        if ( cache[ topic ] )
-        {
-            var i = 0, len = cache[ topic ].length;
-            args = args || [];
-            for ( ; i < len; i++ )
-                cache[ topic ][ i ].apply( this, args );
-        }
-    };
-
-    fn._subscribe = function( topic, callback )
-    {
-        if ( !cache[ topic ] )
-            cache[ topic ] = [];
-        cache[ topic ].push( callback );
-    };
-
-    fn._unsubscribe = function( topic, callback )
-    {
-        var i = 0;
-        if ( cache[ topic ] )
-        {
-            if ( callback )
-            {
-                i = cache[ topic ].indexOf( callback );
-                if ( i > -1 )
-                    cache[ topic ].splice( i, 1 );
-            }
-            else
-                cache[ topic ] = undefined;
-        }
-    };
-
-    return { self: new Scope(), parent: null };
-}
-
-/**
- * @private
  * @description Creates the type members on the instance.
  * @param {Type} type The instance type.
  * @param {Scope} scope The private scope of the instance.
@@ -645,7 +614,9 @@ function build( type, scope )
         )
             throw new Error( "Parent constructor contains parameters and must be called explicitly." );
 
-        scope.parent = create( type.parent );
+        inits |= SCOPE;
+        scope.parent = type.parent();
+        inits &= ~SCOPE;
         scope.parent.self._pub = scope.self._pub;
         build( type.parent, scope.parent );
     }
@@ -769,12 +740,7 @@ function buildProperty( type, scope, name, member )
 
                 set: function( value )
                 {
-                    var changed = value !== _value;
-                    if ( changed )
-                        scope.self._publish( "/" + name + "/beforechange", [ value ]);
                     _value = value;
-                    if ( changed )
-                        scope.self._publish( "/" + name + "/afterchange" );
                 }
             });
             

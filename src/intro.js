@@ -21,7 +21,9 @@ var fnTest = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
 var pry = null;
 
 // A global flag to control execution of type initializers.
-var inits = true;
+var PUB = 1;
+var SCOPE = 2;
+var inits = PUB;
 
 // IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx

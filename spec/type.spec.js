@@ -126,26 +126,3 @@ describe( "parent method", function()
         expect( b.foo() + b.bar() ).toBe( "hello world!" );
     });
 });
-
-describe( "scope topics", function()
-{
-    describe( "/property/beforechange", function()
-    {
-        it( "should pass the new value", function()
-        {
-            var out = null;
-            var A = type().def({
-                ctor: function() {
-                    this._subscribe( "/foo/beforechange", this.beforechange );
-                },
-                foo: null,
-                beforechange: function( value ) {
-                    out = value;
-                }
-            });
-            var a = new A();
-            a.foo = "hello";
-            expect( out ).toBe( "hello" );
-        });
-    });
-});
