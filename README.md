@@ -6,6 +6,7 @@ Be sure to check out the [wiki](../../wiki)!
 
 ```bash
 $ git clone https://github.com/stephenbunch/typejs
+& bundle install
 $ rackup
 ```
 
