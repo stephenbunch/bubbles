@@ -136,6 +136,11 @@ var type = window.type = function( name )
     return Type;
 };
 
+/**
+ * @description Gets the member info by parsing the member name.
+ * @param {string} name
+ * @returns {object}
+ */
 function parseMember( name )
 {        
     var twoLetter = name.substr( 0, 2 );
@@ -163,6 +168,11 @@ function parseMember( name )
     };
 }
 
+/**
+ * @description Checks the memeber info on a type and throws an error if invalid.
+ * @param {Type} type
+ * @param {object} info
+ */
 function validateMember( type, info )
 {
     // check for name collision

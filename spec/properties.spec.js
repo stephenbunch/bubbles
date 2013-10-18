@@ -120,7 +120,6 @@ describe( "properties", function()
         expect( a.foo ).toBe( 1 );
         expect( function()
         {
-            "use strict";
             a.foo = 2;
         }).toThrow();
     });
@@ -131,7 +130,6 @@ describe( "properties", function()
         var a = new A();
         expect( function()
         {
-            "use strict";
             a.foo = 2;
         }).toThrow();
     });

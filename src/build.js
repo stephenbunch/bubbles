@@ -266,6 +266,10 @@ function buildProperty( type, scope, name, member )
             }
         );
     }
+    else
+    {
+        accessors.get = readOnlyGet( name );
+    }
     if ( member.set !== undefined )
     {
         accessors.set = accessor(
@@ -274,6 +278,10 @@ function buildProperty( type, scope, name, member )
                 scope.parent.self[ name ] = value;
             }
         );
+    }
+    else
+    {
+        accessors.set = writeOnlySet( name );
     }
     addProperty( scope.self, name, accessors );
 }
@@ -335,22 +343,15 @@ function expose( type, scope, pub )
         }
         else
         {
-            var accessors = {};
-            if ( member.get !== undefined && member.get.access === PUBLIC )
+            addProperty( pub, name,
             {
-                accessors.get = function()
-                {
+                get: member.get === undefined || member.get.access !== PUBLIC ? readOnlyGet( name ) : function() {
                     return scope.self[ name ];
-                };
-            }
-            if ( member.set !== undefined && member.set.access === PUBLIC )
-            {
-                accessors.set = function( value )
-                {
+                },
+                set: member.set === undefined || member.set.access !== PUBLIC ? writeOnlySet( name ) : function( value ) {
                     scope.self[ name ] = value;
-                };
-            }
-            addProperty( pub, name, accessors );
+                }
+            });
         }
     });
 }
@@ -380,4 +381,18 @@ function addProperty( obj, name, accessors )
     }
     else
         throw new Error( "JavaScript properties are not supported by this browser." );
+}
+
+function readOnlyGet( name )
+{
+    return function() {
+        throw new TypeError( "Cannot read from write only property '" + name + "'." );
+    };
+}
+
+function writeOnlySet( name )
+{
+    return function() {
+        throw new TypeError( "Cannot assign to read only property '" + name + "'." );
+    };
 }
