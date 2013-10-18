@@ -82,10 +82,9 @@ describe( "properties", function()
         var out = null;
         var A = type().def({
             foo: {
-                get: function() {
-                    return this._value;
-                },
-                set: function( value ) {
+                get: null,
+                set: function( value )
+                {
                     this._value = value;
                     out = this.foo;
                 }
@@ -94,6 +93,28 @@ describe( "properties", function()
         var a = new A();
         a.foo = "hello";
         expect( out ).toBe( "hello" );
+    });
+
+    it( "can be read within a setter", function()
+    {
+        var out1 = null;
+        var out2 = null;
+        var A = type().def({
+            foo: {
+                value: "hello",
+                get: null,
+                set: function( value )
+                {
+                    out1 = this.foo;
+                    this._value = value;
+                    out2 = this.foo;
+                }
+            }
+        });
+        var a = new A();
+        a.foo = "world";
+        expect( out1 ).toBe( "hello" );
+        expect( out2 ).toBe( "world" );
     });
 
     it( "should use default accessor implementation when null is given instead of a function", function()

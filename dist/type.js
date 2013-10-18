@@ -727,10 +727,10 @@ function buildProperty( type, scope, name, member )
     {
         return function()
         {
-            var tempSuper = scope.self._super;
-            var tempValue = scope.self._value;
+            var temp = scope.self._super;
             scope.self._super = _super;
-            
+
+            var config = Object.getOwnPropertyDescriptor( scope.self, "_value" );
             addProperty( scope.self, "_value",
             {
                 get: function()
@@ -745,10 +745,16 @@ function buildProperty( type, scope, name, member )
             });
             
             var result = method.apply( scope.self, arguments );
-            scope.self._super = tempSuper;
+            scope.self._super = temp;
 
-            delete scope.self._value;
-            scope.self._value = tempValue;
+            if ( config )
+            {
+                addProperty( scope.self, "_value",
+                {
+                    get: config.get,
+                    set: config.set
+                });
+            }
 
             return result;
         };
@@ -867,6 +873,11 @@ function expose( type, scope, pub )
 function addProperty( obj, name, accessors )
 {
     accessors.configurable = true;
+
+    // IE8 requires that we delete the property first before reconfiguring it.
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+    if ( IE8 && obj.hasOwnProperty( name ) )
+        delete obj[ name ];
 
     // modern browsers, IE9+, and IE8 (must be a DOM object)
     if ( Object.defineProperty )
