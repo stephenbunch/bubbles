@@ -188,7 +188,7 @@ var type = window.type = function( name )
             validateMember( Type, info );
 
             if ( name === CTOR )
-                throw new Error( "Event cannot be named \"ctor\"." );
+                throw new Error( "Event cannot be named 'ctor'." );
 
             if ( info.isVirtual )
                 throw new Error( "Events cannot be virtual." );
@@ -245,7 +245,7 @@ function validateMember( type, info )
 {
     // check for name collision
     if ( isUsed( type, info.name ) )
-        throw new Error( "Member \"" + info.name + "\" is already defined." );
+        throw new Error( "Member '" + info.name + "' is already defined." );
 
     // make sure the access modifier isn't being changed
     if (
@@ -255,7 +255,7 @@ function validateMember( type, info )
         type.parent.members[ info.name ].access !== info.access
     )
     {
-        throw new Error( "Cannot change access modifier of member \"" + name + "\" from " +
+        throw new Error( "Cannot change access modifier of member '" + name + "' from " +
             type.parent.members[ name ].access + " to " + info.access + "." );
     }
 }
@@ -313,24 +313,29 @@ function defineMethod( type, name, method )
  */
 function defineProperty( Type, info, property )
 {
-    if ( property === null || property.get === undefined && property.set === undefined )
+    if ( typeOf( property ) !== "object" )
         property = { value: property };
+
+    var different = 0;
 
     each( property, function( method, type )
     {
         type = type.toLowerCase();
         var twoLetter = type.substr( 0, 2 );
         if ( IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ type[0] ] )
-            throw new Error( "Property accessors cannot be virtual." );
+            throw new Error( "Property '" + info.name + "' cannot have virtual accessors." );
 
         var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ type[0] ] || info.access;
         if ( ACCESS[ access ] < ACCESS[ info.access ] )
-            throw new Error( "Property accessors cannot have a lower access modifier than the property itself." );
+            throw new Error( "The " + type + " accessor of the property '" + info.name + "' cannot have a lower access modifier than the property itself." );
 
         type = type.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ type[0] ] || 0 );
 
         if ( type !== "get" && type !== "set" )
             return;
+
+        if ( access !== info.access )
+            different++;
 
         if (
             Type.parent !== null &&
@@ -339,14 +344,14 @@ function defineProperty( Type, info, property )
             Type.parent.members[ info.name ][ type ].access !== access
         )
         {
-            throw new Error( "Cannot change access modifier of \"" + type + "\" accessor for property \"" + info.name +
-                "\" from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
+            throw new Error( "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
+                "' from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
         }
 
         if ( method !== null && !isFunc( method ) )
         {
-            throw new Error( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property \"" +
-                info.name + "\" must be a function or null (uses default implementation.)" );
+            throw new Error( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
+                info.name + "' must be a function or null (uses default implementation.)" );
         }
         
         property[ type ] =
@@ -355,6 +360,9 @@ function defineProperty( Type, info, property )
             method: method
         };
     });
+
+    if ( different === 2 )
+        throw new Error( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
 
     if ( property.get === undefined && property.set === undefined )
     {
@@ -386,7 +394,7 @@ function defineProperty( Type, info, property )
             Type.parent.members[ info.name ].access !== PRIVATE &&
             Type.parent.members[ info.name ][ type ] === undefined
         )
-            throw new Error( "Cannot change read/write definition of property \"" + info.name + "\"." );
+            throw new Error( "Cannot change read/write definition of property '" + info.name + "'." );
 
         Type.members[ info.name ][ type ] =
         {
@@ -656,8 +664,24 @@ function build( type, scope )
     {
         each( type.parent.members, function( member, name )
         {
-            if ( member.access !== PRIVATE && type.members[ name ] === undefined )
+            // If the member is private or if it's been overridden by the child, don't make a reference
+            // to the parent implementation.
+            if ( member.access === PRIVATE || type.members[ name ] !== undefined ) return;
+
+            if ( member.method !== undefined || member.isEvent )
                 scope.self[ name ] = scope.parent.self[ name ];
+            else
+            {
+                addProperty( scope.self, name,
+                {
+                    get: member.get === undefined || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
+                        return scope.parent.self[ name ];
+                    },
+                    set: member.set === undefined || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
+                        scope.parent.self[ name ] = value;
+                    }
+                });
+            }
         });
     }
 }

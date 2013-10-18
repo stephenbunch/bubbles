@@ -85,4 +85,17 @@ describe( "type.def", function()
             });
         }).toThrow();
     });
+
+    it( "should throw an error if access modifers are specified for both property accessors", function()
+    {
+        expect( function()
+        {
+            var A = type().def({
+                foo: {
+                    __get: null,
+                    __set: null
+                }
+            });
+        }).toThrow();
+    });
 });

@@ -147,8 +147,24 @@ function build( type, scope )
     {
         each( type.parent.members, function( member, name )
         {
-            if ( member.access !== PRIVATE && type.members[ name ] === undefined )
+            // If the member is private or if it's been overridden by the child, don't make a reference
+            // to the parent implementation.
+            if ( member.access === PRIVATE || type.members[ name ] !== undefined ) return;
+
+            if ( member.method !== undefined || member.isEvent )
                 scope.self[ name ] = scope.parent.self[ name ];
+            else
+            {
+                addProperty( scope.self, name,
+                {
+                    get: member.get === undefined || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
+                        return scope.parent.self[ name ];
+                    },
+                    set: member.set === undefined || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
+                        scope.parent.self[ name ] = value;
+                    }
+                });
+            }
         });
     }
 }

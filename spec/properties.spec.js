@@ -133,4 +133,24 @@ describe( "properties", function()
             a.foo = 2;
         }).toThrow();
     });
+
+    it( "can be protected with a private setter", function()
+    {
+        var A = type().def({ _foo: { get: null, __set: null, value: "hello" } });
+        var B = type().extend( A ).def({
+            read: function() {
+                return this.foo;
+            },
+            write: function( value ) {
+                this.foo = value;
+            }
+        });
+        var b = new B();
+        expect( b.foo ).not.toBeDefined();
+        expect( b.read() ).toBe( "hello" );
+        expect( function()
+        {
+            b.write( "test" );
+        }).toThrow();
+    });
 });
