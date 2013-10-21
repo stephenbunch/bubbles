@@ -65,15 +65,8 @@ var type = window.type = function( name )
         if ( !isFunc( Base ) )
             throw new Error( "Base type must be a function." );
 
-        inits |= TYPE_CHECK;
-        typeCheckResult = false;
-        /* jshint newcap: false */
-        Base();
-        /* jshint newcap: true */
-        inits &= ~TYPE_CHECK;
-
         // Only set the parent member if the base type was created by us.
-        if ( typeCheckResult )
+        if ( isTypeOurs( Base ) )
         {
             // Check for circular reference.
             var t = Base;
@@ -192,13 +185,17 @@ var type = window.type = function( name )
         {
             if ( typeOf( mixin ) === STRING )
                 mixin = type( mixin );
-            if ( !isFunc( mixin ) )
-                throw new Error( "Mixin type must be a function." );
 
-            // Check for circular reference.
+            if ( !isTypeOurs( mixin ) )
+                throw new Error( "Mixin must be a type." );
+
             if ( mixin === Type )
                 throw new Error( "Cannot include self." );
-            validateMixin( Type, mixin );
+
+            if ( mixin.members.ctor !== undefined && mixin.members.ctor.params.length > 0 )
+                throw new Error( "Mixin cannot have dependencies." );
+
+            checkMixinForCircularReference( Type, mixin );
 
             var m = mixin;
             while ( m )
@@ -216,14 +213,23 @@ var type = window.type = function( name )
     return Type;
 };
 
-function validateMixin( type, mixin )
+function checkMixinForCircularReference( type, mixin )
 {
     if ( type === mixin )
         throw new Error( "Cannot include type that includes self." );
     each( mixin.mixins, function( m )
     {
-        validateMixin( type, m );
+        checkMixinForCircularReference( type, m );
     });
+}
+
+function isTypeOurs( type )
+{
+    inits |= TYPE_CHECK;
+    typeCheckResult = false;
+    type();
+    inits &= ~TYPE_CHECK;
+    return typeCheckResult;
 }
 
 /**

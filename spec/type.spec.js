@@ -203,4 +203,25 @@ describe( "type.include", function()
             A.include([ C ]);
         }).toThrow();
     });
+
+    it( "should throw an error if a mixin has dependencies", function()
+    {
+        var A = type().def({
+            ctor: function( x ) { }
+        });
+        var B = type();
+        expect( function()
+        {
+            B.include([ A ]);
+        }).toThrow();
+    });
+
+    it( "should throw an error if mixin is not a type", function()
+    {
+        var A = type();
+        expect( function()
+        {
+            A.include([ function() {} ]);
+        }).toThrow();
+    });
 });
