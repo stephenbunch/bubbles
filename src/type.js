@@ -11,8 +11,14 @@ var type = window.type = function( name )
 
     var Scope = null;
     var run = true;
+
     var Type = function()
     {
+        if ( ( inits & TYPE_CHECK ) === TYPE_CHECK )
+        {
+            typeCheckResult = true;
+            return;
+        }
         if ( ( inits & SCOPE ) === SCOPE )
         {
             if ( Scope === null )
@@ -42,7 +48,7 @@ var type = window.type = function( name )
     
     /**
      * @description Sets the base type.
-     * @param {Type} type
+     * @param {Type|function} Base
      * @returns {Type}
      */
     Type.extend = function( Base )
@@ -55,7 +61,18 @@ var type = window.type = function( name )
         if ( typeOf( Base ) === STRING )
             Base = type( Base );
 
-        Type.parent = Base;
+        if ( !isFunc( Base ) )
+            throw new Error( "Base type must be a function." );
+
+        // Only set the parent if the base type was created by us.
+        inits |= TYPE_CHECK;
+        typeCheckResult = false;
+        /* jshint newcap: false */
+        Base();
+        /* jshint newcap: true */
+        inits &= ~TYPE_CHECK;
+        if ( typeCheckResult )
+            Type.parent = Base;
 
         inits &= ~PUB;
         Type.prototype = new Base();

@@ -49,6 +49,17 @@ describe( "type.extend", function()
         type.destroy( "A" );
         type.destroy( "B" );
     });
+
+    it( "can extend native javascript types", function()
+    {
+        var A = function() {};
+        A.prototype.foo = function() {
+            return 2;
+        };
+        var B = type().extend( A );
+        var b = new B();
+        expect( b.foo() ).toBe( 2 );
+    });
 });
 
 describe( "instanceof operator", function()

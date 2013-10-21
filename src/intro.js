@@ -23,7 +23,10 @@ var pry = null;
 // A global flag to control execution of type initializers.
 var PUB = 1;
 var SCOPE = 2;
+var TYPE_CHECK = 4;
 var inits = PUB;
+
+var typeCheckResult = false;
 
 // IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
