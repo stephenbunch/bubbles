@@ -45,6 +45,7 @@ var type = window.type = function( name )
 
     Type.members = {};
     Type.parent = null;
+    Type.mixins = [];
     
     /**
      * @description Sets the base type.
@@ -64,15 +65,27 @@ var type = window.type = function( name )
         if ( !isFunc( Base ) )
             throw new Error( "Base type must be a function." );
 
-        // Only set the parent if the base type was created by us.
         inits |= TYPE_CHECK;
         typeCheckResult = false;
         /* jshint newcap: false */
         Base();
         /* jshint newcap: true */
         inits &= ~TYPE_CHECK;
+
+        // Only set the parent member if the base type was created by us.
         if ( typeCheckResult )
+        {
+            // Check for circular reference.
+            var t = Base;
+            while ( t )
+            {
+                if ( t === Type )
+                    throw new Error( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
+                t = t.parent;
+            }
+
             Type.parent = Base;
+        }
 
         inits &= ~PUB;
         Type.prototype = new Base();
@@ -140,6 +153,11 @@ var type = window.type = function( name )
         return Type;
     };
 
+    /**
+     * @description Defines events on the type.
+     * @param {array} events
+     * @returns {Type}
+     */
     Type.events = function( events )
     {
         each( events, function( name )
@@ -163,8 +181,50 @@ var type = window.type = function( name )
         return Type;
     };
 
+    /**
+     * @descriptions Mixes other types in with the type.
+     * @param {array} types
+     * @returns {Type}
+     */
+    Type.include = function( types )
+    {
+        each( types, function( mixin )
+        {
+            if ( typeOf( mixin ) === STRING )
+                mixin = type( mixin );
+            if ( !isFunc( mixin ) )
+                throw new Error( "Mixin type must be a function." );
+
+            // Check for circular reference.
+            if ( mixin === Type )
+                throw new Error( "Cannot include self." );
+            validateMixin( Type, mixin );
+
+            var m = mixin;
+            while ( m )
+            {
+                if ( m === Type )
+                    throw new Error( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
+                m = m.parent;
+            }
+
+            Type.mixins.push( mixin );
+        });
+        return Type;
+    };
+
     return Type;
 };
+
+function validateMixin( type, mixin )
+{
+    if ( type === mixin )
+        throw new Error( "Cannot include type that includes self." );
+    each( mixin.mixins, function( m )
+    {
+        validateMixin( type, m );
+    });
+}
 
 /**
  * @private

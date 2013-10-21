@@ -26,7 +26,8 @@ module.exports = function( grunt )
         },
 
         jshint: {
-            dist: [ 'dist/type.js' ]
+            dist: [ 'dist/type.js' ],
+            test: [ 'spec/**/*.js' ]
         },
 
         uglify: {

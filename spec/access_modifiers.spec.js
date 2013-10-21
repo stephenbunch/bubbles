@@ -208,7 +208,7 @@ describe( "access modifiers", function()
             {
                 C.def({
                     _foo: function() { }
-                })
+                });
             }).toThrow();
         });
 

@@ -10,6 +10,12 @@ function init( type, pub, args )
     inits |= SCOPE;
     var scope = type();
     inits &= ~SCOPE;
+
+    scope.self._pub = pub;
+
+    build( type, scope );
+    expose( type, scope, pub );
+
     pub.$type = type;
 
     /**
@@ -20,11 +26,6 @@ function init( type, pub, args )
         if ( pry === type )
             return scope.self;
     };
-
-    scope.self._pub = pub;
-
-    build( type, scope );
-    expose( type, scope, pub );
 
     if ( scope.self.ctor !== undefined )
         scope.self.ctor.apply( scope.self, args );
@@ -40,6 +41,17 @@ function init( type, pub, args )
  */
 function build( type, scope )
 {
+    // instantiate mixins and add proxies to their members
+    each( type.mixins, function( mixin )
+    {
+        init( mixin, scope.self._pub, [] );
+        pry = mixin;
+        var inner = scope.self._pub.$scope();
+        pry = null;
+        createProxy( mixin, inner, type, scope.self );
+    });
+
+    // instantiate parent
     if ( type.parent !== null )
     {
         if (
@@ -56,6 +68,11 @@ function build( type, scope )
         build( type.parent, scope.parent );
     }
 
+    // add proxies to parent members
+    if ( type.parent !== null )
+        createProxy( type.parent, scope.parent.self, type, scope.self );
+
+    // add type members
     each( type.members, function( member, name )
     {
         if ( member.method !== undefined )
@@ -65,31 +82,31 @@ function build( type, scope )
         else
             buildProperty( type, scope, name, member );
     });
+}
 
-    if ( type.parent !== null )
+function createProxy( srcType, srcObj, dstType, dstObj )
+{
+    each( srcType.members, function( member, name )
     {
-        each( type.parent.members, function( member, name )
-        {
-            // If the member is private or if it's been overridden by the child, don't make a reference
-            // to the parent implementation.
-            if ( member.access === PRIVATE || type.members[ name ] !== undefined ) return;
+        // If the member is private or if it's been overridden by the child, don't make a reference
+        // to the parent implementation.
+        if ( member.access === PRIVATE || dstType.members[ name ] !== undefined ) return;
 
-            if ( member.method !== undefined || member.isEvent )
-                scope.self[ name ] = scope.parent.self[ name ];
-            else
+        if ( member.method !== undefined || member.isEvent )
+            dstObj[ name ] = srcObj[ name ];
+        else
+        {
+            addProperty( dstObj, name,
             {
-                addProperty( scope.self, name,
-                {
-                    get: member.get === undefined || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
-                        return scope.parent.self[ name ];
-                    },
-                    set: member.set === undefined || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
-                        scope.parent.self[ name ] = value;
-                    }
-                });
-            }
-        });
-    }
+                get: member.get === undefined || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
+                    return srcObj[ name ];
+                },
+                set: member.set === undefined || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
+                    srcObj[ name ] = value;
+                }
+            });
+        }
+    });
 }
 
 /**

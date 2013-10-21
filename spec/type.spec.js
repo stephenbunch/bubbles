@@ -60,6 +60,27 @@ describe( "type.extend", function()
         var b = new B();
         expect( b.foo() ).toBe( 2 );
     });
+
+    it( "should throw an error if a circular reference is created", function()
+    {
+        var A = type();
+        expect( function()
+        {
+            A.extend( A );
+        }).toThrow();
+
+        var B = type().extend( A );
+        expect( function()
+        {
+            A.extend( B );
+        }).toThrow();
+
+        var C = type().extend( B );
+        expect( function()
+        {
+            A.extend( C );
+        }).toThrow();
+    });
 });
 
 describe( "instanceof operator", function()
@@ -135,5 +156,51 @@ describe( "parent method", function()
 
         var b = new B();
         expect( b.foo() + b.bar() ).toBe( "hello world!" );
+    });
+});
+
+describe( "type.include", function()
+{
+    it( "should add a mixin", function()
+    {
+        var A = type().def({
+            ctor: function() {
+                this.message = "hello";
+            },
+            foo: function() {
+                return this.message;
+            }
+        });
+        var B = type().include([ A ]).def({
+            ctor: function() {
+                this.message = " world";
+            },
+            bar: function() {
+                return this.foo() + this.message;
+            }
+        });
+        var b = new B();
+        expect( b.bar() ).toBe( "hello world" );
+    });
+
+    it( "should throw an error if a circular reference is created", function()
+    {
+        var A = type();
+        expect( function()
+        {
+            A.include([ A ]);
+        }).toThrow();
+
+        var B = type().include([ A ]);
+        expect( function()
+        {
+            A.include([ B ]);
+        }).toThrow();
+
+        var C = type().include([ B ]);
+        expect( function()
+        {
+            A.include([ C ]);
+        }).toThrow();
     });
 });
