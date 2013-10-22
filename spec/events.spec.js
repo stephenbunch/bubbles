@@ -22,7 +22,7 @@ describe( "event", function()
 
     describe( ".raise()", function()
     {
-        it( "should raise the event", function()
+        it( "should raise an event", function()
         {
             var A = type().events([ "foo" ]).def({
                 onFoo: function( x ) {

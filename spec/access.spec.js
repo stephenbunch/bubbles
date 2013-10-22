@@ -1,4 +1,4 @@
-describe( "private members", function()
+describe( "__<name> (private members)", function()
 {
     it( "should be hidden", function()
     {
@@ -89,7 +89,7 @@ describe( "private members", function()
     });
 });
 
-describe( "protected members", function()
+describe( "_<name> (protected members)", function()
 {
     it( "should be accessible from the inside", function()
     {
@@ -140,31 +140,7 @@ describe( "protected members", function()
     });
 });
 
-describe( "virtual members", function()
-{
-    it( "can be sealed", function()
-    {
-        var A = type().
-                def({
-                    $foo: function() { }
-                });
-        var B = type().
-                extend( A ).
-                def({
-                    foo: function () {}
-                });
-        var C = type().extend( B );
-
-        expect( function()
-        {
-            C.def({
-                foo: function() { }
-            });
-        }).toThrow();
-    });
-});
-
-describe( "protected virtual members", function()
+describe( "_$<name> (protected virtual members)", function()
 {
     it( "should be overridable", function()
     {
@@ -227,7 +203,7 @@ describe( "protected virtual members", function()
     });
 });
 
-describe( "public virtual members", function()
+describe( "$<name> (public virtual members)", function()
 {
     it( "cannot be made protected", function()
     {
@@ -241,6 +217,30 @@ describe( "public virtual members", function()
         {
             B.def({
                 _$foo: function() { }
+            });
+        }).toThrow();
+    });
+});
+
+describe( "virtual members", function()
+{
+    it( "can be sealed", function()
+    {
+        var A = type().
+                def({
+                    $foo: function() { }
+                });
+        var B = type().
+                extend( A ).
+                def({
+                    foo: function () {}
+                });
+        var C = type().extend( B );
+
+        expect( function()
+        {
+            C.def({
+                foo: function() { }
             });
         }).toThrow();
     });

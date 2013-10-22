@@ -35,7 +35,7 @@ describe( "mixins", function()
         expect( out ).not.toBeDefined();
     });
 
-    it( "should overwrite each other", function()
+    it( "should overwrite each other in the order specified", function()
     {
         var A = type().def({
             foo: function() {
