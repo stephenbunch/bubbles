@@ -8,7 +8,7 @@ Browser support: ![Internet Explorer](http://www.w3schools.com/images/compatible
 
 ```bash
 $ git clone https://github.com/stephenbunch/typejs
-& bundle install
+$ bundle install
 $ rackup
 ```
 
