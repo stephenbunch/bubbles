@@ -1,6 +1,6 @@
-describe( "private scope", function()
+describe( "this", function()
 {
-    describe( "this._new", function()
+    describe( "._new()", function()
     {
         it( "should not be accessible on the public interface", function()
         {
@@ -10,7 +10,7 @@ describe( "private scope", function()
         });
     });
 
-    describe( "this._pry", function()
+    describe( "._pry()", function()
     {
         it( "should return the private scope of the given instance", function()
         {
@@ -53,7 +53,7 @@ describe( "private scope", function()
         });
     });
 
-    describe( "this._pub", function()
+    describe( "._pub", function()
     {
         it( "should return the public interface", function()
         {
@@ -69,7 +69,7 @@ describe( "private scope", function()
         });
     });
 
-    describe( "this._super", function()
+    describe( "._super()", function()
     {
         it( "should call the parent method", function()
         {
@@ -89,16 +89,6 @@ describe( "private scope", function()
 
             var b = new B();
             expect( b.foo( "hello" ) ).toBe( "hello world!" );
-        });
-    });
-
-    describe( "type.$scope", function()
-    {
-        it( "should return undefined unless called from scope._pry", function()
-        {
-            var A = type();
-            var a = new A();
-            expect( a.$scope() ).toBe( undefined );
         });
     });
 });

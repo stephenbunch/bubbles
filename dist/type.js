@@ -269,15 +269,6 @@ var type = window.type = function( name )
                 throw new Error( "Mixin cannot have dependencies." );
 
             checkMixinForCircularReference( Type, mixin );
-
-            var m = mixin;
-            while ( m )
-            {
-                if ( m === Type )
-                    throw new Error( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
-                m = m.parent;
-            }
-
             Type.mixins.push( mixin );
         });
         return Type;

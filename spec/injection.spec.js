@@ -1,6 +1,26 @@
-describe( "type.injector", function()
+describe( "type.injector()", function()
 {
-    describe( "injector.resolve", function()
+    it( "should return a new injector", function()
+    {
+        var injector = type.injector();
+        expect( injector.register ).toBeDefined();
+    });
+});
+
+describe( "injector", function()
+{
+    describe( ".register()", function()
+    {
+        it( "should bind a factory to a service", function()
+        {
+            var injector = type.injector().register( "foo", function() {
+                return 2;
+            });
+            expect( injector.resolve( "foo" ) ).toBe( 2 );
+        });
+    });
+
+    describe( ".resolve()", function()
     {
         it( "should support the array syntax for listing dependencies", function()
         {
@@ -30,7 +50,7 @@ describe( "type.injector", function()
         });
     });
 
-    describe( "injector.constant", function()
+    describe( ".constant()", function()
     {
         it( "should register and bind services to constants", function()
         {
@@ -61,24 +81,7 @@ describe( "type.injector", function()
         });
     });
 
-    describe( "provider", function()
-    {
-        it( "can be listed as a dependency", function()
-        {
-            var injector = type.injector().constant( "foo", 2 );
-            var provider = injector.resolve( type.providerOf( "foo" ) );
-            expect( provider() ).toBe( 2 );
-        });
-
-        it( "should forward additional arguments to the underlying service provider", function()
-        {
-            var injector = type.injector().register( "foo", function( a ) { return a + 2; } );
-            var provider = injector.resolve( type.providerOf( "foo" ) );
-            expect( provider( 5 ) ).toBe( 7 );
-        });
-    });
-
-    describe( "injector.autoRegister", function()
+    describe( ".autoRegister()", function()
     {
         it( "should register named types", function()
         {
@@ -93,5 +96,22 @@ describe( "type.injector", function()
             expect( called ).toBe( 1 );
             type.destroy( "Foo" );
         });
+    });
+});
+
+describe( "type.provider()", function()
+{
+    it( "can be listed as a dependency", function()
+    {
+        var injector = type.injector().constant( "foo", 2 );
+        var provider = injector.resolve( type.providerOf( "foo" ) );
+        expect( provider() ).toBe( 2 );
+    });
+
+    it( "should forward additional arguments to the underlying service provider", function()
+    {
+        var injector = type.injector().register( "foo", function( a ) { return a + 2; } );
+        var provider = injector.resolve( type.providerOf( "foo" ) );
+        expect( provider( 5 ) ).toBe( 7 );
     });
 });

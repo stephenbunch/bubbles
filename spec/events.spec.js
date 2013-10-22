@@ -1,21 +1,8 @@
-describe( "events", function()
+describe( "event", function()
 {
-    describe( "type.events", function()
+    describe( ".addHandler()", function()
     {
-        it( "can define one or more events", function()
-        {
-            var A = type().events([ "foo", "bar" ]);
-            var a = new A();
-            expect( a.foo.addHandler ).toBeDefined();
-            expect( a.foo.removeHandler ).toBeDefined();
-            expect( a.bar.addHandler ).toBeDefined();
-            expect( a.bar.removeHandler ).toBeDefined();
-        });
-    });
-
-    describe( "event.raise", function()
-    {
-        it( "should raise the event", function()
+        it( "should add an event handler", function()
         {
             var A = type().events([ "foo" ]).def({
                 onFoo: function() {
@@ -30,6 +17,26 @@ describe( "events", function()
             });
             a.onFoo();
             expect( called ).toBe( true );
+        });
+    });
+
+    describe( ".raise()", function()
+    {
+        it( "should raise the event", function()
+        {
+            var A = type().events([ "foo" ]).def({
+                onFoo: function( x ) {
+                    this.foo.raise( x );
+                }
+            });
+            var a = new A();
+            var out = null;
+            a.foo.addHandler( function( x )
+            {
+                out = x;
+            });
+            a.onFoo( 2 );
+            expect( out ).toBe( 2 );
         });
 
         it( "should be hidden from the outside", function()
@@ -57,7 +64,7 @@ describe( "events", function()
         });
     });
 
-    describe( "event.removeHandler", function()
+    describe( ".removeHandler()", function()
     {
         it( "should remove an event handler", function()
         {

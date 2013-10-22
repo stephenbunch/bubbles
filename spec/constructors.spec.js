@@ -1,4 +1,4 @@
-describe( "constructor", function()
+describe( "constructors", function()
 {
     it( "should call the parent constructor if it is parameterless", function()
     {
