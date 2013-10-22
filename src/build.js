@@ -255,7 +255,7 @@ function buildEvent( type, scope, name )
 
         removeHandler: function( handler )
         {
-            var i = handlers.indexOf( handler );
+            var i = indexOf( handlers, handler );
             if ( i > -1 )
                 handlers.splice( i, 1 );
         },
@@ -328,7 +328,7 @@ function addProperty( obj, name, accessors )
 
     // IE8 requires that we delete the property first before reconfiguring it.
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( IE8 && obj.hasOwnProperty( name ) )
+    if ( IE8 && hasOwnProperty( obj, name ) )
         delete obj[ name ];
 
     // modern browsers, IE9+, and IE8 (must be a DOM object)

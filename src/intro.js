@@ -65,3 +65,8 @@ var ACCESS = {};
 ACCESS[ PUBLIC ] = 1;
 ACCESS[ PROTECTED ] = 2;
 ACCESS[ PRIVATE ] = 3;
+
+// In IE8, Object.toString on null and undefined returns "object".
+var SPECIAL = {};
+SPECIAL[ null ] = "null";
+SPECIAL[ undefined ] = "undefined";

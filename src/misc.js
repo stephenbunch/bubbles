@@ -56,8 +56,7 @@ function each( obj, callback )
     {
         for ( ; i < obj.length; i++ )
         {
-            value = callback.call( obj[ i ], obj[ i ], i );
-            if ( value === false )
+            if ( callback.call( obj[ i ], obj[ i ], i ) === false )
                 break;
         }
     }
@@ -65,8 +64,7 @@ function each( obj, callback )
     {
         for ( i in obj )
         {
-            value = callback.call( obj[ i ], obj[ i ], i );
-            if ( value === false )
+            if ( obj.hasOwnProperty( i ) && callback.call( obj[ i ], obj[ i ], i ) === false )
                 break;
         }
     }
@@ -82,7 +80,7 @@ function each( obj, callback )
  */
 function typeOf( object )
 {
-    return Object.prototype.toString.call( object )
+    return SPECIAL[ object ] || Object.prototype.toString.call( object )
         .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
 }
 
@@ -104,4 +102,56 @@ function isFunc( object ) {
  */
 function isArray( object ) {
     return typeOf( object ) === "array";
+}
+
+/**
+ * @private
+ * @description
+ * Removes trailing whitespace from a string.
+ * http://stackoverflow.com/a/2308157/740996
+ * @param {string} value
+ * @returns {string}
+ */
+function trim( value ) {
+    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
+}
+
+/**
+ * @private
+ * @description Gets the keys of an object.
+ * @param {object} object
+ * @returns {array}
+ */
+var keys = Object.keys || function( object )
+{
+    var ret = [];
+    for ( var key in object )
+    {
+        if ( object.hasOwnProperty( key ) )
+            ret.push( key );
+    }
+    return ret;
+};
+
+function hasOwnProperty( obj, prop ) {
+    return Object.prototype.hasOwnProperty.call( obj, prop );
+}
+
+function indexOf( array, item )
+{
+    if ( array.indexOf )
+        return array.indexOf( item );
+    else
+    {
+        var index = -1;
+        each( array, function( obj, i )
+        {
+            if ( obj === item )
+            {
+                index = i;
+                return false;
+            }
+        });
+        return index;
+    }
 }

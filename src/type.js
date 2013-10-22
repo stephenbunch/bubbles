@@ -23,25 +23,35 @@ var type = window.type = function( name )
         {
             if ( Scope === null )
                 Scope = defineScope( Type );
-            return { self: new Scope(), parent: null };
+            var scope = { parent: null };
+            if ( IE8 )
+            {
+                scope.self = document.createElement();
+                applyPrototypeMembers( Scope, scope.self );
+            }
+            else
+                scope.self = new Scope();
+            return scope;
         }
-        if ( !( this instanceof Type ) )
+        if ( ( inits & PUB ) === PUB && run )
         {
+            var pub;
             run = false;
-            var pub = new Type();
+            if ( IE8 )
+            {
+                pub = document.createElement();
+                applyPrototypeMembers( Type, pub );
+            }
+            else
+                pub = new Type();
             init( Type, pub, arguments );
             run = true;
             return pub;
         }
-        if ( ( inits & PUB ) === PUB && run )
-            init( Type, this, arguments );
     };
 
     if ( arguments.length > 0 )
         types[ name ] = Type;
-
-    if ( IE8 )
-        Type.prototype = document.createElement( "fake" );
 
     Type.members = {};
     Type.parent = null;
@@ -56,7 +66,7 @@ var type = window.type = function( name )
     {
         // Since name collision detection happens when the type is defined, we must prevent people
         // from changing the inheritance hierarchy after defining members.
-        if ( Object.keys( Type.members ).length > 0 )
+        if ( keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
 
         if ( typeOf( Base ) === STRING )
@@ -204,6 +214,12 @@ var type = window.type = function( name )
     return Type;
 };
 
+/**
+ * @private
+ * @description Checks mixin for circular references.
+ * @param {Type} type
+ * @param {Type} mixin
+ */
 function checkMixinForCircularReference( type, mixin )
 {
     if ( type === mixin )
@@ -214,6 +230,12 @@ function checkMixinForCircularReference( type, mixin )
     });
 }
 
+/**
+ * @private
+ * @description Determines whether the type was created by us.
+ * @param {function} type
+ * @returns {boolean}
+ */
 function isTypeOurs( type )
 {
     inits |= TYPE_CHECK;
@@ -355,7 +377,7 @@ function defineMethod( type, name, method )
     {
         each( match[1].split( "," ), function( param, index )
         {
-            params.push( param.trim() );
+            params.push( trim( param ) );
         });
     }
     type.members[ name ].method = method;
@@ -377,6 +399,10 @@ function defineProperty( Type, info, property )
 
     var different = 0;
 
+    // IE8 will actually enumerate over members added during an enumeration,
+    // so we need to write to a temp object and copy the accessors over once
+    // we're done.
+    var temp = {};
     each( property, function( method, type )
     {
         type = type.toLowerCase();
@@ -413,12 +439,14 @@ function defineProperty( Type, info, property )
                 info.name + "' must be a function or null (uses default implementation.)" );
         }
         
-        property[ type ] =
+        temp[ type ] =
         {
             access: access,
             method: method
         };
     });
+    property.get = temp.get;
+    property.set = temp.set;
 
     if ( different === 2 )
         throw new Error( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
@@ -465,3 +493,22 @@ function defineProperty( Type, info, property )
 
     Type.members[ info.name ].value = property.value !== undefined ? property.value : null;
 }
+
+/**
+ * @private
+ * @param {Type} type
+ * @param {object} obj
+ */
+function applyPrototypeMembers( type, obj )
+{
+    var proto = type.prototype;
+    if ( proto.constructor.prototype !== proto )
+        applyPrototypeMembers( proto.constructor, obj );
+    for ( var prop in proto )
+    {
+        if ( proto.hasOwnProperty( prop ) )
+            obj[ prop ] = proto[ prop ];
+    }
+}
+
+window.test = applyPrototypeMembers;
