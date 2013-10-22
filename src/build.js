@@ -331,16 +331,9 @@ function addProperty( obj, name, accessors )
     if ( IE8 && hasOwnProperty( obj, name ) )
         delete obj[ name ];
 
-    // modern browsers, IE9+, and IE8 (must be a DOM object)
+    // obj must be a DOM object in IE8
     if ( Object.defineProperty )
         Object.defineProperty( obj, name, accessors );
-
-    // older mozilla
-    else if ( obj.__defineGetter__ )
-    {
-        obj.__defineGetter__( name, accessors.get );
-        obj.__defineSetter__( name, accessors.set );
-    }
     else
         throw new Error( "JavaScript properties are not supported by this browser." );
 }
