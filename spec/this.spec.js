@@ -57,15 +57,26 @@ describe( "this", function()
     {
         it( "should return the public interface", function()
         {
-            var A = type().
-                    def({
-                        bar: function() {
-                            return this._pub;
-                        }
-                    });
+            var A = type().def({
+                bar: function() {
+                    return this._pub;
+                }
+            });
 
             var a = new A();
             expect( a.bar() ).toBe( a );
+        });
+
+        it( "should return the public interface of the child", function()
+        {
+            var A = type().def({
+                bar: function() {
+                    return this._pub;
+                }
+            });
+            var B = type().extend( A );
+            var b = new B();
+            expect( b.bar() ).toBe( b );
         });
     });
 
@@ -73,19 +84,16 @@ describe( "this", function()
     {
         it( "should call the parent method", function()
         {
-            var A = type().
-                    def({
-                        $foo: function( message ) {
-                            return message + " world";
-                        }
-                    });
-            var B = type().
-                    extend( A ).
-                    def({
-                        $foo: function( message ) {
-                            return this._super( message ) + "!";
-                        }
-                    });
+            var A = type().def({
+                $foo: function( message ) {
+                    return message + " world";
+                }
+            });
+            var B = type().extend( A ).def({
+                $foo: function( message ) {
+                    return this._super( message ) + "!";
+                }
+            });
 
             var b = new B();
             expect( b.foo( "hello" ) ).toBe( "hello world!" );
