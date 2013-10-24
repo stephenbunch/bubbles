@@ -174,4 +174,17 @@ describe( "properties", function()
             b.write( "test" );
         }).toThrow();
     });
+
+    it( "should be enumerable", function()
+    {
+        var A = type().def({ foo: 2 });
+        var a = new A();
+        var out;
+        for ( var p in a )
+        {
+            out = p;
+            break;
+        }
+        expect( out ).toBe( "foo" );
+    });
 });
