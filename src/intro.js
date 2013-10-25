@@ -39,13 +39,10 @@ try {
 }
 
 var PROVIDER = "provider`";
-var types = {};
 var PUBLIC = "public";
 var PRIVATE = "private";
 var PROTECTED = "protected";
 var CTOR = "ctor";
-var STRING = "string";
-var ARRAY = "array";
 
 var GET_ACCESS = {
     "__": PRIVATE,

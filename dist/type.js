@@ -44,13 +44,10 @@ try {
 }
 
 var PROVIDER = "provider`";
-var types = {};
 var PUBLIC = "public";
 var PRIVATE = "private";
 var PROTECTED = "protected";
 var CTOR = "ctor";
-var STRING = "string";
-var ARRAY = "array";
 
 var GET_ACCESS = {
     "__": PRIVATE,
@@ -82,11 +79,8 @@ SPECIAL[ undefined ] = "undefined";
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-var type = window.type = function( name )
+var type = window.type = function()
 {
-    if ( arguments.length > 0 && types[ name ] !== undefined )
-        return types[ name ];
-
     var Scope = null;
     var run = true;
 
@@ -128,9 +122,6 @@ var type = window.type = function( name )
         }
     };
 
-    if ( arguments.length > 0 )
-        types[ name ] = Type;
-
     Type.members = {};
     Type.parent = null;
     Type.mixins = [];
@@ -146,9 +137,6 @@ var type = window.type = function( name )
         // from changing the inheritance hierarchy after defining members.
         if ( keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
-
-        if ( typeOf( Base ) === STRING )
-            Base = type( Base );
 
         if ( !isFunc( Base ) )
             throw new Error( "Base type must be a function." );
@@ -271,9 +259,6 @@ var type = window.type = function( name )
     {
         each( types, function( mixin )
         {
-            if ( typeOf( mixin ) === STRING )
-                mixin = type( mixin );
-
             if ( !isTypeOurs( mixin ) )
                 throw new Error( "Mixin must be a type." );
 
@@ -1236,14 +1221,10 @@ type.injector = type().def(
             return self.register( service, function() { return constant; } );
     },
 
-    autoRegister: function()
+    autoRegister: function( graph )
     {
-        var self = this;
-        each( types, function( type, name )
-        {
-            self.register( name, type );
-        });
-        return self._pub;
+        this.registerGraph( "", graph );
+        return this._pub;
     },
 
     __getDependencies: function( method )
@@ -1252,11 +1233,20 @@ type.injector = type().def(
         if ( method.$inject !== undefined )
             inject = method.$inject;
         return inject;
+    },
+
+    __registerGraph: function( path, graph )
+    {
+        var self = this,
+            prefix = path === "" ?  "" : path + ".";
+        each( graph, function( type, name )
+        {
+            if ( isFunc( type ) )
+                self.register( prefix + name, type );
+            else
+                self.registerGraph( prefix + name, type );
+        });
     }
 });
-
-type.destroy = function( name ) {
-    delete types[ name ];
-};
 
 } ( window ) );

@@ -4,11 +4,8 @@
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-var type = window.type = function( name )
+var type = window.type = function()
 {
-    if ( arguments.length > 0 && types[ name ] !== undefined )
-        return types[ name ];
-
     var Scope = null;
     var run = true;
 
@@ -50,9 +47,6 @@ var type = window.type = function( name )
         }
     };
 
-    if ( arguments.length > 0 )
-        types[ name ] = Type;
-
     Type.members = {};
     Type.parent = null;
     Type.mixins = [];
@@ -68,9 +62,6 @@ var type = window.type = function( name )
         // from changing the inheritance hierarchy after defining members.
         if ( keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
-
-        if ( typeOf( Base ) === STRING )
-            Base = type( Base );
 
         if ( !isFunc( Base ) )
             throw new Error( "Base type must be a function." );
@@ -193,9 +184,6 @@ var type = window.type = function( name )
     {
         each( types, function( mixin )
         {
-            if ( typeOf( mixin ) === STRING )
-                mixin = type( mixin );
-
             if ( !isTypeOurs( mixin ) )
                 throw new Error( "Mixin must be a type." );
 
