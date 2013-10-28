@@ -14,8 +14,8 @@ module.exports = function( grunt )
             dist: {
                 src: [
                     'src/intro.js',
+                    'src/helpers.js',
                     'src/type.js',
-                    'src/misc.js',
                     'src/build.js',
                     'src/inject.js',
                     'src/util.js',
