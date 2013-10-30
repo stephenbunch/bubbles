@@ -248,18 +248,6 @@ function defineScope( Type )
     var fn = Scope.prototype;
 
     /**
-     * Creates a new instance of the type, but returns the private scope.
-     * This allows access to private methods of other instances of the same type.
-     */
-    fn._new = function()
-    {
-        inits &= ~PUB;
-        var ret = init( Type, new Type(), arguments );
-        inits |= PUB;
-        return ret;
-    };
-
-    /**
      * Gets the private scope of the type instance.
      */
     fn._pry = function( pub )

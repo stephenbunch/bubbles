@@ -53,27 +53,6 @@ describe( "__<name> (private members)", function()
         expect( b.baz() ).toBe( "hello world!" );
     });
 
-    it( "can be called cross-instance through scope._new", function()
-    {
-        var A = type().
-                def({
-                    foo: function() {
-                        return this.bar();
-                    },
-
-                    __bar: function() {
-                        return this._new().baz();
-                    },
-
-                    __baz: function( first ) {
-                        return 2;
-                    }
-                });
-
-        var a = new A();
-        expect( a.foo() ).toBe( 2 );
-    });
-
     it( "cannot be defined twice", function()
     {
         var A = type().
