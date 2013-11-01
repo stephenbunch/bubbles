@@ -720,8 +720,6 @@ function applyPrototypeMembers( type, obj )
     }
 }
 
-window.test = applyPrototypeMembers;
-
 /**
  * @private
  * @description Initializes the type.
