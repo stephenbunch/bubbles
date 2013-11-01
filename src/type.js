@@ -510,5 +510,3 @@ function applyPrototypeMembers( type, obj )
             obj[ prop ] = proto[ prop ];
     }
 }
-
-window.test = applyPrototypeMembers;
