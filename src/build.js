@@ -324,6 +324,10 @@ function expose( type, scope, pub )
  */
 function addProperty( obj, name, accessors )
 {
+    // IE8 apparently doesn't support this configuration option.
+    if ( !IE8 )
+        accessors.enumerable = true;
+
     accessors.configurable = true;
 
     // IE8 requires that we delete the property first before reconfiguring it.

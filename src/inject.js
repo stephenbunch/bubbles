@@ -130,14 +130,10 @@ type.injector = type().def(
             return self.register( service, function() { return constant; } );
     },
 
-    autoRegister: function()
+    autoRegister: function( graph )
     {
-        var self = this;
-        each( types, function( type, name )
-        {
-            self.register( name, type );
-        });
-        return self._pub;
+        this.registerGraph( "", graph );
+        return this._pub;
     },
 
     __getDependencies: function( method )
@@ -146,5 +142,18 @@ type.injector = type().def(
         if ( method.$inject !== undefined )
             inject = method.$inject;
         return inject;
+    },
+
+    __registerGraph: function( path, graph )
+    {
+        var self = this,
+            prefix = path === "" ?  "" : path + ".";
+        each( graph, function( type, name )
+        {
+            if ( isFunc( type ) )
+                self.register( prefix + name, type );
+            else
+                self.registerGraph( prefix + name, type );
+        });
     }
 });

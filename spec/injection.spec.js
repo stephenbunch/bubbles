@@ -83,18 +83,18 @@ describe( "injector", function()
 
     describe( ".autoRegister()", function()
     {
-        it( "should register named types", function()
+        it( "should register an object graph by convention", function()
         {
             var called = 0;
-            var Foo = type( "Foo" ).def({
+            var graph = { bar: {} };
+            graph.bar.Foo = type().def({
                 ctor: function() {
                     called += 1;
                 }
             });
-            var injector = type.injector().autoRegister();
-            var foo = injector.resolve( "Foo" );
+            var injector = type.injector().autoRegister({ app: graph });
+            var foo = injector.resolve( "app.bar.Foo" );
             expect( called ).toBe( 1 );
-            type.destroy( "Foo" );
         });
     });
 });

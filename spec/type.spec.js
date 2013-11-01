@@ -146,16 +146,6 @@ describe( "type", function()
             }).toThrow();
         });
 
-        it( "should accept strings", function()
-        {
-            type( "A" ).def({ foo: 2 });
-            type( "B" ).extend( "A" );
-            var b = type( "B" )();
-            expect( b.foo ).toBe( 2 );
-            type.destroy( "A" );
-            type.destroy( "B" );
-        });
-
         it( "can extend native javascript types", function()
         {
             var A = function() {};

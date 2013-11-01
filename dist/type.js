@@ -44,13 +44,10 @@ try {
 }
 
 var PROVIDER = "provider`";
-var types = {};
 var PUBLIC = "public";
 var PRIVATE = "private";
 var PROTECTED = "protected";
 var CTOR = "ctor";
-var STRING = "string";
-var ARRAY = "array";
 
 var GET_ACCESS = {
     "__": PRIVATE,
@@ -77,16 +74,171 @@ SPECIAL[ null ] = "null";
 SPECIAL[ undefined ] = "undefined";
 
 /**
+ * @private
+ * @description
+ * Determines whether an object can be iterated over like an array.
+ * Inspired by jQuery.
+ * @param {object} obj
+ * @returns {boolean}
+ */
+function isArrayLike( obj )
+{
+    var length = obj.length,
+        type = typeOf( obj );
+
+    if ( typeOf( obj ) === "window" )
+        return false;
+
+    if ( obj.nodeType === 1 && length )
+        return true;
+
+    return type === "array" ||
+        type !== "function" &&
+        (
+            length === 0 ||
+            typeof length === "number" && length > 0 && ( length - 1 ) in obj
+        );
+}
+
+/**
+ * @private
+ * @description Turns an object into a true array.
+ * @param {object} obj
+ * @returns {array}
+ */
+function makeArray( obj )
+{
+    var result = [];
+    each( obj, function( item )
+    {
+        result.push( item );
+    });
+    return result;
+}
+
+/**
+ * @private
+ * @description
+ * Iterates of an array or object, passing in the item and index / key.
+ * Inspired by jQuery.
+ * @param {object|array} obj
+ * @param {function} callback
+ */
+function each( obj, callback )
+{
+    var i = 0, value;
+    if ( isArrayLike( obj ) )
+    {
+        for ( ; i < obj.length; i++ )
+        {
+            if ( callback.call( obj[ i ], obj[ i ], i ) === false )
+                break;
+        }
+    }
+    else
+    {
+        for ( i in obj )
+        {
+            if ( obj.hasOwnProperty( i ) && callback.call( obj[ i ], obj[ i ], i ) === false )
+                break;
+        }
+    }
+}
+
+/**
+ * @private
+ * @description
+ * Gets the internal JavaScript [[Class]] of an object.
+ * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+ * @param {object} object
+ * @returns {string}
+ */
+function typeOf( object )
+{
+    return SPECIAL[ object ] || Object.prototype.toString.call( object )
+        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
+}
+
+/**
+ * @private
+ * @description Determines whether an object is a function.
+ * @param {object}
+ * @returns {boolean}
+ */
+function isFunc( object ) {
+    return typeOf( object ) === "function";
+}
+
+/**
+ * @private
+ * @description Determines whether an object is an array.
+ * @param {object}
+ * @returns {boolean}
+ */
+function isArray( object ) {
+    return typeOf( object ) === "array";
+}
+
+/**
+ * @private
+ * @description
+ * Removes trailing whitespace from a string.
+ * http://stackoverflow.com/a/2308157/740996
+ * @param {string} value
+ * @returns {string}
+ */
+function trim( value ) {
+    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
+}
+
+/**
+ * @private
+ * @description Gets the keys of an object.
+ * @param {object} object
+ * @returns {array}
+ */
+var keys = Object.keys || function( object )
+{
+    var ret = [];
+    for ( var key in object )
+    {
+        if ( object.hasOwnProperty( key ) )
+            ret.push( key );
+    }
+    return ret;
+};
+
+function hasOwnProperty( obj, prop ) {
+    return Object.prototype.hasOwnProperty.call( obj, prop );
+}
+
+function indexOf( array, item )
+{
+    if ( array.indexOf )
+        return array.indexOf( item );
+    else
+    {
+        var index = -1;
+        each( array, function( obj, i )
+        {
+            if ( obj === item )
+            {
+                index = i;
+                return false;
+            }
+        });
+        return index;
+    }
+}
+
+/**
  * @description Defines a new type.
  * @returns {Type}
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-var type = window.type = function( name )
+var type = window.type = function()
 {
-    if ( arguments.length > 0 && types[ name ] !== undefined )
-        return types[ name ];
-
     var Scope = null;
     var run = true;
 
@@ -128,9 +280,6 @@ var type = window.type = function( name )
         }
     };
 
-    if ( arguments.length > 0 )
-        types[ name ] = Type;
-
     Type.members = {};
     Type.parent = null;
     Type.mixins = [];
@@ -146,9 +295,6 @@ var type = window.type = function( name )
         // from changing the inheritance hierarchy after defining members.
         if ( keys( Type.members ).length > 0 )
             throw new Error( "Cannot change the base type after members have been defined." );
-
-        if ( typeOf( Base ) === STRING )
-            Base = type( Base );
 
         if ( !isFunc( Base ) )
             throw new Error( "Base type must be a function." );
@@ -271,9 +417,6 @@ var type = window.type = function( name )
     {
         each( types, function( mixin )
         {
-            if ( typeOf( mixin ) === STRING )
-                mixin = type( mixin );
-
             if ( !isTypeOurs( mixin ) )
                 throw new Error( "Mixin must be a type." );
 
@@ -336,18 +479,6 @@ function defineScope( Type )
     inits |= PUB | SCOPE;
 
     var fn = Scope.prototype;
-
-    /**
-     * Creates a new instance of the type, but returns the private scope.
-     * This allows access to private methods of other instances of the same type.
-     */
-    fn._new = function()
-    {
-        inits &= ~PUB;
-        var ret = init( Type, new Type(), arguments );
-        inits |= PUB;
-        return ret;
-    };
 
     /**
      * Gets the private scope of the type instance.
@@ -590,164 +721,6 @@ function applyPrototypeMembers( type, obj )
 }
 
 window.test = applyPrototypeMembers;
-
-/**
- * @private
- * @description
- * Determines whether an object can be iterated over like an array.
- * Inspired by jQuery.
- * @param {object} obj
- * @returns {boolean}
- */
-function isArrayLike( obj )
-{
-    var length = obj.length,
-        type = typeOf( obj );
-
-    if ( typeOf( obj ) === "window" )
-        return false;
-
-    if ( obj.nodeType === 1 && length )
-        return true;
-
-    return type === "array" ||
-        type !== "function" &&
-        (
-            length === 0 ||
-            typeof length === "number" && length > 0 && ( length - 1 ) in obj
-        );
-}
-
-/**
- * @private
- * @description Turns an object into a true array.
- * @param {object} obj
- * @returns {array}
- */
-function makeArray( obj )
-{
-    var result = [];
-    each( obj, function( item )
-    {
-        result.push( item );
-    });
-    return result;
-}
-
-/**
- * @private
- * @description
- * Iterates of an array or object, passing in the item and index / key.
- * Inspired by jQuery.
- * @param {object|array} obj
- * @param {function} callback
- */
-function each( obj, callback )
-{
-    var i = 0, value;
-    if ( isArrayLike( obj ) )
-    {
-        for ( ; i < obj.length; i++ )
-        {
-            if ( callback.call( obj[ i ], obj[ i ], i ) === false )
-                break;
-        }
-    }
-    else
-    {
-        for ( i in obj )
-        {
-            if ( obj.hasOwnProperty( i ) && callback.call( obj[ i ], obj[ i ], i ) === false )
-                break;
-        }
-    }
-}
-
-/**
- * @private
- * @description
- * Gets the internal JavaScript [[Class]] of an object.
- * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
- * @param {object} object
- * @returns {string}
- */
-function typeOf( object )
-{
-    return SPECIAL[ object ] || Object.prototype.toString.call( object )
-        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
-}
-
-/**
- * @private
- * @description Determines whether an object is a function.
- * @param {object}
- * @returns {boolean}
- */
-function isFunc( object ) {
-    return typeOf( object ) === "function";
-}
-
-/**
- * @private
- * @description Determines whether an object is an array.
- * @param {object}
- * @returns {boolean}
- */
-function isArray( object ) {
-    return typeOf( object ) === "array";
-}
-
-/**
- * @private
- * @description
- * Removes trailing whitespace from a string.
- * http://stackoverflow.com/a/2308157/740996
- * @param {string} value
- * @returns {string}
- */
-function trim( value ) {
-    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
-}
-
-/**
- * @private
- * @description Gets the keys of an object.
- * @param {object} object
- * @returns {array}
- */
-var keys = Object.keys || function( object )
-{
-    var ret = [];
-    for ( var key in object )
-    {
-        if ( object.hasOwnProperty( key ) )
-            ret.push( key );
-    }
-    return ret;
-};
-
-function hasOwnProperty( obj, prop ) {
-    return Object.prototype.hasOwnProperty.call( obj, prop );
-}
-
-function indexOf( array, item )
-{
-    if ( array.indexOf )
-        return array.indexOf( item );
-    else
-    {
-        var index = -1;
-        each( array, function( obj, i )
-        {
-            if ( obj === item )
-            {
-                index = i;
-                return false;
-            }
-        });
-        return index;
-    }
-}
 
 /**
  * @private
@@ -1075,6 +1048,10 @@ function expose( type, scope, pub )
  */
 function addProperty( obj, name, accessors )
 {
+    // IE8 apparently doesn't support this configuration option.
+    if ( !IE8 )
+        accessors.enumerable = true;
+
     accessors.configurable = true;
 
     // IE8 requires that we delete the property first before reconfiguring it.
@@ -1235,14 +1212,10 @@ type.injector = type().def(
             return self.register( service, function() { return constant; } );
     },
 
-    autoRegister: function()
+    autoRegister: function( graph )
     {
-        var self = this;
-        each( types, function( type, name )
-        {
-            self.register( name, type );
-        });
-        return self._pub;
+        this.registerGraph( "", graph );
+        return this._pub;
     },
 
     __getDependencies: function( method )
@@ -1251,11 +1224,20 @@ type.injector = type().def(
         if ( method.$inject !== undefined )
             inject = method.$inject;
         return inject;
+    },
+
+    __registerGraph: function( path, graph )
+    {
+        var self = this,
+            prefix = path === "" ?  "" : path + ".";
+        each( graph, function( type, name )
+        {
+            if ( isFunc( type ) )
+                self.register( prefix + name, type );
+            else
+                self.registerGraph( prefix + name, type );
+        });
     }
 });
-
-type.destroy = function( name ) {
-    delete types[ name ];
-};
 
 } ( window ) );
