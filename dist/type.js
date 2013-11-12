@@ -468,8 +468,9 @@ function isTypeOurs( type )
 
 /**
  * @private
- * @description Creates a new private scope.
+ * @description Creates a new private scope type.
  * @param {Type} Type
+ * @returns {Scope}
  */
 function defineScope( Type )
 {
@@ -701,23 +702,6 @@ function defineProperty( Type, info, property )
     });
 
     Type.members[ info.name ].value = property.value !== undefined ? property.value : null;
-}
-
-/**
- * @private
- * @param {Type} type
- * @param {object} obj
- */
-function applyPrototypeMembers( type, obj )
-{
-    var proto = type.prototype;
-    if ( proto.constructor.prototype !== proto )
-        applyPrototypeMembers( proto.constructor, obj );
-    for ( var prop in proto )
-    {
-        if ( proto.hasOwnProperty( prop ) )
-            obj[ prop ] = proto[ prop ];
-    }
 }
 
 /**
@@ -1076,6 +1060,23 @@ function writeOnlySet( name )
     return function() {
         throw new TypeError( "Cannot assign to read only property '" + name + "'." );
     };
+}
+
+/**
+ * @private
+ * @param {Type} type
+ * @param {object} obj
+ */
+function applyPrototypeMembers( type, obj )
+{
+    var proto = type.prototype;
+    if ( proto.constructor.prototype !== proto )
+        applyPrototypeMembers( proto.constructor, obj );
+    for ( var prop in proto )
+    {
+        if ( proto.hasOwnProperty( prop ) )
+            obj[ prop ] = proto[ prop ];
+    }
 }
 
 type.providerOf = function( service ) {

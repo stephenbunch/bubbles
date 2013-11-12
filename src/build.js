@@ -355,3 +355,20 @@ function writeOnlySet( name )
         throw new TypeError( "Cannot assign to read only property '" + name + "'." );
     };
 }
+
+/**
+ * @private
+ * @param {Type} type
+ * @param {object} obj
+ */
+function applyPrototypeMembers( type, obj )
+{
+    var proto = type.prototype;
+    if ( proto.constructor.prototype !== proto )
+        applyPrototypeMembers( proto.constructor, obj );
+    for ( var prop in proto )
+    {
+        if ( proto.hasOwnProperty( prop ) )
+            obj[ prop ] = proto[ prop ];
+    }
+}

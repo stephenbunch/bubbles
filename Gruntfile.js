@@ -16,6 +16,7 @@ module.exports = function( grunt )
                     'src/intro.js',
                     'src/helpers.js',
                     'src/type.js',
+                    'src/define.js',
                     'src/build.js',
                     'src/inject.js',
                     'src/util.js',

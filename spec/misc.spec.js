@@ -30,7 +30,7 @@ describe( "type instantiation", function()
 
 describe( "instanceof operator", function()
 {
-    it( "should work on the public interface", function()
+    it( "should work on the public interface (except in IE8)", function()
     {
         var A = type();
         var B = type().extend( A );
@@ -46,7 +46,7 @@ describe( "instanceof operator", function()
         expect( c instanceof A ).toBe( true );
     });
 
-    it( "should work on the private scope", function()
+    it( "should work on the private scope (except in IE8)", function()
     {
         var out = "";
         var A = type().
