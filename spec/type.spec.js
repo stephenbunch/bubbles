@@ -32,7 +32,7 @@ describe( "type", function()
             expect( a.value() ).toBe( 2 );
         });
 
-        it( "should auto fill base type dependencies when '...' is the first element", function()
+        it( "should auto fill inherited dependencies when '...' is the first element", function()
         {
             var A = type().def({
                 ctor: [ "foo", function( foo, bar )
@@ -62,6 +62,18 @@ describe( "type", function()
             expect( b.bar ).toBe( 2 );
             expect( b.baz ).toBe( 3 );
             expect( b.qux ).toBe( 4 );
+        });
+
+        it( "should throw an error if '...' is used and no inherited dependencies exist", function()
+        {
+            var A = type();
+            var B = type().extend( A );
+            expect( function()
+            {
+                B.def({
+                    ctor: [ "...", function() {} ]
+                });
+            }).toThrow();
         });
 
         it( "should throw an error if the constructor is defined and no method is provided", function()
@@ -129,6 +141,20 @@ describe( "type", function()
                         __get: null,
                         __set: null
                     }
+                });
+            }).toThrow();
+        });
+
+        it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
+        {
+            var A = type().def({
+                ctor: function( a ) {}
+            });
+            var B = type().extend( A );
+            expect( function()
+            {
+                B.def({
+                    ctor: function() {}
                 });
             }).toThrow();
         });
@@ -245,24 +271,24 @@ describe( "type", function()
             }).toThrow();
         });
 
-        it( "should throw an error if a mixin has dependencies", function()
-        {
-            var A = type().def({
-                ctor: function( x ) { }
-            });
-            var B = type();
-            expect( function()
-            {
-                B.include([ A ]);
-            }).toThrow();
-        });
-
         it( "should throw an error if mixin is not a type", function()
         {
             var A = type();
             expect( function()
             {
                 A.include([ function() {} ]);
+            }).toThrow();
+        });
+
+        it( "should throw an error if the constructor has already been defined", function()
+        {
+            var A = type();
+            var B = type().def({
+                ctor: function() {}
+            });
+            expect( function()
+            {
+                B.include([ A ]);
             }).toThrow();
         });
     });

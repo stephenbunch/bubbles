@@ -34,8 +34,7 @@ function isArrayLike( obj )
 function makeArray( obj )
 {
     var result = [];
-    each( obj, function( item )
-    {
+    each( obj, function( item ) {
         result.push( item );
     });
     return result;

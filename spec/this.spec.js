@@ -1,15 +1,5 @@
 describe( "this", function()
 {
-    describe( "._new()", function()
-    {
-        it( "should not be accessible on the public interface", function()
-        {
-            var A = type();
-            var a = new A();
-            expect( a._new ).toBe( undefined );
-        });
-    });
-
     describe( "._pry()", function()
     {
         it( "should return the private scope of the given instance", function()
@@ -97,6 +87,38 @@ describe( "this", function()
 
             var b = new B();
             expect( b.foo( "hello" ) ).toBe( "hello world!" );
+        });
+    });
+
+    describe( "._init()", function()
+    {
+        it( "should call the mixin constructor", function()
+        {
+            var out = null;
+            var A = type().def({
+                ctor: function( x ) {
+                    out = x;
+                }
+            });
+            var B = type().include([ A ]).def({
+                ctor: function() {
+                    this._init( A, "foo" );
+                }
+            });
+            var b = new B();
+            expect( out ).toBe( "foo" );
+        });
+
+        it( "should not be available if no mixins are defined", function()
+        {
+            var out = false;
+            var A = type().def({
+                ctor: function() {
+                    out = this._init === undefined;
+                }
+            });
+            var a = new A();
+            expect( out ).toBe( true );
         });
     });
 });

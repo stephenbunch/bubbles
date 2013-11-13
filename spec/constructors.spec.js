@@ -19,6 +19,16 @@ describe( "constructors", function()
         var out = "";
         var b = new B();
         expect( out ).toBe( "hello world" );
+
+        out = "";
+        var C = type().def({
+            ctor: function() {
+                out = "foo";
+            }
+        });
+        var D = type().extend( C );
+        var d = new D();
+        expect( out ).toBe( "foo" );
     });
 
     it( "should not call the parent constructor if it contains parameters", function()

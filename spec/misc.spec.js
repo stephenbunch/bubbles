@@ -1,13 +1,11 @@
 describe( "type instantiation", function()
 {
-    it( "should throw an error if the parent constructor contains parameters and child constructor does not explicitly call it", function()
+    it( "should throw an error if the parent constructor contains parameters and the child constructor does not explicitly call it", function()
     {
         var A = type().def({
             ctor: function( arg ) { }
         });
-        var B = type().extend( A ).def({
-            ctor: function() { }
-        });
+        var B = type().extend( A );
         expect( function()
         {
             var b = new B();
@@ -25,6 +23,19 @@ describe( "type instantiation", function()
         var result = 0;
         var a = A( 1, 3, 5 );
         expect( result ).toBe( 9 );
+    });
+
+    it( "should throw an error if not all mixins are initialized", function()
+    {
+        var A = type();
+        var B = type().def({
+            ctor: function( a ) {}
+        });
+        var C = type().include([ A, B ]);
+        expect( function()
+        {
+            var c = new C();
+        }).toThrow();
     });
 });
 

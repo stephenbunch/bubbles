@@ -8,6 +8,7 @@ var type = window.type = function()
 {
     var Scope = null;
     var run = true;
+    var ctorDefined = false;
 
     var Type = function()
     {
@@ -20,7 +21,12 @@ var type = window.type = function()
         {
             if ( Scope === null )
                 Scope = defineScope( Type );
-            var scope = { parent: null };
+            var scope =
+            {
+                parent: null,
+                self: null,
+                mixins: []
+            };
             if ( IE8 )
             {
                 scope.self = document.createElement();
@@ -41,7 +47,7 @@ var type = window.type = function()
             }
             else
                 pub = new Type();
-            init( Type, pub, arguments );
+            init( Type, pub, arguments, true );
             run = true;
             return pub;
         }
@@ -123,17 +129,19 @@ var type = window.type = function()
                     member = member.pop();
                     if ( Type.$inject[0] === "..." )
                     {
-                        if ( Type.parent === null || !Type.parent.$inject || Type.parent.$inject.length === 0 )
+                        var inherited = getInheritedDependencies( Type );
+                        if ( inherited.length === 0 )
                             throw new Error( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
                         Type.$inject.splice( 0, 1 );
-                        Type.$inject = Type.parent.$inject.concat( Type.$inject );
+                        Type.$inject = inherited.concat( Type.$inject );
                     }
                 }
                 if ( !isFunc( member ) )
                     throw new Error( "Constructor must be a function." );
             }
 
-            Type.members[ name ] = {
+            Type.members[ name ] =
+            {
                 access: info.access,
                 isVirtual: info.isVirtual
             };
@@ -142,6 +150,18 @@ var type = window.type = function()
                 defineMethod( Type, name, member );
             else
                 defineProperty( Type, info, member );
+
+            if ( name === CTOR )
+            {
+                if (
+                    !Type.members.ctor.callsuper &&
+                    Type.parent !== null &&
+                    Type.parent.members.ctor !== undefined &&
+                    Type.parent.members.ctor.params.length > 0
+                )
+                    throw new Error( "Constructor must call the base constructor explicitly because it contains parameters." );
+                ctorDefined = true;
+            }
         });
 
         return Type;
@@ -182,6 +202,9 @@ var type = window.type = function()
      */
     Type.include = function( types )
     {
+        if ( ctorDefined )
+            throw new Error( "Mixins must be defined before the constructor." );
+
         each( types, function( mixin )
         {
             if ( !isTypeOurs( mixin ) )
@@ -189,9 +212,6 @@ var type = window.type = function()
 
             if ( mixin === Type )
                 throw new Error( "Cannot include self." );
-
-            if ( mixin.members.ctor !== undefined && mixin.members.ctor.params.length > 0 )
-                throw new Error( "Mixin cannot have dependencies." );
 
             checkMixinForCircularReference( Type, mixin );
             Type.mixins.push( mixin );

@@ -148,8 +148,7 @@ function defineMethod( type, name, method )
     var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
     if ( match !== null )
     {
-        each( match[1].split( "," ), function( param, index )
-        {
+        each( match[1].split( "," ), function( param, index ) {
             params.push( trim( param ) );
         });
     }
@@ -265,4 +264,23 @@ function defineProperty( Type, info, property )
     });
 
     Type.members[ info.name ].value = property.value !== undefined ? property.value : null;
+}
+
+/**
+ * @private
+ * @description Gets the dependencies required by the parent and any mixins.
+ * @returns {array<string>}
+ */
+function getInheritedDependencies( type )
+{
+    var ret = [];
+    if ( type.parent !== null && type.parent.$inject !== undefined )
+        ret = ret.concat( type.parent.$inject );
+
+    each( type.mixins, function( mixin )
+    {
+        if ( mixin.$inject )
+            ret = ret.concat( mixin.$inject );
+    });
+    return ret;
 }

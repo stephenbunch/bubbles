@@ -109,8 +109,7 @@ function isArrayLike( obj )
 function makeArray( obj )
 {
     var result = [];
-    each( obj, function( item )
-    {
+    each( obj, function( item ) {
         result.push( item );
     });
     return result;
@@ -241,6 +240,7 @@ var type = window.type = function()
 {
     var Scope = null;
     var run = true;
+    var ctorDefined = false;
 
     var Type = function()
     {
@@ -253,7 +253,12 @@ var type = window.type = function()
         {
             if ( Scope === null )
                 Scope = defineScope( Type );
-            var scope = { parent: null };
+            var scope =
+            {
+                parent: null,
+                self: null,
+                mixins: []
+            };
             if ( IE8 )
             {
                 scope.self = document.createElement();
@@ -274,7 +279,7 @@ var type = window.type = function()
             }
             else
                 pub = new Type();
-            init( Type, pub, arguments );
+            init( Type, pub, arguments, true );
             run = true;
             return pub;
         }
@@ -356,17 +361,19 @@ var type = window.type = function()
                     member = member.pop();
                     if ( Type.$inject[0] === "..." )
                     {
-                        if ( Type.parent === null || !Type.parent.$inject || Type.parent.$inject.length === 0 )
+                        var inherited = getInheritedDependencies( Type );
+                        if ( inherited.length === 0 )
                             throw new Error( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
                         Type.$inject.splice( 0, 1 );
-                        Type.$inject = Type.parent.$inject.concat( Type.$inject );
+                        Type.$inject = inherited.concat( Type.$inject );
                     }
                 }
                 if ( !isFunc( member ) )
                     throw new Error( "Constructor must be a function." );
             }
 
-            Type.members[ name ] = {
+            Type.members[ name ] =
+            {
                 access: info.access,
                 isVirtual: info.isVirtual
             };
@@ -375,6 +382,18 @@ var type = window.type = function()
                 defineMethod( Type, name, member );
             else
                 defineProperty( Type, info, member );
+
+            if ( name === CTOR )
+            {
+                if (
+                    !Type.members.ctor.callsuper &&
+                    Type.parent !== null &&
+                    Type.parent.members.ctor !== undefined &&
+                    Type.parent.members.ctor.params.length > 0
+                )
+                    throw new Error( "Constructor must call the base constructor explicitly because it contains parameters." );
+                ctorDefined = true;
+            }
         });
 
         return Type;
@@ -415,6 +434,9 @@ var type = window.type = function()
      */
     Type.include = function( types )
     {
+        if ( ctorDefined )
+            throw new Error( "Mixins must be defined before the constructor." );
+
         each( types, function( mixin )
         {
             if ( !isTypeOurs( mixin ) )
@@ -422,9 +444,6 @@ var type = window.type = function()
 
             if ( mixin === Type )
                 throw new Error( "Cannot include self." );
-
-            if ( mixin.members.ctor !== undefined && mixin.members.ctor.params.length > 0 )
-                throw new Error( "Mixin cannot have dependencies." );
 
             checkMixinForCircularReference( Type, mixin );
             Type.mixins.push( mixin );
@@ -585,8 +604,7 @@ function defineMethod( type, name, method )
     var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
     if ( match !== null )
     {
-        each( match[1].split( "," ), function( param, index )
-        {
+        each( match[1].split( "," ), function( param, index ) {
             params.push( trim( param ) );
         });
     }
@@ -706,12 +724,32 @@ function defineProperty( Type, info, property )
 
 /**
  * @private
+ * @description Gets the dependencies required by the parent and any mixins.
+ * @returns {array<string>}
+ */
+function getInheritedDependencies( type )
+{
+    var ret = [];
+    if ( type.parent !== null && type.parent.$inject !== undefined )
+        ret = ret.concat( type.parent.$inject );
+
+    each( type.mixins, function( mixin )
+    {
+        if ( mixin.$inject )
+            ret = ret.concat( mixin.$inject );
+    });
+    return ret;
+}
+
+/**
+ * @private
  * @description Initializes the type.
  * @param {Type} type The type to initialize.
  * @param {object} pub The public interface to initialize on.
  * @param {array} args Arguments for the constructor.
+ * @param {boolean} ctor Run the constructor.
  */
-function init( type, pub, args )
+function init( type, pub, args, ctor )
 {
     inits |= SCOPE;
     var scope = type();
@@ -733,7 +771,7 @@ function init( type, pub, args )
             return scope.self;
     };
 
-    if ( scope.self.ctor !== undefined )
+    if ( ctor )
         scope.self.ctor.apply( scope.self, args );
 
     return scope.self;
@@ -747,17 +785,18 @@ function init( type, pub, args )
  */
 function build( type, scope )
 {
-    // instantiate mixins and add proxies to their members
+    // Instantiate mixins and add proxies to their members.
     each( type.mixins, function( mixin )
     {
-        init( mixin, scope.self._pub, [] );
+        init( mixin, scope.self._pub, [], false );
         pry = mixin;
         var inner = scope.self._pub.$scope();
         pry = null;
         createProxy( mixin, inner, type, scope.self );
+        scope.mixins.push( inner );
     });
 
-    // instantiate parent
+    // Instantiate the parent.
     if ( type.parent !== null )
     {
         if (
@@ -765,7 +804,7 @@ function build( type, scope )
             type.parent.members.ctor.params.length > 0 &&
             ( type.members.ctor === undefined || !type.members.ctor.callsuper )
         )
-            throw new Error( "Parent constructor contains parameters and must be called explicitly." );
+            throw new Error( "Base constructor contains parameters and must be called explicitly." );
 
         inits |= SCOPE;
         scope.parent = type.parent();
@@ -774,11 +813,11 @@ function build( type, scope )
         build( type.parent, scope.parent );
     }
 
-    // add proxies to parent members
+    // Add proxies to parent members.
     if ( type.parent !== null )
         createProxy( type.parent, scope.parent.self, type, scope.self );
 
-    // add type members
+    // Add type members.
     each( type.members, function( member, name )
     {
         if ( member.method !== undefined )
@@ -788,6 +827,20 @@ function build( type, scope )
         else
             buildProperty( type, scope, name, member );
     });
+
+    // If a constructor isn't defined, provide a default one.
+    if ( scope.self.ctor === undefined )
+    {
+        buildMethod( type, scope, "ctor",
+        {
+            callsuper: false,
+            params: [],
+            access: PRIVATE,
+            isVirtual: false,
+            name: "ctor",
+            method: function() {}
+        });
+    }
 }
 
 function createProxy( srcType, srcObj, dstType, dstObj )
@@ -832,7 +885,41 @@ function buildMethod( type, scope, name, member )
             // Hide the constructor because it should never be called again.
             delete scope.self.ctor;
 
-            var temp = scope.self._super;
+            // Run each mixin's constructor. If the constructor contains parameters, add it to the queue.
+            var queue = [];
+            var tempInit = scope.self._init;
+            each( type.mixins, function( mixin, i )
+            {
+                if ( mixin.members.ctor !== undefined )
+                {
+                    if ( mixin.members.ctor.params.length > 0 )
+                        queue.push( mixin );
+                    else
+                        mixin.members.ctor.method.call( scope.mixins[ i ] );
+                }
+            });
+
+            // If mixins need to be initialized explicitly, create an _init() method.
+            if ( queue.length > 0 )
+            {
+                scope.self._init = function( mixin )
+                {
+                    // Make sure we're initializing a valid mixin.
+                    var i = indexOf( queue, mixin );
+                    if ( i === -1 )
+                        throw new Error( "Mixin is not defined for this type or has already been initialized." );
+
+                    var args = makeArray( arguments );
+                    args.shift();
+                    mixin.members.ctor.method.apply( scope.mixins[ indexOf( type.mixins, mixin ) ], args );
+
+                    // Remove mixin from the queue.
+                    queue.splice( i, 1 );
+                };
+            }
+
+            // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
+            var tempSuper = scope.self._super;
             if ( type.parent !== null && type.parent.members.ctor !== undefined )
             {
                 if ( type.parent.members.ctor.params.length > 0 )
@@ -840,8 +927,16 @@ function buildMethod( type, scope, name, member )
                 else
                     scope.parent.self.ctor();
             }
+
             member.method.apply( scope.self, arguments );
-            scope.self._super = temp;
+            scope.self._super = tempSuper;
+            scope.self._init = tempInit;
+
+            if ( queue.length > 0 )
+            {
+                throw new Error( "Some mixins were not initialized. Please make sure the constructor " +
+                    "calls this._init() for each mixin having parameters in its constructor." );
+            }
         };
     }
     else
