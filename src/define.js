@@ -7,7 +7,7 @@
 function checkMixinForCircularReference( type, mixin )
 {
     if ( type === mixin )
-        throw new Error( "Cannot include type that includes self." );
+        throw new TypeDefinitionError( "Cannot include type that includes self." );
     each( mixin.mixins, function( m )
     {
         checkMixinForCircularReference( type, m );
@@ -99,7 +99,7 @@ function validateMember( type, info )
 {
     // check for name collision
     if ( isUsed( type, info.name ) )
-        throw new Error( "Member '" + info.name + "' is already defined." );
+        throw new TypeDefinitionError( "Member '" + info.name + "' is already defined." );
 
     // make sure the access modifier isn't being changed
     if (
@@ -109,7 +109,7 @@ function validateMember( type, info )
         type.parent.members[ info.name ].access !== info.access
     )
     {
-        throw new Error( "Cannot change access modifier of member '" + name + "' from " +
+        throw new TypeDefinitionError( "Cannot change access modifier of member '" + name + "' from " +
             type.parent.members[ name ].access + " to " + info.access + "." );
     }
 }
@@ -180,11 +180,14 @@ function defineProperty( Type, info, property )
         type = type.toLowerCase();
         var twoLetter = type.substr( 0, 2 );
         if ( IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ type[0] ] )
-            throw new Error( "Property '" + info.name + "' cannot have virtual accessors." );
+            throw new TypeDefinitionError( "Property '" + info.name + "' cannot have virtual accessors." );
 
         var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ type[0] ] || info.access;
         if ( ACCESS[ access ] < ACCESS[ info.access ] )
-            throw new Error( "The " + type + " accessor of the property '" + info.name + "' cannot have a lower access modifier than the property itself." );
+        {
+            throw new TypeDefinitionError( "The " + type + " accessor of the property '" + info.name +
+                "' cannot have a lower access modifier than the property itself." );
+        }
 
         type = type.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ type[0] ] || 0 );
 
@@ -201,13 +204,13 @@ function defineProperty( Type, info, property )
             Type.parent.members[ info.name ][ type ].access !== access
         )
         {
-            throw new Error( "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
+            throw new TypeDefinitionError( "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
                 "' from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
         }
 
         if ( method !== null && !isFunc( method ) )
         {
-            throw new Error( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
+            throw new TypeDefinitionError( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
                 info.name + "' must be a function or null (uses default implementation.)" );
         }
         
@@ -221,7 +224,7 @@ function defineProperty( Type, info, property )
     property.set = temp.set;
 
     if ( different === 2 )
-        throw new Error( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
+        throw new TypeDefinitionError( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
 
     if ( property.get === undefined && property.set === undefined )
     {
@@ -253,7 +256,7 @@ function defineProperty( Type, info, property )
             Type.parent.members[ info.name ].access !== PRIVATE &&
             Type.parent.members[ info.name ][ type ] === undefined
         )
-            throw new Error( "Cannot change read/write definition of property '" + info.name + "'." );
+            throw new TypeDefinitionError( "Cannot change read/write definition of property '" + info.name + "'." );
 
         Type.members[ info.name ][ type ] =
         {

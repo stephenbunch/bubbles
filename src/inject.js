@@ -31,7 +31,7 @@ type.injector = type().def(
             if ( self.container[ service ] !== undefined )
                 throw new Error( "The service \"" + service + "\" has already been registered." );
             if ( !isFunc( provider ) )
-                throw new Error( "The provider for service \"" + service + "\" must be a function." );
+                throw new TypeError( "The provider for service \"" + service + "\" must be a function." );
 
             self.container[ service ] = {
                 create: provider,

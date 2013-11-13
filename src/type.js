@@ -67,10 +67,10 @@ var type = window.type = function()
         // Since name collision detection happens when the type is defined, we must prevent people
         // from changing the inheritance hierarchy after defining members.
         if ( keys( Type.members ).length > 0 )
-            throw new Error( "Cannot change the base type after members have been defined." );
+            throw new TypeDefinitionError( "Cannot change the base type after members have been defined." );
 
         if ( !isFunc( Base ) )
-            throw new Error( "Base type must be a function." );
+            throw new TypeError( "Base type must be a function." );
 
         // Only set the parent member if the base type was created by us.
         if ( isTypeOurs( Base ) )
@@ -80,7 +80,7 @@ var type = window.type = function()
             while ( t )
             {
                 if ( t === Type )
-                    throw new Error( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
+                    throw new TypeDefinitionError( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
                 t = t.parent;
             }
 
@@ -131,13 +131,13 @@ var type = window.type = function()
                     {
                         var inherited = getInheritedDependencies( Type );
                         if ( inherited.length === 0 )
-                            throw new Error( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
+                            throw new TypeDefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
                         Type.$inject.splice( 0, 1 );
                         Type.$inject = inherited.concat( Type.$inject );
                     }
                 }
                 if ( !isFunc( member ) )
-                    throw new Error( "Constructor must be a function." );
+                    throw new TypeError( "Constructor must be a function." );
             }
 
             Type.members[ name ] =
@@ -159,7 +159,7 @@ var type = window.type = function()
                     Type.parent.members.ctor !== undefined &&
                     Type.parent.members.ctor.params.length > 0
                 )
-                    throw new Error( "Constructor must call the base constructor explicitly because it contains parameters." );
+                    throw new TypeDefinitionError( "Constructor must call the base constructor explicitly because it contains parameters." );
                 ctorDefined = true;
             }
         });
@@ -182,10 +182,10 @@ var type = window.type = function()
             validateMember( Type, info );
 
             if ( name === CTOR )
-                throw new Error( "Event cannot be named 'ctor'." );
+                throw new TypeDefinitionError( "Event cannot be named 'ctor'." );
 
             if ( info.isVirtual )
-                throw new Error( "Events cannot be virtual." );
+                throw new TypeDefinitionError( "Events cannot be virtual." );
 
             Type.members[ name ] = {
                 access: info.access,
@@ -203,15 +203,15 @@ var type = window.type = function()
     Type.include = function( types )
     {
         if ( ctorDefined )
-            throw new Error( "Mixins must be defined before the constructor." );
+            throw new TypeDefinitionError( "Mixins must be defined before the constructor." );
 
         each( types, function( mixin )
         {
             if ( !isTypeOurs( mixin ) )
-                throw new Error( "Mixin must be a type." );
+                throw new TypeError( "Mixin must be a type." );
 
             if ( mixin === Type )
-                throw new Error( "Cannot include self." );
+                throw new TypeDefinitionError( "Cannot include self." );
 
             checkMixinForCircularReference( Type, mixin );
             Type.mixins.push( mixin );

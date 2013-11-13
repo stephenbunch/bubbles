@@ -61,7 +61,7 @@ function build( type, scope )
             type.parent.members.ctor.params.length > 0 &&
             ( type.members.ctor === undefined || !type.members.ctor.callsuper )
         )
-            throw new Error( "Base constructor contains parameters and must be called explicitly." );
+            throw new TypeInitializationError( "Base constructor contains parameters and must be called explicitly." );
 
         inits |= SCOPE;
         scope.parent = type.parent();
@@ -164,7 +164,7 @@ function buildMethod( type, scope, name, member )
                     // Make sure we're initializing a valid mixin.
                     var i = indexOf( queue, mixin );
                     if ( i === -1 )
-                        throw new Error( "Mixin is not defined for this type or has already been initialized." );
+                        throw new TypeInitializationError( "Mixin is not defined for this type or has already been initialized." );
 
                     var args = makeArray( arguments );
                     args.shift();
@@ -191,7 +191,7 @@ function buildMethod( type, scope, name, member )
 
             if ( queue.length > 0 )
             {
-                throw new Error( "Some mixins were not initialized. Please make sure the constructor " +
+                throw new TypeInitializationError( "Some mixins were not initialized. Please make sure the constructor " +
                     "calls this._init() for each mixin having parameters in its constructor." );
             }
         };
@@ -397,20 +397,20 @@ function addProperty( obj, name, accessors )
     if ( Object.defineProperty )
         Object.defineProperty( obj, name, accessors );
     else
-        throw new Error( "JavaScript properties are not supported by this browser." );
+        throw new TypeInitializationError( "JavaScript properties are not supported by this browser." );
 }
 
 function readOnlyGet( name )
 {
     return function() {
-        throw new TypeError( "Cannot read from write only property '" + name + "'." );
+        throw new AccessViolationError( "Cannot read from write only property '" + name + "'." );
     };
 }
 
 function writeOnlySet( name )
 {
     return function() {
-        throw new TypeError( "Cannot assign to read only property '" + name + "'." );
+        throw new AccessViolationError( "Cannot assign to read only property '" + name + "'." );
     };
 }
 
