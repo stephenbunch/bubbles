@@ -152,8 +152,14 @@ type.injector = type().def(
         {
             if ( isFunc( type ) )
                 self.register( prefix + name, type );
-            else
+            else if ( isPlainObject( type ) )
                 self.registerGraph( prefix + name, type );
+            else
+            {
+                self.register( prefix + name, function() {
+                    return type;
+                });
+            }
         });
     }
 });

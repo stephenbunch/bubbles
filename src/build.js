@@ -426,7 +426,7 @@ function applyPrototypeMembers( type, obj )
         applyPrototypeMembers( proto.constructor, obj );
     for ( var prop in proto )
     {
-        if ( proto.hasOwnProperty( prop ) )
+        if ( hasOwnProperty( proto, prop ) )
             obj[ prop ] = proto[ prop ];
     }
 }

@@ -2,7 +2,7 @@
  * @private
  * @description
  * Determines whether an object can be iterated over like an array.
- * Inspired by jQuery.
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
  * @param {object} obj
  * @returns {boolean}
  */
@@ -17,12 +17,13 @@ function isArrayLike( obj )
     if ( obj.nodeType === 1 && length )
         return true;
 
-    return type === "array" ||
-        type !== "function" &&
-        (
+    return (
+        type === "array" ||
+        type !== "function" && (
             length === 0 ||
             typeof length === "number" && length > 0 && ( length - 1 ) in obj
-        );
+        )
+    );
 }
 
 /**
@@ -44,7 +45,7 @@ function makeArray( obj )
  * @private
  * @description
  * Iterates of an array or object, passing in the item and index / key.
- * Inspired by jQuery.
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
  * @param {object|array} obj
  * @param {function} callback
  */
@@ -63,7 +64,7 @@ function each( obj, callback )
     {
         for ( i in obj )
         {
-            if ( obj.hasOwnProperty( i ) && callback.call( obj[ i ], obj[ i ], i ) === false )
+            if ( hasOwnProperty( obj, i ) && callback.call( obj[ i ], obj[ i ], i ) === false )
                 break;
         }
     }
@@ -126,16 +127,31 @@ var keys = Object.keys || function( object )
     var ret = [];
     for ( var key in object )
     {
-        if ( object.hasOwnProperty( key ) )
+        if ( hasOwnProperty( object, key ) )
             ret.push( key );
     }
     return ret;
 };
 
+/**
+ * @private
+ * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
+ * @param {mixed} obj
+ * @param {string} prop
+ * @returns {boolean}
+ */
 function hasOwnProperty( obj, prop ) {
     return Object.prototype.hasOwnProperty.call( obj, prop );
 }
 
+/**
+ * @private
+ * @description
+ * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
+ * @param {array} array
+ * @param {mixed} item
+ * @returns {number}
+ */
 function indexOf( array, item )
 {
     if ( array.indexOf )
@@ -153,4 +169,41 @@ function indexOf( array, item )
         });
         return index;
     }
+}
+
+/**
+ * @private
+ * @description Determines whether an object was created using "{}" or "new Object".
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
+ * @param {mixed} obj
+ * @returns {boolean}
+ */
+function isPlainObject( obj )
+{
+    // Not plain objects:
+    // - Any object or value whose internal [[Class]] property is not "[object Object]"
+    // - DOM nodes
+    // - window
+    if ( typeOf( obj ) !== "object" || obj.nodeType || typeOf( obj ) === "window" )
+        return false;
+
+    // Support: Firefox <20
+    // The try/catch suppresses exceptions thrown when attempting to access
+    // the "constructor" property of certain host objects, ie. |window.location|
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
+    try
+    {
+        if (
+            obj.constructor &&
+            !hasOwnProperty( obj.constructor.prototype, "isPrototypeOf" )
+        )
+            return false;
+    }
+    catch ( e ) {
+        return false;
+    }
+
+    // If the function hasn't returned already, we're confident that
+    // |obj| is a plain object, created by {} or constructed with new Object
+    return true;
 }

@@ -96,6 +96,13 @@ describe( "injector", function()
             var foo = injector.resolve( "app.bar.Foo" );
             expect( called ).toBe( 1 );
         });
+
+        it( "should work with value types", function()
+        {
+            var graph = { foo: 2 };
+            var injector = type.injector().autoRegister( graph );
+            expect( injector.resolve( "foo" ) ).toBe( 2 );
+        });
     });
 });
 
