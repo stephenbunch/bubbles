@@ -12,7 +12,7 @@ describe( "type", function()
                 A.def({
                     bar: function() {}
                 });
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
 
         it( "should support the array syntax for specifing constructor dependencies", function()
@@ -73,7 +73,7 @@ describe( "type", function()
                 B.def({
                     ctor: [ "...", function() {} ]
                 });
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
 
         it( "should throw an error if the constructor is defined and no method is provided", function()
@@ -81,11 +81,11 @@ describe( "type", function()
             expect( function()
             {
                 type().def({ ctor: null });
-            }).toThrow();
+            }).toThrowOf( TypeError );
             expect( function()
             {
                 type().def({ ctor: [ "foo", "bar" ] });
-            }).toThrow();
+            }).toThrowOf( TypeError );
         });
 
         it( "should throw an error if a property's get accessor is not a method or null", function()
@@ -98,7 +98,7 @@ describe( "type", function()
                         set: function() {}
                     }
                 });
-            }).toThrow();
+            }).toThrowOf( TypeError );
         });
 
         it( "should throw an error if a property's set accessor is not a method or null", function()
@@ -111,7 +111,7 @@ describe( "type", function()
                         set: "bar"
                     }
                 });
-            }).toThrow();
+            }).toThrowOf( TypeError );
         });
 
         it( "should throw an error if a property's read/write capabilities are redefined", function()
@@ -129,7 +129,7 @@ describe( "type", function()
                         set: function() {}
                     }
                 });
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
 
         it( "should throw an error if access modifers are specified for both property accessors", function()
@@ -142,7 +142,7 @@ describe( "type", function()
                         __set: null
                     }
                 });
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
 
         it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
@@ -156,7 +156,7 @@ describe( "type", function()
                 B.def({
                     ctor: function() {}
                 });
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
     });
 
@@ -169,7 +169,7 @@ describe( "type", function()
             expect( function()
             {
                 B.extend( A );
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
 
         it( "can extend native javascript types", function()
@@ -189,19 +189,19 @@ describe( "type", function()
             expect( function()
             {
                 A.extend( A );
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
 
             var B = type().extend( A );
             expect( function()
             {
                 A.extend( B );
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
 
             var C = type().extend( B );
             expect( function()
             {
                 A.extend( C );
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
     });
 
@@ -256,19 +256,19 @@ describe( "type", function()
             expect( function()
             {
                 A.include([ A ]);
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
 
             var B = type().include([ A ]);
             expect( function()
             {
                 A.include([ B ]);
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
 
             var C = type().include([ B ]);
             expect( function()
             {
                 A.include([ C ]);
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
 
         it( "should throw an error if mixin is not a type", function()
@@ -277,7 +277,7 @@ describe( "type", function()
             expect( function()
             {
                 A.include([ function() {} ]);
-            }).toThrow();
+            }).toThrowOf( TypeError );
         });
 
         it( "should throw an error if the constructor has already been defined", function()
@@ -289,7 +289,7 @@ describe( "type", function()
             expect( function()
             {
                 B.include([ A ]);
-            }).toThrow();
+            }).toThrowOf( type.DefinitionError );
         });
     });
 

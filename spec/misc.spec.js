@@ -9,7 +9,7 @@ describe( "type instantiation", function()
         expect( function()
         {
             var b = new B();
-        }).toThrow();
+        }).toThrowOf( type.InitializationError );
     });
 
     it( "should work without the 'new' operator", function()
@@ -35,7 +35,7 @@ describe( "type instantiation", function()
         expect( function()
         {
             var c = new C();
-        }).toThrow();
+        }).toThrowOf( type.InitializationError );
     });
 });
 

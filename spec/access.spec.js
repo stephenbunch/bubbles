@@ -64,7 +64,7 @@ describe( "__<name> (private members)", function()
             A.def({
                 __foo: function() { }
             });
-        }).toThrow();
+        }).toThrowOf( type.DefinitionError );
     });
 });
 
@@ -115,7 +115,7 @@ describe( "_<name> (protected members)", function()
             B.def({
                 _foo: function() { }
             });
-        }).toThrow();
+        }).toThrowOf( type.DefinitionError );
     });
 });
 
@@ -162,7 +162,7 @@ describe( "_$<name> (protected virtual members)", function()
             C.def({
                 _foo: function() { }
             });
-        }).toThrow();
+        }).toThrowOf( type.DefinitionError );
     });
 
     it( "cannot be made public", function()
@@ -178,7 +178,7 @@ describe( "_$<name> (protected virtual members)", function()
             B.def({
                 $foo: function() { }
             });
-        }).toThrow();
+        }).toThrowOf( type.DefinitionError );
     });
 });
 
@@ -197,7 +197,7 @@ describe( "$<name> (public virtual members)", function()
             B.def({
                 _$foo: function() { }
             });
-        }).toThrow();
+        }).toThrowOf( type.DefinitionError );
     });
 });
 
@@ -221,7 +221,7 @@ describe( "virtual members", function()
             C.def({
                 foo: function() { }
             });
-        }).toThrow();
+        }).toThrowOf( type.DefinitionError );
     });
 });
 

@@ -1,17 +1,17 @@
-var TypeDefinitionError = function( message ) {
+var DefinitionError = type.DefinitionError = function( message ) {
     this.message = message;
 };
-TypeDefinitionError.prototype = new Error();
-TypeDefinitionError.prototype.name = "TypeDefinitionError";
+DefinitionError.prototype = new Error();
+DefinitionError.prototype.name = "type.DefinitionError";
 
-var TypeInitializationError = function( message ) {
+var InitializationError = type.InitializationError = function( message ) {
     this.message = message;
 };
-TypeInitializationError.prototype = new Error();
-TypeInitializationError.prototype.name = "TypeInitializationError";
+InitializationError.prototype = new Error();
+InitializationError.prototype.name = "type.InitializationError";
 
-var AccessViolationError = function( message ) {
+var AccessViolationError = type.AccessViolationError = function( message ) {
     this.message = message;
 };
 AccessViolationError.prototype = new Error();
-AccessViolationError.prototype.name = "AccessViolationError";
+AccessViolationError.prototype.name = "type.AccessViolationError";

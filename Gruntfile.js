@@ -16,6 +16,7 @@ module.exports = function( grunt )
                     'src/intro.js',
                     'src/helpers.js',
                     'src/type.js',
+                    'src/errors.js',
                     'src/define.js',
                     'src/build.js',
                     'src/inject.js',
@@ -45,6 +46,7 @@ module.exports = function( grunt )
             all: {
                 src: 'dist/type.js',
                 options: {
+                    helpers: 'spec/helpers.js',
                     specs: 'spec/**/*.spec.js'
                 }
             }

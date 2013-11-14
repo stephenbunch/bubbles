@@ -4,8 +4,7 @@ type.providerOf = function( service ) {
 
 type.injector = type().def(
 {
-    ctor: function()
-    {
+    ctor: function() {
         this.container = {};
     },
 

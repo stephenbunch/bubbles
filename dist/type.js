@@ -352,7 +352,7 @@ var type = window.type = function()
         // Since name collision detection happens when the type is defined, we must prevent people
         // from changing the inheritance hierarchy after defining members.
         if ( keys( Type.members ).length > 0 )
-            throw new TypeDefinitionError( "Cannot change the base type after members have been defined." );
+            throw new DefinitionError( "Cannot change the base type after members have been defined." );
 
         if ( !isFunc( Base ) )
             throw new TypeError( "Base type must be a function." );
@@ -365,7 +365,7 @@ var type = window.type = function()
             while ( t )
             {
                 if ( t === Type )
-                    throw new TypeDefinitionError( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
+                    throw new DefinitionError( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
                 t = t.parent;
             }
 
@@ -416,7 +416,7 @@ var type = window.type = function()
                     {
                         var inherited = getInheritedDependencies( Type );
                         if ( inherited.length === 0 )
-                            throw new TypeDefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
+                            throw new DefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
                         Type.$inject.splice( 0, 1 );
                         Type.$inject = inherited.concat( Type.$inject );
                     }
@@ -444,7 +444,7 @@ var type = window.type = function()
                     Type.parent.members.ctor !== undefined &&
                     Type.parent.members.ctor.params.length > 0
                 )
-                    throw new TypeDefinitionError( "Constructor must call the base constructor explicitly because it contains parameters." );
+                    throw new DefinitionError( "Constructor must call the base constructor explicitly because it contains parameters." );
                 ctorDefined = true;
             }
         });
@@ -467,10 +467,10 @@ var type = window.type = function()
             validateMember( Type, info );
 
             if ( name === CTOR )
-                throw new TypeDefinitionError( "Event cannot be named 'ctor'." );
+                throw new DefinitionError( "Event cannot be named 'ctor'." );
 
             if ( info.isVirtual )
-                throw new TypeDefinitionError( "Events cannot be virtual." );
+                throw new DefinitionError( "Events cannot be virtual." );
 
             Type.members[ name ] = {
                 access: info.access,
@@ -488,7 +488,7 @@ var type = window.type = function()
     Type.include = function( types )
     {
         if ( ctorDefined )
-            throw new TypeDefinitionError( "Mixins must be defined before the constructor." );
+            throw new DefinitionError( "Mixins must be defined before the constructor." );
 
         each( types, function( mixin )
         {
@@ -496,7 +496,7 @@ var type = window.type = function()
                 throw new TypeError( "Mixin must be a type." );
 
             if ( mixin === Type )
-                throw new TypeDefinitionError( "Cannot include self." );
+                throw new DefinitionError( "Cannot include self." );
 
             checkMixinForCircularReference( Type, mixin );
             Type.mixins.push( mixin );
@@ -507,6 +507,24 @@ var type = window.type = function()
     return Type;
 };
 
+var DefinitionError = type.DefinitionError = function( message ) {
+    this.message = message;
+};
+DefinitionError.prototype = new Error();
+DefinitionError.prototype.name = "type.DefinitionError";
+
+var InitializationError = type.InitializationError = function( message ) {
+    this.message = message;
+};
+InitializationError.prototype = new Error();
+InitializationError.prototype.name = "type.InitializationError";
+
+var AccessViolationError = type.AccessViolationError = function( message ) {
+    this.message = message;
+};
+AccessViolationError.prototype = new Error();
+AccessViolationError.prototype.name = "type.AccessViolationError";
+
 /**
  * @private
  * @description Checks mixin for circular references.
@@ -516,7 +534,7 @@ var type = window.type = function()
 function checkMixinForCircularReference( type, mixin )
 {
     if ( type === mixin )
-        throw new TypeDefinitionError( "Cannot include type that includes self." );
+        throw new DefinitionError( "Cannot include type that includes self." );
     each( mixin.mixins, function( m )
     {
         checkMixinForCircularReference( type, m );
@@ -608,7 +626,7 @@ function validateMember( type, info )
 {
     // check for name collision
     if ( isUsed( type, info.name ) )
-        throw new TypeDefinitionError( "Member '" + info.name + "' is already defined." );
+        throw new DefinitionError( "Member '" + info.name + "' is already defined." );
 
     // make sure the access modifier isn't being changed
     if (
@@ -618,8 +636,8 @@ function validateMember( type, info )
         type.parent.members[ info.name ].access !== info.access
     )
     {
-        throw new TypeDefinitionError( "Cannot change access modifier of member '" + name + "' from " +
-            type.parent.members[ name ].access + " to " + info.access + "." );
+        throw new DefinitionError( "Cannot change access modifier of member '" + name + "' from " +
+            type.parent.members[ info.name ].access + " to " + info.access + "." );
     }
 }
 
@@ -689,12 +707,12 @@ function defineProperty( Type, info, property )
         type = type.toLowerCase();
         var twoLetter = type.substr( 0, 2 );
         if ( IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ type[0] ] )
-            throw new TypeDefinitionError( "Property '" + info.name + "' cannot have virtual accessors." );
+            throw new DefinitionError( "Property '" + info.name + "' cannot have virtual accessors." );
 
         var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ type[0] ] || info.access;
         if ( ACCESS[ access ] < ACCESS[ info.access ] )
         {
-            throw new TypeDefinitionError( "The " + type + " accessor of the property '" + info.name +
+            throw new DefinitionError( "The " + type + " accessor of the property '" + info.name +
                 "' cannot have a lower access modifier than the property itself." );
         }
 
@@ -713,13 +731,13 @@ function defineProperty( Type, info, property )
             Type.parent.members[ info.name ][ type ].access !== access
         )
         {
-            throw new TypeDefinitionError( "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
+            throw new DefinitionError( "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
                 "' from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
         }
 
         if ( method !== null && !isFunc( method ) )
         {
-            throw new TypeDefinitionError( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
+            throw new TypeError( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
                 info.name + "' must be a function or null (uses default implementation.)" );
         }
         
@@ -733,7 +751,7 @@ function defineProperty( Type, info, property )
     property.set = temp.set;
 
     if ( different === 2 )
-        throw new TypeDefinitionError( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
+        throw new DefinitionError( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
 
     if ( property.get === undefined && property.set === undefined )
     {
@@ -765,7 +783,7 @@ function defineProperty( Type, info, property )
             Type.parent.members[ info.name ].access !== PRIVATE &&
             Type.parent.members[ info.name ][ type ] === undefined
         )
-            throw new TypeDefinitionError( "Cannot change read/write definition of property '" + info.name + "'." );
+            throw new DefinitionError( "Cannot change read/write definition of property '" + info.name + "'." );
 
         Type.members[ info.name ][ type ] =
         {
@@ -860,7 +878,7 @@ function build( type, scope )
             type.parent.members.ctor.params.length > 0 &&
             ( type.members.ctor === undefined || !type.members.ctor.callsuper )
         )
-            throw new TypeInitializationError( "Base constructor contains parameters and must be called explicitly." );
+            throw new InitializationError( "Base constructor contains parameters and must be called explicitly." );
 
         inits |= SCOPE;
         scope.parent = type.parent();
@@ -963,7 +981,7 @@ function buildMethod( type, scope, name, member )
                     // Make sure we're initializing a valid mixin.
                     var i = indexOf( queue, mixin );
                     if ( i === -1 )
-                        throw new TypeInitializationError( "Mixin is not defined for this type or has already been initialized." );
+                        throw new InitializationError( "Mixin is not defined for this type or has already been initialized." );
 
                     var args = makeArray( arguments );
                     args.shift();
@@ -990,7 +1008,7 @@ function buildMethod( type, scope, name, member )
 
             if ( queue.length > 0 )
             {
-                throw new TypeInitializationError( "Some mixins were not initialized. Please make sure the constructor " +
+                throw new InitializationError( "Some mixins were not initialized. Please make sure the constructor " +
                     "calls this._init() for each mixin having parameters in its constructor." );
             }
         };
@@ -1196,7 +1214,7 @@ function addProperty( obj, name, accessors )
     if ( Object.defineProperty )
         Object.defineProperty( obj, name, accessors );
     else
-        throw new TypeInitializationError( "JavaScript properties are not supported by this browser." );
+        throw new InitializationError( "JavaScript properties are not supported by this browser." );
 }
 
 function readOnlyGet( name )
@@ -1236,8 +1254,7 @@ type.providerOf = function( service ) {
 
 type.injector = type().def(
 {
-    ctor: function()
-    {
+    ctor: function() {
         this.container = {};
     },
 

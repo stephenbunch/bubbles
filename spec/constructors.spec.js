@@ -93,7 +93,7 @@ describe( "constructors", function()
             A.def({
                 ctor: function() { }
             });
-        }).toThrow();
+        }).toThrowOf( type.DefinitionError );
     });
 
     it( "should not show up on the private scope or the public interface", function()

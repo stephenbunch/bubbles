@@ -142,7 +142,7 @@ describe( "properties", function()
         expect( function()
         {
             a.foo = 2;
-        }).toThrow();
+        }).toThrowOf( type.AccessViolationError );
     });
 
     it( "should throw an error if writing to a read-only property or reading from a write-only property", function()
@@ -152,7 +152,7 @@ describe( "properties", function()
         expect( function()
         {
             a.foo = 2;
-        }).toThrow();
+        }).toThrowOf( type.AccessViolationError );
     });
 
     it( "can be protected with a private setter", function()
@@ -172,7 +172,7 @@ describe( "properties", function()
         expect( function()
         {
             b.write( "test" );
-        }).toThrow();
+        }).toThrowOf( type.AccessViolationError );
     });
 
     it( "should be enumerable", function()
