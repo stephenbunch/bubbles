@@ -121,4 +121,22 @@ describe( "type.provider()", function()
         var provider = injector.resolve( type.providerOf( "foo" ) );
         expect( provider( 5 ) ).toBe( 7 );
     });
+
+    it( "should not reuse dependencies", function()
+    {
+        var foo = 0;
+        var bar = function() {};
+        bar.$inject = [ "foo" ];
+        var injector = type.injector().register(
+        {
+            foo: function() {
+                return ++foo;
+            },
+            bar: bar
+        });
+        var provider = injector.resolve( type.providerOf( "bar" ) );
+        provider();
+        provider();
+        expect( foo ).toBe( 2 );
+    });
 });

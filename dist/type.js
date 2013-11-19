@@ -1345,17 +1345,22 @@ type.injector = type().def(
                     throw new Error( "Service \"" + service + "\" not found." );
             }
         }
-        var dependencies = [];
-        each( binding.inject, function( dependency )
+        var provider = function()
         {
-            dependencies.push( self.resolve( dependency ) );
-        });
-        var args = makeArray( arguments );
-        args.shift( 0 );
-        var provider = function() {
+            var dependencies = [];
+            each( binding.inject, function( dependency ) {
+                dependencies.push( self.resolve( dependency ) );
+            });
             return binding.create.apply( binding, dependencies.concat( makeArray( arguments ) ) );
         };
-        return lazy ? provider : provider.apply( this, args );
+        if ( lazy )
+            return provider;
+        else
+        {
+            var args = makeArray( arguments );
+            args.shift( 0 );
+            return provider.apply( this, args );
+        }
     },
 
     /**
