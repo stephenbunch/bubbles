@@ -121,4 +121,24 @@ describe( "this", function()
             expect( out ).toBe( true );
         });
     });
+
+    describe( ".children", function()
+    {
+        it( "[get] and [set] should work in IE8", function()
+        {
+            var A = type().def(
+            {
+                get: function() {
+                    return this.children;
+                },
+                set: function( value ) {
+                    this.children = value;
+                }
+            });
+            var a = new A();
+            expect( a.get() ).toBe( undefined );
+            a.set( 2 );
+            expect( a.get() ).toBe( 2 );
+        });
+    });
 });

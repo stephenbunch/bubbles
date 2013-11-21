@@ -29,7 +29,7 @@ var type = window.type = function()
             };
             if ( IE8 )
             {
-                scope.self = document.createElement();
+                scope.self = getPlainDOMObject();
                 applyPrototypeMembers( Scope, scope.self );
             }
             else
@@ -42,7 +42,7 @@ var type = window.type = function()
             run = false;
             if ( IE8 )
             {
-                pub = document.createElement();
+                pub = getPlainDOMObject();
                 applyPrototypeMembers( Type, pub );
             }
             else

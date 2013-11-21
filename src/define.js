@@ -37,7 +37,7 @@ function isTypeOurs( type )
  */
 function defineScope( Type )
 {
-    var Scope = function() { };
+    var Scope = function() {};
     inits &= ~( PUB | SCOPE );
     Scope.prototype = new Type();
     inits |= PUB | SCOPE;

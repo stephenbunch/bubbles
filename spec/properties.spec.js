@@ -175,16 +175,19 @@ describe( "properties", function()
         }).toThrowOf( type.AccessViolationError );
     });
 
-    it( "should be enumerable", function()
+    it( "should be enumerable (except in IE8)", function()
     {
         var A = type().def({ foo: 2 });
         var a = new A();
-        var out;
+        var found = false;
         for ( var p in a )
         {
-            out = p;
-            break;
+            if ( p === "foo" )
+            {
+                found = true;
+                break;
+            }
         }
-        expect( out ).toBe( "foo" );
+        expect( found ).toBe( true );
     });
 });

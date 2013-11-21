@@ -430,3 +430,28 @@ function applyPrototypeMembers( type, obj )
             obj[ prop ] = proto[ prop ];
     }
 }
+
+function getPlainDOMObject()
+{
+    var obj = document.createElement(), prop;
+    for ( prop in obj )
+    {
+        if ( hasOwnProperty( obj, prop ) )
+            overwrite( obj, prop );
+    }
+    function overwrite( obj, prop )
+    {
+        var _value;
+        Object.defineProperty( obj, prop,
+        {
+            configurable: true,
+            get: function() {
+                return _value;
+            },
+            set: function( value ) {
+                _value = value;
+            }
+        });
+    }
+    return obj;
+}
