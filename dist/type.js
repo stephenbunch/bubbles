@@ -1064,9 +1064,9 @@ function buildProperty( type, scope, name, member )
             scope.self._super = _super;
             scope.self._value = function( value )
             {
-                if ( arguments.length === 0 )
-                    return _value;
-                _value = value;
+                if ( arguments.length )
+                    _value = value;
+                return _value;
             };
             var result = method.apply( scope.self, arguments );
             scope.self._super = temp._super;

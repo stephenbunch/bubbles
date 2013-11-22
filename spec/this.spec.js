@@ -141,4 +141,23 @@ describe( "this", function()
             expect( a.get() ).toBe( 2 );
         });
     });
+
+    describe( "._value()", function()
+    {
+        it( "[set] should return the new value", function()
+        {
+            var out = null;
+            var A = type().def({
+                foo: {
+                    get: null,
+                    set: function( value ) {
+                        out = this._value( value );
+                    }
+                }
+            });
+            var a = new A();
+            a.foo = 2;
+            expect( out ).toBe( 2 );
+        });
+    });
 });
