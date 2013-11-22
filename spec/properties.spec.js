@@ -16,10 +16,10 @@ describe( "properties", function()
                 def({
                     foo: {
                         get: function() {
-                            return this._value * 2;
+                            return this._value() * 2;
                         },
                         set: function( value ) {
-                            this._value = value * 2;
+                            this._value( value * 2 );
                         }
                     }
                 });
@@ -34,10 +34,10 @@ describe( "properties", function()
                 def({
                     $foo: {
                         get: function() {
-                            return "hello " + this._value;
+                            return "hello " + this._value();
                         },
                         set: function( value ) {
-                            this._value = value;
+                            this._value( value );
                         }
                     }
                 });
@@ -67,7 +67,7 @@ describe( "properties", function()
             foo: {
                 value: 3,
                 get: function() {
-                    return this._value;
+                    return this._value();
                 }
             }
         });
@@ -85,7 +85,7 @@ describe( "properties", function()
                 get: null,
                 set: function( value )
                 {
-                    this._value = value;
+                    this._value( value );
                     out = this.foo;
                 }
             }
@@ -106,7 +106,7 @@ describe( "properties", function()
                 set: function( value )
                 {
                     out1 = this.foo;
-                    this._value = value;
+                    this._value( value );
                     out2 = this.foo;
                 }
             }

@@ -144,7 +144,11 @@ function buildMethod( type, scope, name, member )
 
             // Run each mixin's constructor. If the constructor contains parameters, add it to the queue.
             var queue = [];
-            var tempInit = scope.self._init;
+            var temp = {
+                _init: scope.self._init,
+                _super: scope.self._super
+            };
+
             each( type.mixins, function( mixin, i )
             {
                 if ( mixin.members.ctor !== undefined )
@@ -176,7 +180,6 @@ function buildMethod( type, scope, name, member )
             }
 
             // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
-            var tempSuper = scope.self._super;
             if ( type.parent !== null && type.parent.members.ctor !== undefined )
             {
                 if ( type.parent.members.ctor.params.length > 0 )
@@ -186,8 +189,8 @@ function buildMethod( type, scope, name, member )
             }
 
             member.method.apply( scope.self, arguments );
-            scope.self._super = tempSuper;
-            scope.self._init = tempInit;
+            scope.self._super = temp._super;
+            scope.self._init = temp._init;
 
             if ( queue.length > 0 )
             {
@@ -237,35 +240,20 @@ function buildProperty( type, scope, name, member )
     {
         return function()
         {
-            var temp = scope.self._super;
+            var temp = {
+                _super: scope.self._super,
+                _value: scope.self._value
+            };
             scope.self._super = _super;
-
-            var config = Object.getOwnPropertyDescriptor( scope.self, "_value" );
-            addProperty( scope.self, "_value",
+            scope.self._value = function( value )
             {
-                get: function()
-                {
+                if ( arguments.length === 0 )
                     return _value;
-                },
-
-                set: function( value )
-                {
-                    _value = value;
-                }
-            });
-            
+                _value = value;
+            };
             var result = method.apply( scope.self, arguments );
-            scope.self._super = temp;
-
-            if ( config )
-            {
-                addProperty( scope.self, "_value",
-                {
-                    get: config.get,
-                    set: config.set
-                });
-            }
-
+            scope.self._super = temp._super;
+            scope.self._value = temp._value;
             return result;
         };
     }

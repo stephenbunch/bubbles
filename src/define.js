@@ -235,13 +235,13 @@ function defineProperty( Type, info, property )
     if ( property.get !== undefined && !isFunc( property.get.method ) )
     {
         property.get.method = function() {
-            return this._value;
+            return this._value();
         };
     }
     if ( property.set !== undefined && !isFunc( property.set.method ) )
     {
         property.set.method = function( value ) {
-            this._value = value;
+            this._value( value );
         };
     }
 
