@@ -260,6 +260,19 @@ describe( "Provider", function()
         expect( calledA ).toBe( 3 );
         expect( calledB ).toBe( 0 );
     });
+
+    it( "should get the underlying service when being fetched", function()
+    {
+        var injector = type.injector();
+        window.require = window.require || function() {};
+        var out = null;
+        spyOn( window, "require" ).andCallFake( function( modules )
+        {
+            out = modules[0];
+        });
+        injector.fetch( type.providerOf( "foo" ) );
+        expect( out ).toBe( "foo" );
+    });
 });
 
 describe( "LazyProvider", function()

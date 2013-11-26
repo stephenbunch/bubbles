@@ -1727,7 +1727,12 @@ type.injector = type().def(
     {
         function load()
         {
-            modules = map( tree.missing, function( service ) {
+            modules = map( tree.missing, function( service )
+            {
+                if ( service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
+                    service = service.substr( PROVIDER.length );
+                else if ( service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service ) )
+                    service = service.substr( LAZY_PROVIDER.length );
                 return service.replace( /\./g, "/" );
             });
             require( modules, done, fail );
