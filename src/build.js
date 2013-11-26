@@ -3,7 +3,7 @@
  * @description Initializes the type.
  * @param {Type} type The type to initialize.
  * @param {object} pub The public interface to initialize on.
- * @param {array} args Arguments for the constructor.
+ * @param {Array} args Arguments for the constructor.
  * @param {boolean} ctor Run the constructor.
  */
 function init( type, pub, args, ctor )
@@ -57,9 +57,9 @@ function build( type, scope )
     if ( type.parent !== null )
     {
         if (
-            type.parent.members.ctor !== undefined &&
+            type.parent.members.ctor &&
             type.parent.members.ctor.params.length > 0 &&
-            ( type.members.ctor === undefined || !type.members.ctor.callsuper )
+            ( !type.members.ctor || !type.members.ctor.callsuper )
         )
             throw new InitializationError( "Base constructor contains parameters and must be called explicitly." );
 
@@ -77,7 +77,7 @@ function build( type, scope )
     // Add type members.
     each( type.members, function( member, name )
     {
-        if ( member.method !== undefined )
+        if ( member.method )
             buildMethod( type, scope, name, member );
         else if ( member.isEvent )
             buildEvent( type, scope, name );
@@ -86,7 +86,7 @@ function build( type, scope )
     });
 
     // If a constructor isn't defined, provide a default one.
-    if ( scope.self.ctor === undefined )
+    if ( !scope.self.ctor )
     {
         buildMethod( type, scope, "ctor",
         {
@@ -106,18 +106,18 @@ function createProxy( srcType, srcObj, dstType, dstObj )
     {
         // If the member is private or if it's been overridden by the child, don't make a reference
         // to the parent implementation.
-        if ( member.access === PRIVATE || dstType.members[ name ] !== undefined ) return;
+        if ( member.access === PRIVATE || dstType.members[ name ] ) return;
 
-        if ( member.method !== undefined || member.isEvent )
+        if ( member.method || member.isEvent )
             dstObj[ name ] = srcObj[ name ];
         else
         {
             addProperty( dstObj, name,
             {
-                get: member.get === undefined || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
                     return srcObj[ name ];
                 },
-                set: member.set === undefined || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
                     srcObj[ name ] = value;
                 }
             });
@@ -151,7 +151,7 @@ function buildMethod( type, scope, name, member )
 
             each( type.mixins, function( mixin, i )
             {
-                if ( mixin.members.ctor !== undefined )
+                if ( mixin.members.ctor )
                 {
                     if ( mixin.members.ctor.params.length > 0 )
                         queue.push( mixin );
@@ -180,7 +180,7 @@ function buildMethod( type, scope, name, member )
             }
 
             // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
-            if ( type.parent !== null && type.parent.members.ctor !== undefined )
+            if ( type.parent !== null && type.parent.members.ctor )
             {
                 if ( type.parent.members.ctor.params.length > 0 )
                     scope.self._super = scope.parent.self.ctor;
@@ -203,7 +203,7 @@ function buildMethod( type, scope, name, member )
     {
         if (
             scope.parent !== null &&
-            scope.parent.self[ name ] !== undefined &&
+            scope.parent.self[ name ] &&
             member.callsuper
         )
         {
@@ -260,7 +260,7 @@ function buildProperty( type, scope, name, member )
 
     var _value = member.value;
     var accessors = {};
-    if ( member.get !== undefined )
+    if ( member.get )
     {
         accessors.get = accessor(
             member.get.method,
@@ -273,7 +273,7 @@ function buildProperty( type, scope, name, member )
     {
         accessors.get = readOnlyGet( name );
     }
-    if ( member.set !== undefined )
+    if ( member.set )
     {
         accessors.set = accessor(
             member.set.method,
@@ -332,7 +332,7 @@ function expose( type, scope, pub )
         if ( member.access !== PUBLIC )
             return;
 
-        if ( member.method !== undefined )
+        if ( member.method )
         {
             pub[ name ] = scope.self[ name ];
         }
@@ -348,10 +348,10 @@ function expose( type, scope, pub )
         {
             addProperty( pub, name,
             {
-                get: member.get === undefined || member.get.access !== PUBLIC ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access !== PUBLIC ? readOnlyGet( name ) : function() {
                     return scope.self[ name ];
                 },
-                set: member.set === undefined || member.set.access !== PUBLIC ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access !== PUBLIC ? writeOnlySet( name ) : function( value ) {
                     scope.self[ name ] = value;
                 }
             });

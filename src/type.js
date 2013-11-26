@@ -1,6 +1,6 @@
 /**
  * @description Defines a new type.
- * @returns {Type}
+ * @return {Type}
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
@@ -60,7 +60,7 @@ var type = window.type = function()
     /**
      * @description Sets the base type.
      * @param {Type|function} Base
-     * @returns {Type}
+     * @return {Type}
      */
     Type.extend = function( Base )
     {
@@ -110,7 +110,7 @@ var type = window.type = function()
         </pre>
      *
      * @param {hash} members
-     * @returns {Type}
+     * @return {Type}
      */
     Type.def = function( members )
     {
@@ -156,7 +156,7 @@ var type = window.type = function()
                 if (
                     !Type.members.ctor.callsuper &&
                     Type.parent !== null &&
-                    Type.parent.members.ctor !== undefined &&
+                    Type.parent.members.ctor &&
                     Type.parent.members.ctor.params.length > 0
                 )
                     throw new DefinitionError( "Constructor must call the base constructor explicitly because it contains parameters." );
@@ -169,8 +169,8 @@ var type = window.type = function()
 
     /**
      * @description Defines events on the type.
-     * @param {array} events
-     * @returns {Type}
+     * @param {Array} events
+     * @return {Type}
      */
     Type.events = function( events )
     {
@@ -197,8 +197,8 @@ var type = window.type = function()
 
     /**
      * @descriptions Mixes other types in with the type.
-     * @param {array} types
-     * @returns {Type}
+     * @param {Array} types
+     * @return {Type}
      */
     Type.include = function( types )
     {

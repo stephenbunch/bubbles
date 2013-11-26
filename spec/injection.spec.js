@@ -50,6 +50,48 @@ describe( "injector", function()
         });
     });
 
+    describe( ".fetch()", function()
+    {
+        it( "should behave as '.resolve()', but return a Promise object instead of the resolved dependency", function()
+        {
+            var injector = type.injector().constant( "foo", 2 );
+            var out = null;
+            runs( function()
+            {
+                injector.fetch( "foo" ).then( function( foo )
+                {
+                    out = foo;
+                });
+            });
+            runs( function()
+            {
+                expect( out ).toBe( 2 );
+            });
+        });
+
+        it( "should try to use RequireJS to load missing dependencies", function()
+        {
+            var out = null;
+            spyOn( window, "require" ).andCallFake( function( modules, callback )
+            {
+                expect( modules ).toEqual([ "app/foo" ]);
+                callback( function() { return 2; } );
+            });
+            var injector = type.injector();
+            runs( function()
+            {
+                injector.fetch( "app.foo" ).then( function( foo )
+                {
+                    out = foo;
+                });
+            });
+            runs( function()
+            {
+                expect( out ).toBe( 2 );
+            });
+        });
+    });
+
     describe( ".constant()", function()
     {
         it( "should register and bind services to constants", function()
@@ -106,7 +148,7 @@ describe( "injector", function()
     });
 });
 
-describe( "type.provider()", function()
+describe( "type.providerOf()", function()
 {
     it( "can be listed as a dependency", function()
     {
@@ -138,5 +180,26 @@ describe( "type.provider()", function()
         provider();
         provider();
         expect( foo ).toBe( 2 );
+    });
+});
+
+describe( "type.lazyProviderOf()", function()
+{
+    it( "should behave as `type.providerOf()`, but return a Promise object instead of the service instance", function()
+    {
+        var injector = type.injector().constant( "foo", 2 );
+        var provider = injector.resolve( type.lazyProviderOf( "foo" ) );
+        var out = null;
+        runs( function()
+        {
+            provider().then( function( foo )
+            {
+                out = foo;
+            });
+        });
+        runs( function()
+        {
+            expect( out ).toBe( 2 );
+        });
     });
 });

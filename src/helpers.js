@@ -4,7 +4,7 @@
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
  * @param {object} obj
- * @returns {boolean}
+ * @return {boolean}
  */
 function isArrayLike( obj )
 {
@@ -30,7 +30,7 @@ function isArrayLike( obj )
  * @private
  * @description Turns an object into a true array.
  * @param {object} obj
- * @returns {array}
+ * @return {Array}
  */
 function makeArray( obj )
 {
@@ -47,7 +47,7 @@ function makeArray( obj )
  * Iterates of an array or object, passing in the item and index / key.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
  * @param {object|array} obj
- * @param {function} callback
+ * @param {function()} callback
  */
 function each( obj, callback )
 {
@@ -76,7 +76,7 @@ function each( obj, callback )
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
  * @param {object} object
- * @returns {string}
+ * @return {string}
  */
 function typeOf( object )
 {
@@ -88,7 +88,7 @@ function typeOf( object )
  * @private
  * @description Determines whether an object is a function.
  * @param {object}
- * @returns {boolean}
+ * @return {boolean}
  */
 function isFunc( object ) {
     return typeOf( object ) === "function";
@@ -98,7 +98,7 @@ function isFunc( object ) {
  * @private
  * @description Determines whether an object is an array.
  * @param {object}
- * @returns {boolean}
+ * @return {boolean}
  */
 function isArray( object ) {
     return typeOf( object ) === "array";
@@ -110,7 +110,7 @@ function isArray( object ) {
  * Removes trailing whitespace from a string.
  * http://stackoverflow.com/a/2308157/740996
  * @param {string} value
- * @returns {string}
+ * @return {string}
  */
 function trim( value ) {
     return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
@@ -120,7 +120,7 @@ function trim( value ) {
  * @private
  * @description Gets the keys of an object.
  * @param {object} object
- * @returns {array}
+ * @return {Array}
  */
 var keys = Object.keys || function( object )
 {
@@ -138,7 +138,7 @@ var keys = Object.keys || function( object )
  * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
  * @param {mixed} obj
  * @param {string} prop
- * @returns {boolean}
+ * @return {boolean}
  */
 function hasOwnProperty( obj, prop ) {
     return Object.prototype.hasOwnProperty.call( obj, prop );
@@ -148,9 +148,9 @@ function hasOwnProperty( obj, prop ) {
  * @private
  * @description
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
- * @param {array} array
+ * @param {Array} array
  * @param {mixed} item
- * @returns {number}
+ * @return {number}
  */
 function indexOf( array, item )
 {
@@ -176,7 +176,7 @@ function indexOf( array, item )
  * @description Determines whether an object was created using "{}" or "new Object".
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
  * @param {mixed} obj
- * @returns {boolean}
+ * @return {boolean}
  */
 function isPlainObject( obj )
 {

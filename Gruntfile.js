@@ -19,7 +19,8 @@ module.exports = function( grunt )
                     'src/errors.js',
                     'src/define.js',
                     'src/build.js',
-                    'src/inject.js',
+                    'src/deferred.js',
+                    'src/injector.js',
                     'src/util.js',
                     'src/outro.js'
                 ],
@@ -28,8 +29,10 @@ module.exports = function( grunt )
         },
 
         jshint: {
-            dist: [ 'dist/type.js' ],
-            test: [ 'spec/**/*.js' ]
+            options: {
+                loopfunc: true
+            },
+            uses_defaults: [ 'dist/type.js', 'spec/**/*.js' ]
         },
 
         uglify: {

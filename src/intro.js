@@ -39,6 +39,8 @@ try {
 }
 
 var PROVIDER = "provider`";
+var LAZY_PROVIDER = "lazyProvider`";
+
 var PUBLIC = "public";
 var PRIVATE = "private";
 var PROTECTED = "protected";

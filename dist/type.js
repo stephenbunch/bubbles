@@ -44,6 +44,8 @@ try {
 }
 
 var PROVIDER = "provider`";
+var LAZY_PROVIDER = "lazyProvider`";
+
 var PUBLIC = "public";
 var PRIVATE = "private";
 var PROTECTED = "protected";
@@ -79,7 +81,7 @@ SPECIAL[ undefined ] = "undefined";
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
  * @param {object} obj
- * @returns {boolean}
+ * @return {boolean}
  */
 function isArrayLike( obj )
 {
@@ -105,7 +107,7 @@ function isArrayLike( obj )
  * @private
  * @description Turns an object into a true array.
  * @param {object} obj
- * @returns {array}
+ * @return {Array}
  */
 function makeArray( obj )
 {
@@ -122,7 +124,7 @@ function makeArray( obj )
  * Iterates of an array or object, passing in the item and index / key.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
  * @param {object|array} obj
- * @param {function} callback
+ * @param {function()} callback
  */
 function each( obj, callback )
 {
@@ -151,7 +153,7 @@ function each( obj, callback )
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
  * @param {object} object
- * @returns {string}
+ * @return {string}
  */
 function typeOf( object )
 {
@@ -163,7 +165,7 @@ function typeOf( object )
  * @private
  * @description Determines whether an object is a function.
  * @param {object}
- * @returns {boolean}
+ * @return {boolean}
  */
 function isFunc( object ) {
     return typeOf( object ) === "function";
@@ -173,7 +175,7 @@ function isFunc( object ) {
  * @private
  * @description Determines whether an object is an array.
  * @param {object}
- * @returns {boolean}
+ * @return {boolean}
  */
 function isArray( object ) {
     return typeOf( object ) === "array";
@@ -185,7 +187,7 @@ function isArray( object ) {
  * Removes trailing whitespace from a string.
  * http://stackoverflow.com/a/2308157/740996
  * @param {string} value
- * @returns {string}
+ * @return {string}
  */
 function trim( value ) {
     return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
@@ -195,7 +197,7 @@ function trim( value ) {
  * @private
  * @description Gets the keys of an object.
  * @param {object} object
- * @returns {array}
+ * @return {Array}
  */
 var keys = Object.keys || function( object )
 {
@@ -213,7 +215,7 @@ var keys = Object.keys || function( object )
  * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
  * @param {mixed} obj
  * @param {string} prop
- * @returns {boolean}
+ * @return {boolean}
  */
 function hasOwnProperty( obj, prop ) {
     return Object.prototype.hasOwnProperty.call( obj, prop );
@@ -223,9 +225,9 @@ function hasOwnProperty( obj, prop ) {
  * @private
  * @description
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
- * @param {array} array
+ * @param {Array} array
  * @param {mixed} item
- * @returns {number}
+ * @return {number}
  */
 function indexOf( array, item )
 {
@@ -251,7 +253,7 @@ function indexOf( array, item )
  * @description Determines whether an object was created using "{}" or "new Object".
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
  * @param {mixed} obj
- * @returns {boolean}
+ * @return {boolean}
  */
 function isPlainObject( obj )
 {
@@ -285,7 +287,7 @@ function isPlainObject( obj )
 
 /**
  * @description Defines a new type.
- * @returns {Type}
+ * @return {Type}
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
@@ -345,7 +347,7 @@ var type = window.type = function()
     /**
      * @description Sets the base type.
      * @param {Type|function} Base
-     * @returns {Type}
+     * @return {Type}
      */
     Type.extend = function( Base )
     {
@@ -395,7 +397,7 @@ var type = window.type = function()
         </pre>
      *
      * @param {hash} members
-     * @returns {Type}
+     * @return {Type}
      */
     Type.def = function( members )
     {
@@ -441,7 +443,7 @@ var type = window.type = function()
                 if (
                     !Type.members.ctor.callsuper &&
                     Type.parent !== null &&
-                    Type.parent.members.ctor !== undefined &&
+                    Type.parent.members.ctor &&
                     Type.parent.members.ctor.params.length > 0
                 )
                     throw new DefinitionError( "Constructor must call the base constructor explicitly because it contains parameters." );
@@ -454,8 +456,8 @@ var type = window.type = function()
 
     /**
      * @description Defines events on the type.
-     * @param {array} events
-     * @returns {Type}
+     * @param {Array} events
+     * @return {Type}
      */
     Type.events = function( events )
     {
@@ -482,8 +484,8 @@ var type = window.type = function()
 
     /**
      * @descriptions Mixes other types in with the type.
-     * @param {array} types
-     * @returns {Type}
+     * @param {Array} types
+     * @return {Type}
      */
     Type.include = function( types )
     {
@@ -525,6 +527,12 @@ var AccessViolationError = type.AccessViolationError = function( message ) {
 AccessViolationError.prototype = new Error();
 AccessViolationError.prototype.name = "type.AccessViolationError";
 
+var InvalidOperationError = type.InvalidOperationError = function( message ) {
+    this.message = message;
+};
+InvalidOperationError.prototype = new Error();
+InvalidOperationError.prototype.name = "type.InvalidOperationError";
+
 /**
  * @private
  * @description Checks mixin for circular references.
@@ -544,8 +552,8 @@ function checkMixinForCircularReference( type, mixin )
 /**
  * @private
  * @description Determines whether the type was created by us.
- * @param {function} type
- * @returns {boolean}
+ * @param {function()} type
+ * @return {boolean}
  */
 function isTypeOurs( type )
 {
@@ -560,7 +568,7 @@ function isTypeOurs( type )
  * @private
  * @description Creates a new private scope type.
  * @param {Type} Type
- * @returns {Scope}
+ * @return {Scope}
  */
 function defineScope( Type )
 {
@@ -588,7 +596,7 @@ function defineScope( Type )
 /**
  * @description Gets the member info by parsing the member name.
  * @param {string} name
- * @returns {object}
+ * @return {object}
  */
 function parseMember( name )
 {        
@@ -632,7 +640,7 @@ function validateMember( type, info )
     if (
         info.access !== PRIVATE &&
         type.parent !== null &&
-        type.parent.members[ info.name ] !== undefined &&
+        type.parent.members[ info.name ] &&
         type.parent.members[ info.name ].access !== info.access
     )
     {
@@ -647,12 +655,12 @@ function validateMember( type, info )
  * @param {Type} type The type to check.
  * @param {string} name The member name.
  * @param {bool} [parent] True if the type being checked is a base type.
- * @returns {bool}
+ * @return {bool}
  */
 function isUsed( type, name, parent )
 {
     if (
-        type.members[ name ] !== undefined &&
+        type.members[ name ] &&
         ( !parent || type.members[ name ].access !== PRIVATE ) &&
         ( !parent || !type.members[ name ].isVirtual )
     )
@@ -667,7 +675,7 @@ function isUsed( type, name, parent )
  * @description Defines a method on the type.
  * @param {Type} type
  * @param {string} name
- * @param {function} method
+ * @param {function()} method
  */
 function defineMethod( type, name, method )
 {
@@ -726,8 +734,8 @@ function defineProperty( Type, info, property )
 
         if (
             Type.parent !== null &&
-            Type.parent.members[ info.name ] !== undefined &&
-            Type.parent.members[ info.name ][ type ] !== undefined &&
+            Type.parent.members[ info.name ] &&
+            Type.parent.members[ info.name ][ type ] &&
             Type.parent.members[ info.name ][ type ].access !== access
         )
         {
@@ -753,19 +761,19 @@ function defineProperty( Type, info, property )
     if ( different === 2 )
         throw new DefinitionError( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
 
-    if ( property.get === undefined && property.set === undefined )
+    if ( !property.get && !property.set )
     {
         property.get = { access: info.access };
         property.set = { access: info.access };
     }
 
-    if ( property.get !== undefined && !isFunc( property.get.method ) )
+    if ( property.get && !isFunc( property.get.method ) )
     {
         property.get.method = function() {
             return this._value();
         };
     }
-    if ( property.set !== undefined && !isFunc( property.set.method ) )
+    if ( property.set && !isFunc( property.set.method ) )
     {
         property.set.method = function( value ) {
             this._value( value );
@@ -774,12 +782,12 @@ function defineProperty( Type, info, property )
 
     each([ property.get, property.set ], function( accessor, index )
     {
-        if ( accessor === undefined ) return;
+        if ( !accessor ) return;
 
         var type = index === 0 ? "get" : "set";
         if (
             Type.parent !== null &&
-            Type.parent.members[ info.name ] !== undefined &&
+            Type.parent.members[ info.name ] &&
             Type.parent.members[ info.name ].access !== PRIVATE &&
             Type.parent.members[ info.name ][ type ] === undefined
         )
@@ -793,18 +801,18 @@ function defineProperty( Type, info, property )
         };
     });
 
-    Type.members[ info.name ].value = property.value !== undefined ? property.value : null;
+    Type.members[ info.name ].value = property.value ? property.value : null;
 }
 
 /**
  * @private
  * @description Gets the dependencies required by the parent and any mixins.
- * @returns {array<string>}
+ * @return {array<string>}
  */
 function getInheritedDependencies( type )
 {
     var ret = [];
-    if ( type.parent !== null && type.parent.$inject !== undefined )
+    if ( type.parent !== null && type.parent.$inject )
         ret = ret.concat( type.parent.$inject );
 
     each( type.mixins, function( mixin )
@@ -820,7 +828,7 @@ function getInheritedDependencies( type )
  * @description Initializes the type.
  * @param {Type} type The type to initialize.
  * @param {object} pub The public interface to initialize on.
- * @param {array} args Arguments for the constructor.
+ * @param {Array} args Arguments for the constructor.
  * @param {boolean} ctor Run the constructor.
  */
 function init( type, pub, args, ctor )
@@ -874,9 +882,9 @@ function build( type, scope )
     if ( type.parent !== null )
     {
         if (
-            type.parent.members.ctor !== undefined &&
+            type.parent.members.ctor &&
             type.parent.members.ctor.params.length > 0 &&
-            ( type.members.ctor === undefined || !type.members.ctor.callsuper )
+            ( !type.members.ctor || !type.members.ctor.callsuper )
         )
             throw new InitializationError( "Base constructor contains parameters and must be called explicitly." );
 
@@ -894,7 +902,7 @@ function build( type, scope )
     // Add type members.
     each( type.members, function( member, name )
     {
-        if ( member.method !== undefined )
+        if ( member.method )
             buildMethod( type, scope, name, member );
         else if ( member.isEvent )
             buildEvent( type, scope, name );
@@ -903,7 +911,7 @@ function build( type, scope )
     });
 
     // If a constructor isn't defined, provide a default one.
-    if ( scope.self.ctor === undefined )
+    if ( !scope.self.ctor )
     {
         buildMethod( type, scope, "ctor",
         {
@@ -923,18 +931,18 @@ function createProxy( srcType, srcObj, dstType, dstObj )
     {
         // If the member is private or if it's been overridden by the child, don't make a reference
         // to the parent implementation.
-        if ( member.access === PRIVATE || dstType.members[ name ] !== undefined ) return;
+        if ( member.access === PRIVATE || dstType.members[ name ] ) return;
 
-        if ( member.method !== undefined || member.isEvent )
+        if ( member.method || member.isEvent )
             dstObj[ name ] = srcObj[ name ];
         else
         {
             addProperty( dstObj, name,
             {
-                get: member.get === undefined || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
                     return srcObj[ name ];
                 },
-                set: member.set === undefined || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
                     srcObj[ name ] = value;
                 }
             });
@@ -968,7 +976,7 @@ function buildMethod( type, scope, name, member )
 
             each( type.mixins, function( mixin, i )
             {
-                if ( mixin.members.ctor !== undefined )
+                if ( mixin.members.ctor )
                 {
                     if ( mixin.members.ctor.params.length > 0 )
                         queue.push( mixin );
@@ -997,7 +1005,7 @@ function buildMethod( type, scope, name, member )
             }
 
             // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
-            if ( type.parent !== null && type.parent.members.ctor !== undefined )
+            if ( type.parent !== null && type.parent.members.ctor )
             {
                 if ( type.parent.members.ctor.params.length > 0 )
                     scope.self._super = scope.parent.self.ctor;
@@ -1020,7 +1028,7 @@ function buildMethod( type, scope, name, member )
     {
         if (
             scope.parent !== null &&
-            scope.parent.self[ name ] !== undefined &&
+            scope.parent.self[ name ] &&
             member.callsuper
         )
         {
@@ -1077,7 +1085,7 @@ function buildProperty( type, scope, name, member )
 
     var _value = member.value;
     var accessors = {};
-    if ( member.get !== undefined )
+    if ( member.get )
     {
         accessors.get = accessor(
             member.get.method,
@@ -1090,7 +1098,7 @@ function buildProperty( type, scope, name, member )
     {
         accessors.get = readOnlyGet( name );
     }
-    if ( member.set !== undefined )
+    if ( member.set )
     {
         accessors.set = accessor(
             member.set.method,
@@ -1149,7 +1157,7 @@ function expose( type, scope, pub )
         if ( member.access !== PUBLIC )
             return;
 
-        if ( member.method !== undefined )
+        if ( member.method )
         {
             pub[ name ] = scope.self[ name ];
         }
@@ -1165,10 +1173,10 @@ function expose( type, scope, pub )
         {
             addProperty( pub, name,
             {
-                get: member.get === undefined || member.get.access !== PUBLIC ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access !== PUBLIC ? readOnlyGet( name ) : function() {
                     return scope.self[ name ];
                 },
-                set: member.set === undefined || member.set.access !== PUBLIC ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access !== PUBLIC ? writeOnlySet( name ) : function( value ) {
                     scope.self[ name ] = value;
                 }
             });
@@ -1261,8 +1269,117 @@ function getPlainDOMObject()
     return obj;
 }
 
+var Deferred = function()
+{
+    this.done = [];
+    this.fail = [];
+    this.state = "pending";
+};
+Deferred.prototype =
+{
+    resolve: function( result )
+    {
+        if ( this.state === "pending" )
+        {
+            this.result = result;
+            this.process( "done" );
+        }
+    },
+
+    reject: function( error )
+    {
+        if ( this.state === "pending" )
+        {
+            this.result = error;
+            this.process( "fail" );
+        }
+    },
+
+    promise: function()
+    {
+        var self = this;
+        var promise =
+        {
+            then: function( onSuccess, onError )
+            {
+                if ( self.state === "resolved" )
+                {
+                    if ( onSuccess )
+                        onSuccess.call( undefined, self.result );
+                }
+                else if ( self.state === "rejected" )
+                {
+                    if ( onError )
+                        onError.call( undefined, self.result );
+                }
+                else
+                {
+                    if ( onSuccess )
+                        self.done.push( onSuccess );
+                    if ( onError )
+                        self.fail.push( onError );
+                }
+                return promise;
+            }
+        };
+        return promise;
+    },
+
+    process: function( type )
+    {
+        var self = this,
+            result = this.result,
+            i = 0,
+            len = this[ type ].length;
+        for ( ; i < len; i++ )
+        {
+            try
+            {
+                result = callback.call( undefined, result );    
+            }
+            catch ( e )
+            {
+                this[ type ] = this[ type ].slice( i + 1 );
+                this.reject( e );
+                break;
+            }
+            if ( result !== undefined )
+            {
+                this.result = result;
+                var then;
+                try
+                {
+                    then = result.then;
+                }
+                catch ( e )
+                {
+                    this[ type ] = this[ type ].slice( i + 1 );
+                    this.reject( e );
+                    break;
+                }
+                if ( isFunc( then ) )
+                {
+                    this[ type ] = this[ type ].slice( i + 1 );
+                    then.call( result, function( result )
+                    {
+                        self.resolve( result );
+                    }, function( error )
+                    {
+                        self.reject( error );
+                    });
+                    break;
+                }
+            }
+        }
+    }
+};
+
 type.providerOf = function( service ) {
     return PROVIDER + service;
+};
+
+type.lazyProviderOf = function( service ) {
+    return LAZY_PROVIDER + service;
 };
 
 type.injector = type().def(
@@ -1274,8 +1391,8 @@ type.injector = type().def(
     /**
      * @description Registers a service.
      * @param {string} service
-     * @param {function} provider
-     * @returns {App}
+     * @param {function()} provider
+     * @return {injector}
      */
     register: function( service, provider )
     {
@@ -1290,7 +1407,7 @@ type.injector = type().def(
         }
         each( bindings, function( provider, service )
         {
-            if ( self.container[ service ] !== undefined )
+            if ( self.container[ service ] )
                 throw new Error( "The service \"" + service + "\" has already been registered." );
             if ( !isFunc( provider ) )
                 throw new TypeError( "The provider for service \"" + service + "\" must be a function." );
@@ -1306,7 +1423,7 @@ type.injector = type().def(
     /**
      * @description Unregisters a service.
      * @param {string} service
-     * @returns {App}
+     * @return {injector}
      */
     unregister: function( service )
     {
@@ -1316,48 +1433,17 @@ type.injector = type().def(
 
     /**
      * @description Resolves a service and its dependencies.
-     * @param {string|function|array} service
-     * @param {params object[]} args
-     * @returns {object}
+     * @param {string|function()|Array} service
+     * @param {...object} [args]
+     * @return {object}
      */
     resolve: function( service /*, arg0, arg1, arg2, ... */ )
     {
         var self = this;
-        var binding = null;
-        var lazy = false;
-        if ( isFunc( service ) )
-        {
-            binding = {
-                create: service,
-                inject: self.getDependencies( service )
-            };
-        }
-        else if ( isArray( service ) )
-        {
-            binding = {
-                create: service.pop(),
-                inject: service
-            };
-        }
-        else
-        {
-            if ( self.container[ service ] !== undefined )
-                binding = self.container[ service ];
-            else
-            {
-                if ( typeOf( service ) === "string" )
-                {
-                    if ( binding === null && service !== PROVIDER && service.match( new RegExp( "^" + PROVIDER ) ) !== null )
-                    {
-                        lazy = true;
-                        if ( self.container[ service.substr( PROVIDER.length ) ] !== undefined )
-                            binding = self.container[ service.substr( PROVIDER.length ) ];
-                    }
-                }
-                if ( binding === null )
-                    throw new Error( "Service \"" + service + "\" not found." );
-            }
-        }
+        var binding = this.getBinding( service );
+        if ( binding === null )
+            throw new Error( "Service \"" + service + "\" not found." );
+
         var provider = function()
         {
             var dependencies = [];
@@ -1366,7 +1452,8 @@ type.injector = type().def(
             });
             return binding.create.apply( binding, dependencies.concat( makeArray( arguments ) ) );
         };
-        if ( lazy )
+
+        if ( binding.provider )
             return provider;
         else
         {
@@ -1376,11 +1463,23 @@ type.injector = type().def(
         }
     },
 
+    fetch: function( service /*, arg0, arg1, arg2, ... */ )
+    {
+        var self = this;
+        var def = new Deferred();
+        var instance = null;
+        this.fetchBinding( service ).then( function()
+        {
+            def.resolve( self.resolve.apply( self, arguments ) );
+        });
+        return def.promise();
+    },
+
     /**
      * @description Binds a constant to a service.
      * @param {string} service
      * @param {mixed} constant
-     * @returns {App}
+     * @return {injector}
      */
     constant: function( service, constant )
     {
@@ -1403,10 +1502,107 @@ type.injector = type().def(
         return this._pub;
     },
 
+    __getBinding: function( service )
+    {
+        var binding = null;
+        if ( isFunc( service ) )
+        {
+            binding = {
+                create: service,
+                inject: self.getDependencies( service )
+            };
+        }
+        else if ( isArray( service ) )
+        {
+            binding = {
+                create: service.pop(),
+                inject: service
+            };
+        }
+        else
+        {
+            if ( self.container[ service ] )
+            {
+                binding = self.container[ service ];
+            }
+            else if ( typeOf( service ) === "string" )
+            {
+                if ( binding === null && service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
+                {
+                    binding = self.container[ service.substr( PROVIDER.length ) ] || null;
+                    if ( binding )
+                        binding.provider = true;
+                }
+                if ( binding === null && service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service ) )
+                {
+                    binding = self.container[ service.substr( LAZY_PROVIDER.length ) ] || null;
+                    if ( binding )
+                    {
+                        binding.provider = true;
+                        binding.lazy = true;
+                    }
+                }
+            }
+        }
+        return binding;
+    },
+
+    __fetchBinding: function( service )
+    {
+        var self = this;
+        var def = new Deferred();
+        var binding = this.getBinding( service );
+        if ( binding === null )
+        {
+            if ( require )
+            {
+                require([ service.replace( ".", "/" ) ], function( provider )
+                {
+                    self.register( service, provider );
+                    self.fetchBinding( service ).then( function( binding )
+                    {
+                        def.resolve( binding );
+                    }, function( e )
+                    {
+                        def.reject( e );
+                    });
+                }, function( e )
+                {
+                    def.reject( e );
+                });
+            }
+            else
+                def.reject( new Error( "Service \"" + service + "\" not found. Expected \"require\" to be defined. Could not load service dynamically." ) );
+        }
+        else
+        {
+            if ( binding.lazy )
+                def.resolve( binding );
+            else
+            {
+                var loaded = 0;
+                var count = binding.inject.length;
+                var done = function()
+                {
+                    if ( ++loaded === count )
+                        def.resolve( binding );
+                };
+                each( binding.inject, function( service )
+                {
+                    self.fetchBinding( service ).then( done, function( e )
+                    {
+                        def.reject( e );
+                    });
+                });
+            }
+        }
+        return def.promise();
+    },
+
     __getDependencies: function( method )
     {
         var inject = [];
-        if ( method.$inject !== undefined )
+        if ( method.$inject )
             inject = method.$inject;
         return inject;
     },

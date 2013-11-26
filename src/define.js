@@ -17,8 +17,8 @@ function checkMixinForCircularReference( type, mixin )
 /**
  * @private
  * @description Determines whether the type was created by us.
- * @param {function} type
- * @returns {boolean}
+ * @param {function()} type
+ * @return {boolean}
  */
 function isTypeOurs( type )
 {
@@ -33,7 +33,7 @@ function isTypeOurs( type )
  * @private
  * @description Creates a new private scope type.
  * @param {Type} Type
- * @returns {Scope}
+ * @return {Scope}
  */
 function defineScope( Type )
 {
@@ -61,7 +61,7 @@ function defineScope( Type )
 /**
  * @description Gets the member info by parsing the member name.
  * @param {string} name
- * @returns {object}
+ * @return {object}
  */
 function parseMember( name )
 {        
@@ -105,7 +105,7 @@ function validateMember( type, info )
     if (
         info.access !== PRIVATE &&
         type.parent !== null &&
-        type.parent.members[ info.name ] !== undefined &&
+        type.parent.members[ info.name ] &&
         type.parent.members[ info.name ].access !== info.access
     )
     {
@@ -120,12 +120,12 @@ function validateMember( type, info )
  * @param {Type} type The type to check.
  * @param {string} name The member name.
  * @param {bool} [parent] True if the type being checked is a base type.
- * @returns {bool}
+ * @return {bool}
  */
 function isUsed( type, name, parent )
 {
     if (
-        type.members[ name ] !== undefined &&
+        type.members[ name ] &&
         ( !parent || type.members[ name ].access !== PRIVATE ) &&
         ( !parent || !type.members[ name ].isVirtual )
     )
@@ -140,7 +140,7 @@ function isUsed( type, name, parent )
  * @description Defines a method on the type.
  * @param {Type} type
  * @param {string} name
- * @param {function} method
+ * @param {function()} method
  */
 function defineMethod( type, name, method )
 {
@@ -199,8 +199,8 @@ function defineProperty( Type, info, property )
 
         if (
             Type.parent !== null &&
-            Type.parent.members[ info.name ] !== undefined &&
-            Type.parent.members[ info.name ][ type ] !== undefined &&
+            Type.parent.members[ info.name ] &&
+            Type.parent.members[ info.name ][ type ] &&
             Type.parent.members[ info.name ][ type ].access !== access
         )
         {
@@ -226,19 +226,19 @@ function defineProperty( Type, info, property )
     if ( different === 2 )
         throw new DefinitionError( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
 
-    if ( property.get === undefined && property.set === undefined )
+    if ( !property.get && !property.set )
     {
         property.get = { access: info.access };
         property.set = { access: info.access };
     }
 
-    if ( property.get !== undefined && !isFunc( property.get.method ) )
+    if ( property.get && !isFunc( property.get.method ) )
     {
         property.get.method = function() {
             return this._value();
         };
     }
-    if ( property.set !== undefined && !isFunc( property.set.method ) )
+    if ( property.set && !isFunc( property.set.method ) )
     {
         property.set.method = function( value ) {
             this._value( value );
@@ -247,12 +247,12 @@ function defineProperty( Type, info, property )
 
     each([ property.get, property.set ], function( accessor, index )
     {
-        if ( accessor === undefined ) return;
+        if ( !accessor ) return;
 
         var type = index === 0 ? "get" : "set";
         if (
             Type.parent !== null &&
-            Type.parent.members[ info.name ] !== undefined &&
+            Type.parent.members[ info.name ] &&
             Type.parent.members[ info.name ].access !== PRIVATE &&
             Type.parent.members[ info.name ][ type ] === undefined
         )
@@ -266,18 +266,18 @@ function defineProperty( Type, info, property )
         };
     });
 
-    Type.members[ info.name ].value = property.value !== undefined ? property.value : null;
+    Type.members[ info.name ].value = property.value ? property.value : null;
 }
 
 /**
  * @private
  * @description Gets the dependencies required by the parent and any mixins.
- * @returns {array<string>}
+ * @return {array<string>}
  */
 function getInheritedDependencies( type )
 {
     var ret = [];
-    if ( type.parent !== null && type.parent.$inject !== undefined )
+    if ( type.parent !== null && type.parent.$inject )
         ret = ret.concat( type.parent.$inject );
 
     each( type.mixins, function( mixin )

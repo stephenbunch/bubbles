@@ -15,3 +15,9 @@ var AccessViolationError = type.AccessViolationError = function( message ) {
 };
 AccessViolationError.prototype = new Error();
 AccessViolationError.prototype.name = "type.AccessViolationError";
+
+var InvalidOperationError = type.InvalidOperationError = function( message ) {
+    this.message = message;
+};
+InvalidOperationError.prototype = new Error();
+InvalidOperationError.prototype.name = "type.InvalidOperationError";
