@@ -1,11 +1,16 @@
-var Deferred = function()
+type.deferred = type().def(
 {
-    this.done = [];
-    this.fail = [];
-    this.state = "pending";
-};
-Deferred.prototype =
-{
+    ctor: function()
+    {
+        this.callbacks = {
+            done: [],
+            fail: []
+        };
+        this.state = "pending";
+    },
+
+    state: { get: null, __set: null },
+
     resolve: function( result )
     {
         if ( this.state === "pending" )
@@ -13,6 +18,7 @@ Deferred.prototype =
             this.result = result;
             this.process( "done" );
         }
+        return this._pub;
     },
 
     reject: function( error )
@@ -22,6 +28,41 @@ Deferred.prototype =
             this.result = error;
             this.process( "fail" );
         }
+        return this._pub;
+    },
+
+    then: function( onFulfilled, onRejected )
+    {
+        if ( onFulfilled )
+            this.done( onFulfilled );
+        if ( onRejected )
+            this.fail( onRejected );
+        return this._pub;
+    },
+
+    done: function( callback )
+    {
+        if ( this.state === "resolved" )
+            callback.call( undefined, this.result );
+        else if ( this.state === "pending" )
+            this.callbacks.done.push( callback );
+        return this._pub;
+    },
+
+    fail: function( callback )
+    {
+        if ( this.state === "rejected" )
+            callback.call( undefined, this.result );
+        else if ( this.state === "pending" )
+            this.callbacks.fail.push( callback );
+        return this._pub;
+    },
+
+    always: function( callback )
+    {
+        this.done( callback );
+        this.fail( callback );
+        return this._pub;
     },
 
     promise: function()
@@ -29,46 +70,48 @@ Deferred.prototype =
         var self = this;
         var promise =
         {
-            then: function( onSuccess, onError )
+            then: function()
             {
-                if ( self.state === "resolved" )
-                {
-                    if ( onSuccess )
-                        onSuccess.call( undefined, self.result );
-                }
-                else if ( self.state === "rejected" )
-                {
-                    if ( onError )
-                        onError.call( undefined, self.result );
-                }
-                else
-                {
-                    if ( onSuccess )
-                        self.done.push( onSuccess );
-                    if ( onError )
-                        self.fail.push( onError );
-                }
+                self.then.apply( self, arguments );
+                return promise;
+            },
+
+            done: function()
+            {
+                self.done.apply( self, arguments );
+                return promise;
+            },
+
+            fail: function()
+            {
+                self.fail.apply( self, arguments );
+                return promise;
+            },
+
+            always: function()
+            {
+                self.always.apply( self, arguments );
                 return promise;
             }
         };
         return promise;
     },
 
-    process: function( type )
+    __process: function( type )
     {
         var self = this,
             result = this.result,
             i = 0,
-            len = this[ type ].length;
+            len = this.callbacks[ type ].length;
         for ( ; i < len; i++ )
         {
             try
             {
-                result = callback.call( undefined, result );    
+                result = this.callbacks[ type ][ i ].call( undefined, result );    
             }
             catch ( e )
             {
-                this[ type ] = this[ type ].slice( i + 1 );
+                this.callbacks[ type ] = this.callbacks[ type ].slice( i + 1 );
                 this.reject( e );
                 break;
             }
@@ -82,13 +125,13 @@ Deferred.prototype =
                 }
                 catch ( e )
                 {
-                    this[ type ] = this[ type ].slice( i + 1 );
+                    this.callbacks[ type ] = this.callbacks[ type ].slice( i + 1 );
                     this.reject( e );
                     break;
                 }
                 if ( isFunc( then ) )
                 {
-                    this[ type ] = this[ type ].slice( i + 1 );
+                    this.callbacks[ type ] = this.callbacks[ type ].slice( i + 1 );
                     then.call( result, function( result )
                     {
                         self.resolve( result );
@@ -100,5 +143,34 @@ Deferred.prototype =
                 }
             }
         }
+        if ( i === len )
+        {
+            if ( type === "done" )
+                this.state = "resolved";
+            else
+                this.state = "rejected";
+        }
     }
+});
+
+type.deferred.when = function( promises )
+{
+    var def = type.deferred();
+    var tasks = isArray( promises ) ? promises : makeArray( arguments );
+    var progress = 0;
+    var results = [];
+    each( tasks, function( task )
+    {
+        task.then( function( result )
+        {
+            results.push( result );
+            if ( ++progress === tasks.length )
+                def.resolve( results );
+        }, function( e ) {
+            def.reject( e );
+        });
+    });
+    if ( !tasks.length )
+        def.resolve();
+    return def.promise();
 };

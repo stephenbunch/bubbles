@@ -1,13 +1,4 @@
-describe( "type.injector()", function()
-{
-    it( "should return a new injector", function()
-    {
-        var injector = type.injector();
-        expect( injector.register ).toBeDefined();
-    });
-});
-
-describe( "injector", function()
+describe( "type.injector", function()
 {
     describe( ".register()", function()
     {
@@ -72,6 +63,7 @@ describe( "injector", function()
         it( "should try to use RequireJS to load missing dependencies", function()
         {
             var out = null;
+            window.require = window.require || function() {};
             spyOn( window, "require" ).andCallFake( function( modules, callback )
             {
                 expect( modules ).toEqual([ "app/foo" ]);

@@ -34,6 +34,8 @@ function isArrayLike( obj )
  */
 function makeArray( obj )
 {
+    if ( isArray( obj ) )
+        return obj;
     var result = [];
     each( obj, function( item ) {
         result.push( item );
@@ -206,4 +208,18 @@ function isPlainObject( obj )
     // If the function hasn't returned already, we're confident that
     // |obj| is a plain object, created by {} or constructed with new Object
     return true;
+}
+
+function map( items, callback, context )
+{
+    items = makeArray( items );
+    if ( Array.prototype.map )
+        return items.map( callback, context );
+    else
+    {
+        var result = [];
+        each( items, function( item ) {
+            result.push( callback.call( context, item ) );
+        });
+    }
 }
