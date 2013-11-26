@@ -159,11 +159,11 @@ type.deferred.when = function( promises )
     var tasks = isArray( promises ) ? promises : makeArray( arguments );
     var progress = 0;
     var results = [];
-    each( tasks, function( task )
+    each( tasks, function( task, index )
     {
         task.then( function( result )
         {
-            results.push( result );
+            results[ index ] = result;
             if ( ++progress === tasks.length )
                 def.resolve( results );
         }, function( e ) {
@@ -171,6 +171,6 @@ type.deferred.when = function( promises )
         });
     });
     if ( !tasks.length )
-        def.resolve();
+        def.resolve( [] );
     return def.promise();
 };

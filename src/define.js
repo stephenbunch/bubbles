@@ -61,7 +61,7 @@ function defineScope( Type )
 /**
  * @description Gets the member info by parsing the member name.
  * @param {string} name
- * @return {object}
+ * @return {Object}
  */
 function parseMember( name )
 {        
@@ -93,7 +93,7 @@ function parseMember( name )
 /**
  * @description Checks the memeber info on a type and throws an error if invalid.
  * @param {Type} type
- * @param {object} info
+ * @param {Object} info
  */
 function validateMember( type, info )
 {
@@ -162,7 +162,7 @@ function defineMethod( type, name, method )
  * @description Defines a property on the type.
  * @param {Type} Type
  * @param {string} name
- * @param {object} property
+ * @param {Object} property
  */
 function defineProperty( Type, info, property )
 {

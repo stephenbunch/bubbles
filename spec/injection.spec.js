@@ -1,4 +1,4 @@
-describe( "type.injector", function()
+describe( "Injector", function()
 {
     describe( ".register()", function()
     {
@@ -39,11 +39,28 @@ describe( "type.injector", function()
             var bar = injector.resolve( Bar );
             expect( bar.foo ).toBe( 2 );
         });
+
+        it( "should throw an error if any dependencies are missing", function()
+        {
+            var injector = type.injector().register( "bar", [ "foo", function() {} ] );
+            var out = null;
+            try
+            {            
+                injector.resolve( [ "bar", "baz", function() {} ] );
+            }
+            catch ( e )
+            {
+                expect( e instanceof type.InvalidOperationError ).toBe( true );
+                out = e.message;
+            }
+            expect( out ).toContain( "foo" );
+            expect( out ).toContain( "baz" );
+        });
     });
 
     describe( ".fetch()", function()
     {
-        it( "should behave as '.resolve()', but return a Promise object instead of the resolved dependency", function()
+        it( "should behave as '.resolve()', but return a Promise instead of the resolved dependency", function()
         {
             var injector = type.injector().constant( "foo", 2 );
             var out = null;
@@ -80,6 +97,54 @@ describe( "type.injector", function()
             runs( function()
             {
                 expect( out ).toBe( 2 );
+            });
+        });
+
+        it( "should reject the promise if the service cannot be found", function()
+        {
+            var injector = type.injector();
+            window.require = window.require || function() {};
+            var temp = window.require;
+            window.require = function( modules, callback ) {
+                callback( "" );
+            };
+            var out;
+            runs( function()
+            {
+                out = null;
+                injector.fetch( "foo" ).then( null, function( e )
+                {
+                    out = e;
+                });
+            });
+            runs( function()
+            {
+                expect( out instanceof TypeError ).toBe( true );
+                out = null;
+                window.require = function( modules, callback ) {
+                    callback();
+                };
+                injector.fetch( "foo" ).then( null, function( e )
+                {
+                    out = e;
+                });
+            });
+            runs( function()
+            {
+                expect( out instanceof TypeError ).toBe( true );
+                out = null;
+                window.require = function( modules, callback ) {
+                    callback( [ "bla" ] );
+                };
+                injector.fetch( "foo" ).then( null, function( e )
+                {
+                    out = e;
+                });
+            });
+            runs( function()
+            {
+                expect( out instanceof TypeError ).toBe( true );
+                window.require = temp;
             });
         });
     });
@@ -140,7 +205,7 @@ describe( "type.injector", function()
     });
 });
 
-describe( "type.providerOf()", function()
+describe( "Provider", function()
 {
     it( "can be listed as a dependency", function()
     {
@@ -173,11 +238,33 @@ describe( "type.providerOf()", function()
         provider();
         expect( foo ).toBe( 2 );
     });
+
+    it( "should bind to a static dependency graph when resolved", function()
+    {
+        var calledA = 0;
+        var calledB = 0;
+        var injector = type.injector().register( "foo", function() {
+            calledA++;
+            return 2;
+        });
+        var provider = injector.resolve( type.providerOf( "foo" ) );
+        provider();
+        injector.unregister( "foo" );
+        provider();
+        injector.register( "foo", function()
+        {
+            calledB++;
+            return 2;
+        });
+        provider();
+        expect( calledA ).toBe( 3 );
+        expect( calledB ).toBe( 0 );
+    });
 });
 
-describe( "type.lazyProviderOf()", function()
+describe( "LazyProvider", function()
 {
-    it( "should behave as `type.providerOf()`, but return a Promise object instead of the service instance", function()
+    it( "should behave as a Provider, but return a Promise instead of the service instance", function()
     {
         var injector = type.injector().constant( "foo", 2 );
         var provider = injector.resolve( type.lazyProviderOf( "foo" ) );
@@ -192,6 +279,58 @@ describe( "type.lazyProviderOf()", function()
         runs( function()
         {
             expect( out ).toBe( 2 );
+        });
+    });
+
+    it( "should resolve its dependency graph on the first call", function()
+    {
+        var injector = type.injector();
+        var provider = injector.resolve( type.lazyProviderOf( "foo" ) );
+        var temp = window.require;
+        window.require = function( module, callback ) {
+            callback( function() { return 2; } );
+        };
+        var out;
+        runs( function()
+        {
+            provider().then( function( result )
+            {
+                out = result;
+            });
+        });
+        runs( function()
+        {
+            expect( out ).toBe( 2 );
+        });
+        runs( function()
+        {
+            window.require = function( module, callback ) {
+                callback( function() { return 3; } );
+            };
+            provider().then( function( result )
+            {
+                out = result;
+            });
+        });
+        runs( function()
+        {
+            expect( out ).toBe( 2 );
+        });
+        runs( function()
+        {
+            injector.constant( "foo", 4 );
+            provider().then( function( result )
+            {
+                out = result;
+            });
+        });
+        runs( function()
+        {
+            expect( out ).toBe( 2 );
+        });
+        runs( function()
+        {
+            window.require = temp;
         });
     });
 });

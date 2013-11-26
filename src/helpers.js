@@ -3,7 +3,7 @@
  * @description
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
- * @param {object} obj
+ * @param {Object} obj
  * @return {boolean}
  */
 function isArrayLike( obj )
@@ -29,7 +29,7 @@ function isArrayLike( obj )
 /**
  * @private
  * @description Turns an object into a true array.
- * @param {object} obj
+ * @param {Object} obj
  * @return {Array}
  */
 function makeArray( obj )
@@ -48,7 +48,7 @@ function makeArray( obj )
  * @description
  * Iterates of an array or object, passing in the item and index / key.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
- * @param {object|array} obj
+ * @param {Object|Array} obj
  * @param {function()} callback
  */
 function each( obj, callback )
@@ -77,7 +77,7 @@ function each( obj, callback )
  * @description
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
- * @param {object} object
+ * @param {Object} object
  * @return {string}
  */
 function typeOf( object )
@@ -89,7 +89,7 @@ function typeOf( object )
 /**
  * @private
  * @description Determines whether an object is a function.
- * @param {object}
+ * @param {Object} object
  * @return {boolean}
  */
 function isFunc( object ) {
@@ -99,7 +99,7 @@ function isFunc( object ) {
 /**
  * @private
  * @description Determines whether an object is an array.
- * @param {object}
+ * @param {Object} object
  * @return {boolean}
  */
 function isArray( object ) {
@@ -121,7 +121,7 @@ function trim( value ) {
 /**
  * @private
  * @description Gets the keys of an object.
- * @param {object} object
+ * @param {Object} object
  * @return {Array}
  */
 var keys = Object.keys || function( object )
@@ -138,7 +138,7 @@ var keys = Object.keys || function( object )
 /**
  * @private
  * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
- * @param {mixed} obj
+ * @param {Object} obj
  * @param {string} prop
  * @return {boolean}
  */
@@ -151,7 +151,7 @@ function hasOwnProperty( obj, prop ) {
  * @description
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
  * @param {Array} array
- * @param {mixed} item
+ * @param {Object} item
  * @return {number}
  */
 function indexOf( array, item )
@@ -177,7 +177,7 @@ function indexOf( array, item )
  * @private
  * @description Determines whether an object was created using "{}" or "new Object".
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
- * @param {mixed} obj
+ * @param {Object} obj
  * @return {boolean}
  */
 function isPlainObject( obj )
@@ -218,8 +218,8 @@ function map( items, callback, context )
     else
     {
         var result = [];
-        each( items, function( item ) {
-            result.push( callback.call( context, item ) );
+        each( items, function( item, index ) {
+            result.push( callback.call( context, item, index ) );
         });
     }
 }

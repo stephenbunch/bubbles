@@ -10,6 +10,9 @@ var type = window.type = function()
     var run = true;
     var ctorDefined = false;
 
+    /**
+     * @interface
+     */
     var Type = function()
     {
         if ( ( inits & TYPE_CHECK ) === TYPE_CHECK )

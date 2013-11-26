@@ -2,7 +2,7 @@
  * @private
  * @description Initializes the type.
  * @param {Type} type The type to initialize.
- * @param {object} pub The public interface to initialize on.
+ * @param {Object} pub The public interface to initialize on.
  * @param {Array} args Arguments for the constructor.
  * @param {boolean} ctor Run the constructor.
  */
@@ -131,7 +131,7 @@ function createProxy( srcType, srcObj, dstType, dstObj )
  * @param {Type} type
  * @param {Scope} scope
  * @param {string} name
- * @param {object} member
+ * @param {Object} member
  */
 function buildMethod( type, scope, name, member )
 {
@@ -232,7 +232,7 @@ function buildMethod( type, scope, name, member )
  * @param {Type} type
  * @param {Scope} scope
  * @param {string} name
- * @param {object} member
+ * @param {Object} member
  */
 function buildProperty( type, scope, name, member )
 {
@@ -320,7 +320,7 @@ function buildEvent( type, scope, name )
  * @description Creates references to the public members of the type on the public interface.
  * @param {Type} type The type being instantiated.
  * @param {Scope} scope The type instance.
- * @param {object} pub The public interface.
+ * @param {Object} pub The public interface.
  */
 function expose( type, scope, pub )
 {
@@ -364,9 +364,9 @@ function expose( type, scope, pub )
  * @description
  * Adds a property to an object.
  * http://johndyer.name/native-browser-get-set-properties-in-javascript/
- * @param {object} obj
+ * @param {Object} obj
  * @param {string} name
- * @param {object} accessors
+ * @param {Object} accessors
  */
 function addProperty( obj, name, accessors )
 {
@@ -405,7 +405,7 @@ function writeOnlySet( name )
 /**
  * @private
  * @param {Type} type
- * @param {object} obj
+ * @param {Object} obj
  */
 function applyPrototypeMembers( type, obj )
 {

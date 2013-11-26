@@ -38,8 +38,8 @@ try {
     IE8 = true;
 }
 
-var PROVIDER = "provider`";
-var LAZY_PROVIDER = "lazyProvider`";
+var PROVIDER = "Provider`";
+var LAZY_PROVIDER = "LazyProvider`";
 
 var PUBLIC = "public";
 var PRIVATE = "private";
