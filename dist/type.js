@@ -1498,9 +1498,6 @@ type.injector = type().def(
         }
         each( bindings, function( provider, service )
         {
-            if ( self.container[ service ] )
-                throw new InvalidOperationError( "The service \"" + service + "\" has already been registered." );
-
             if ( isArray( provider ) )
             {
                 self.container[ service ] = {
@@ -1917,11 +1914,12 @@ type.injector = type().def(
         {
             binding = {
                 create: service,
-                inject: service.$inject || []
+                inject: ( service.$inject || [] ).slice( 0 )
             };
         }
         else if ( isArray( service ) )
         {
+            service = service.slice( 0 );
             binding = {
                 create: service.pop(),
                 inject: service
@@ -1934,7 +1932,7 @@ type.injector = type().def(
             {
                 binding = {
                     create: binding.create,
-                    inject: binding.inject,
+                    inject: binding.inject.slice( 0 ),
                     service: service
                 };
             }
@@ -1945,7 +1943,7 @@ type.injector = type().def(
                 {
                     binding = {
                         create: binding.create,
-                        inject: binding.inject,
+                        inject: binding.inject.slice( 0 ),
                         service: service.substr( PROVIDER.length ),
                         provider: true
                     };
@@ -1954,12 +1952,14 @@ type.injector = type().def(
             if ( !binding && service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service ) )
             {
                 binding = {
-                    create: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).create,
-                    inject: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).inject,
+                    create: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).create || null,
+                    inject: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).inject || null,
                     service: service.substr( LAZY_PROVIDER.length ),
                     provider: true,
                     lazy: true
                 };
+                if ( binding.inject )
+                    binding.inject = binding.inject.slice( 0 );
             }
         }
         return binding;

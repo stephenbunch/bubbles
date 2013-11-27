@@ -38,6 +38,8 @@ describe( "Injector", function()
             Bar.$inject = [ "foo" ];
             var bar = injector.resolve( Bar );
             expect( bar.foo ).toBe( 2 );
+            bar = injector.resolve( Bar );
+            expect( bar.foo ).toBe( 2 );
         });
 
         it( "should throw an error if any dependencies are missing", function()
