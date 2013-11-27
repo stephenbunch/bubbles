@@ -66,17 +66,11 @@ describe( "Injector", function()
         {
             var injector = type.injector().constant( "foo", 2 );
             var out = null;
-            runs( function()
+            injector.fetch( "foo" ).then( function( foo )
             {
-                injector.fetch( "foo" ).then( function( foo )
-                {
-                    out = foo;
-                });
+                out = foo;
             });
-            runs( function()
-            {
-                expect( out ).toBe( 2 );
-            });
+            expect( out ).toBe( 2 );
         });
 
         it( "should try to use RequireJS to load missing dependencies", function()
@@ -86,7 +80,10 @@ describe( "Injector", function()
             spyOn( window, "require" ).andCallFake( function( modules, callback )
             {
                 expect( modules ).toEqual([ "app/foo" ]);
-                callback( function() { return 2; } );
+                setTimeout( function()
+                {
+                    callback( function() { return 2; } );
+                }, 0 );
             });
             var injector = type.injector();
             runs( function()
@@ -96,6 +93,7 @@ describe( "Injector", function()
                     out = foo;
                 });
             });
+            waits(0);
             runs( function()
             {
                 expect( out ).toBe( 2 );
@@ -108,10 +106,13 @@ describe( "Injector", function()
             window.require = window.require || function() {};
             spyOn( window, "require" ).andCallFake( function( modules, callback )
             {
-                callback(
-                    function() { return 2; },
-                    function() { return 3; }
-                );
+                setTimeout( function()
+                {
+                    callback(
+                        function() { return 2; },
+                        function() { return 3; }
+                    );
+                }, 0 );
             });
             var injector = type.injector();
             runs( function()
@@ -125,6 +126,7 @@ describe( "Injector", function()
                     out = result;
                 });
             });
+            waits(0);
             runs( function()
             {
                 expect( out ).toBe( 5 );
@@ -136,8 +138,12 @@ describe( "Injector", function()
             var injector = type.injector();
             window.require = window.require || function() {};
             var temp = window.require;
-            window.require = function( modules, callback ) {
-                callback( "" );
+            window.require = function( modules, callback )
+            {
+                setTimeout( function()
+                {
+                    callback( "" );
+                }, 0 );
             };
             var out;
             runs( function()
@@ -148,30 +154,41 @@ describe( "Injector", function()
                     out = e;
                 });
             });
+            waits(0);
             runs( function()
             {
                 expect( out instanceof TypeError ).toBe( true );
                 out = null;
-                window.require = function( modules, callback ) {
-                    callback();
+                window.require = function( modules, callback )
+                {
+                    setTimeout( function()
+                    {
+                        callback();
+                    }, 0 );
                 };
                 injector.fetch( "foo" ).then( null, function( e )
                 {
                     out = e;
                 });
             });
+            waits(0);
             runs( function()
             {
                 expect( out instanceof TypeError ).toBe( true );
                 out = null;
-                window.require = function( modules, callback ) {
-                    callback( [ "bla" ] );
+                window.require = function( modules, callback )
+                {
+                    setTimeout( function()
+                    {
+                        callback( [ "bla" ] );
+                    }, 0 );
                 };
                 injector.fetch( "foo" ).then( null, function( e )
                 {
                     out = e;
                 });
             });
+            waits(0);
             runs( function()
             {
                 expect( out instanceof TypeError ).toBe( true );
@@ -297,12 +314,28 @@ describe( "Provider", function()
         var injector = type.injector();
         window.require = window.require || function() {};
         var out = null;
-        spyOn( window, "require" ).andCallFake( function( modules )
+        spyOn( window, "require" ).andCallFake( function( modules, callback )
         {
             out = modules[0];
+            setTimeout( function()
+            {
+                callback( function() { return 2; } );
+            }, 0 );
         });
-        injector.fetch( type.providerOf( "foo" ) );
-        expect( out ).toBe( "foo" );
+        runs( function()
+        {
+            injector.fetch( type.providerOf( "foo" ) ).then( function( fooProvider )
+            {
+                out = fooProvider();
+            });
+            expect( out ).toBe( "foo" );
+            out = null;
+        });
+        waits(0);
+        runs( function()
+        {
+            expect( out ).toBe( 2 );
+        });
     });
 });
 
@@ -320,6 +353,7 @@ describe( "LazyProvider", function()
                 out = foo;
             });
         });
+        waits(0);
         runs( function()
         {
             expect( out ).toBe( 2 );
@@ -331,8 +365,12 @@ describe( "LazyProvider", function()
         var injector = type.injector();
         var provider = injector.resolve( type.lazyProviderOf( "foo" ) );
         var temp = window.require;
-        window.require = function( module, callback ) {
-            callback( function() { return 2; } );
+        window.require = function( module, callback )
+        {
+            setTimeout( function()
+            {
+                callback( function() { return 2; } );
+            }, 0 );
         };
         var out;
         runs( function()
@@ -342,24 +380,32 @@ describe( "LazyProvider", function()
                 out = result;
             });
         });
+        waits(0);
         runs( function()
         {
             expect( out ).toBe( 2 );
         });
+        waits(0);
         runs( function()
         {
-            window.require = function( module, callback ) {
-                callback( function() { return 3; } );
+            window.require = function( module, callback )
+            {
+                setTimeout( function()
+                {
+                    callback( function() { return 3; } );
+                }, 0 );
             };
             provider().then( function( result )
             {
                 out = result;
             });
         });
+        waits(0);
         runs( function()
         {
             expect( out ).toBe( 2 );
         });
+        waits(0);
         runs( function()
         {
             injector.constant( "foo", 4 );
@@ -368,10 +414,12 @@ describe( "LazyProvider", function()
                 out = result;
             });
         });
+        waits(0);
         runs( function()
         {
             expect( out ).toBe( 2 );
         });
+        waits(0);
         runs( function()
         {
             window.require = temp;

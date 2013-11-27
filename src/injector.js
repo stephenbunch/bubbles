@@ -157,6 +157,8 @@ type.injector = type().def(
          */
         function watchFor( service, callback )
         {
+            var lazy = service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service );
+            var provider = lazy || service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service );
             var handler = function( bindings )
             {
                 var svc = bindings[ service ];
@@ -165,6 +167,8 @@ type.injector = type().def(
                     var dependency = self.getBinding( svc );
                     if ( dependency )
                     {
+                        dependency.provider = provider;
+                        dependency.lazy = lazy;
                         callback( dependency );
                         resolve( dependency );
                     }
