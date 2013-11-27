@@ -1707,7 +1707,7 @@ type.injector = type().def(
             update: function( bindings )
             {
                 missing.splice( 0 );
-                each( watches, function( handler ) {
+                each( watches.slice( 0 ), function( handler ) {
                     handler( bindings );
                 });
             }

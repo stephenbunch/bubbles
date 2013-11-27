@@ -102,6 +102,35 @@ describe( "Injector", function()
             });
         });
 
+        it( "should load all missing dependencies in one go", function()
+        {
+            var out = null;
+            window.require = window.require || function() {};
+            spyOn( window, "require" ).andCallFake( function( modules, callback )
+            {
+                callback(
+                    function() { return 2; },
+                    function() { return 3; }
+                );
+            });
+            var injector = type.injector();
+            runs( function()
+            {
+                var service = function( a, b ) {
+                    return a + b;
+                };
+                service.$inject = [ "foo", "bar" ];
+                injector.fetch( service ).then( function( result )
+                {
+                    out = result;
+                });
+            });
+            runs( function()
+            {
+                expect( out ).toBe( 5 );
+            });
+        });
+
         it( "should reject the promise if the service cannot be found", function()
         {
             var injector = type.injector();
