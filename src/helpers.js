@@ -106,6 +106,10 @@ function isArray( object ) {
     return typeOf( object ) === "array";
 }
 
+function isString( object ) {
+    return typeOf( object ) === "string";
+}
+
 /**
  * @private
  * @description

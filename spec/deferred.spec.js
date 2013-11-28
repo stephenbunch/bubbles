@@ -41,11 +41,15 @@ describe( "Deferred", function()
 
     describe( ".promise()", function()
     {
-        it( "should return a Promise/A+ interface to the deferred", function()
+        it( "should return a read-only interface to the deferred that is also Promise/A+ compliant", function()
         {
             var def = type.deferred();
             var promise = def.promise();
             expect( promise.then ).toBeDefined();
+            expect( promise.done ).toBeDefined();
+            expect( promise.fail ).toBeDefined();
+            expect( promise.always ).toBeDefined();
+            expect( promise.value ).toBeDefined();
         });
     });
 
@@ -174,23 +178,23 @@ describe( "Deferred", function()
             expect( out ).toBe( 2 );
         });
     });
-});
 
-describe( "type.deferred.when()", function()
-{
-    it( "should combine multiple promises into a single promise", function()
+    describe( "type.deferred.when()", function()
     {
-        var def1 = type.deferred();
-        var def2 = type.deferred();
-        var def3 = type.deferred();
-        var out = null;
-        type.deferred.when([ def1, def2, def3 ]).then( function( results )
+        it( "should combine multiple promises into a single promise", function()
         {
-            out = results;
+            var def1 = type.deferred();
+            var def2 = type.deferred();
+            var def3 = type.deferred();
+            var out = null;
+            type.deferred.when([ def1, def2, def3 ]).then( function( results )
+            {
+                out = results;
+            });
+            def2.resolve( 2 );
+            def3.resolve( 3 );
+            def1.resolve( 1 );
+            expect( out ).toEqual([ 1, 2, 3 ]);
         });
-        def2.resolve( 2 );
-        def3.resolve( 3 );
-        def1.resolve( 1 );
-        expect( out ).toEqual([ 1, 2, 3 ]);
     });
 });

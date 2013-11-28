@@ -15,16 +15,18 @@ type.injector = type().def(
     /**
      * @description Registers a service.
      * @param {string} service
-     * @return {BindingConfiguration}
+     * @return {BindingSelector}
      */
     bind: function( service )
     {
         var self = this;
+        if ( !service || !isString( service ) )
+            throw new type.ArgumentError( "Argument 'service' must have a value." );
         return {
             to: function( provider )
             {
                 var binding = self.register( service, provider );
-                var configure =
+                var config =
                 {
                     asSingleton: function()
                     {
@@ -40,14 +42,15 @@ type.injector = type().def(
                             }
                             return result;
                         };
-                        delete configure.asSingleton;
+                        delete config.asSingleton;
+                        return config;
                     },
 
                     whenFor: function() {
 
                     }
                 };
-                return configure;
+                return config;
             }
         };
     },
@@ -446,7 +449,7 @@ type.injector = type().def(
                 inject: service
             };
         }
-        else if ( typeOf( service ) === "string" )
+        else if ( isString( service ) )
         {
             binding = this.container[ service ] || null;
             if ( binding )
@@ -492,16 +495,10 @@ type.injector = type().def(
             prefix = path === "" ?  "" : path + ".";
         each( graph, function( type, name )
         {
-            if ( isFunc( type ) )
-                self.register( prefix + name, type );
-            else if ( isPlainObject( type ) )
+            if ( isPlainObject( type ) )
                 self.registerGraph( prefix + name, type );
             else
-            {
-                self.register( prefix + name, function() {
-                    return type;
-                });
-            }
+                self.register( prefix + name, type );
         });
     }
 });

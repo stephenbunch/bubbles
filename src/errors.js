@@ -21,3 +21,9 @@ var InvalidOperationError = type.InvalidOperationError = function( message ) {
 };
 InvalidOperationError.prototype = new Error();
 InvalidOperationError.prototype.name = "type.InvalidOperationError";
+
+var ArgumentError = type.ArgumentError = function( message ) {
+    this.message = message;
+};
+ArgumentError.prototype = new Error();
+ArgumentError.prototype.name = "type.ArgumentError";

@@ -1,14 +1,21 @@
 describe( "Injector", function()
 {
-    describe( ".register()", function()
+    describe( ".bind()", function()
     {
-        it( "should bind a factory to a service", function()
+        it( "should return a BindingSelector", function()
         {
             var injector = type.injector();
-            injector.bind( "foo" ).to( function() {
-                return 2;
-            });
-            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
+            var selector = injector.bind( "foo" );
+            expect( selector.to ).toBeDefined();
+        });
+
+        it( "should throw an error if 'service' is empty", function()
+        {
+            var injector = type.injector();
+            expect( function()
+            {
+                injector.bind();
+            }).toThrowOf( type.ArgumentError );
         });
     });
 
@@ -62,11 +69,8 @@ describe( "Injector", function()
             expect( out ).toContain( "foo" );
             expect( out ).toContain( "baz" );
         });
-    });
 
-    describe( ".fetch()", function()
-    {
-        it( "should behave as '.resolve()', but return a Promise instead of the resolved dependency", function()
+        it( "should return a Promise", function()
         {
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 );
@@ -202,18 +206,7 @@ describe( "Injector", function()
         });
     });
 
-    describe( ".constant()", function()
-    {
-        it( "should register and bind services to constants", function()
-        {
-            var injector = type.injector();
-            injector.bind( "foo" ).to( function() { return {}; } ).asSingleton();
-            var out = injector.resolve( "foo" ).value();
-            expect( injector.resolve( "foo" ).value() ).toBe( out );
-        });
-    });
-
-    describe( ".autoRegister()", function()
+    describe( ".autoBind()", function()
     {
         it( "should register an object graph by convention", function()
         {
@@ -236,180 +229,223 @@ describe( "Injector", function()
             expect( injector.resolve( "foo" ).value() ).toBe( 2 );
         });
     });
-});
 
-describe( "Provider", function()
-{
-    it( "can be listed as a dependency", function()
+    describe( "BindingSelector", function()
     {
-        var injector = type.injector();
-        injector.bind( "foo" ).to( 2 );
-        var provider = injector.resolve( type.providerOf( "foo" ) ).value();
-        expect( provider() ).toBe( 2 );
-    });
-
-    it( "should forward additional arguments to the underlying service provider", function()
-    {
-        var injector = type.injector();
-        injector.bind( "foo" ).to( function( a ) { return a + 2; } );
-        var provider = injector.resolve( type.providerOf( "foo" ) ).value();
-        expect( provider( 5 ) ).toBe( 7 );
-    });
-
-    it( "should not reuse dependencies", function()
-    {
-        var foo = 0;
-        var bar = function() {};
-        bar.$inject = [ "foo" ];
-        var injector = type.injector();
-        injector.bind( "foo" ).to( function() {
-            return ++foo;
-        });
-        injector.bind( "bar" ).to( bar );
-        var provider = injector.resolve( type.providerOf( "bar" ) ).value();
-        provider();
-        provider();
-        expect( foo ).toBe( 2 );
-    });
-
-    it( "should bind to a static dependency graph when resolved", function()
-    {
-        var calledA = 0;
-        var calledB = 0;
-        var injector = type.injector();
-        injector.bind( "foo" ).to( function() {
-            calledA++;
-            return 2;
-        });
-        var provider = injector.resolve( type.providerOf( "foo" ) ).value();
-        provider();
-        injector.unbind( "foo" );
-        provider();
-        injector.bind( "foo" ).to( function()
+        describe( ".to()", function()
         {
-            calledB++;
-            return 2;
-        });
-        provider();
-        expect( calledA ).toBe( 3 );
-        expect( calledB ).toBe( 0 );
-    });
-
-    it( "should get the underlying service when being fetched", function()
-    {
-        var injector = type.injector();
-        window.require = window.require || function() {};
-        var out = null;
-        spyOn( window, "require" ).andCallFake( function( modules, callback )
-        {
-            out = modules[0];
-            setTimeout( function()
+            it( "should bind a service to a provider", function()
             {
-                callback( function() { return 2; } );
-            }, 0 );
-        });
-        runs( function()
-        {
-            injector.resolve( type.providerOf( "foo" ) ).then( function( fooProvider )
-            {
-                out = fooProvider();
+                var injector = type.injector();
+                injector.bind( "foo" ).to( function() {
+                    return 2;
+                });
+                expect( injector.resolve( "foo" ).value() ).toBe( 2 );
             });
-            expect( out ).toBe( "foo" );
-            out = null;
-        });
-        waits(0);
-        runs( function()
-        {
-            expect( out ).toBe( 2 );
-        });
-    });
-});
 
-describe( "LazyProvider", function()
-{
-    it( "should behave as a Provider, but return a Promise instead of the service instance", function()
-    {
-        var injector = type.injector();
-        injector.bind( "foo" ).to( 2 );
-        var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
-        var out = null;
-        runs( function()
-        {
-            provider().then( function( foo )
+            it( "should bind non functions as constants", function()
             {
-                out = foo;
+                var injector = type.injector();
+                injector.bind( "foo" ).to( 2 );
+                expect( injector.resolve( "foo" ).value() ).toBe( 2 );
+            });
+
+            it( "should return a BindingConfigurator", function()
+            {
+                var injector = type.injector();
+                var configurator = injector.bind( "foo" ).to( 2 );
+                expect( configurator.asSingleton ).toBeDefined();
             });
         });
-        waits(0);
-        runs( function()
+    });
+
+    describe( "BindingConfigurator", function()
+    {
+        describe( ".asSingleton()", function()
         {
-            expect( out ).toBe( 2 );
+            it( "should set binding to return the same instance for all times resolved", function()
+            {
+                var injector = type.injector();
+                injector.bind( "foo" ).to( function() { return {}; } ).asSingleton();
+                var out = injector.resolve( "foo" ).value();
+                expect( injector.resolve( "foo" ).value() ).toBe( out );
+            });
         });
     });
 
-    it( "should resolve its dependency graph on the first call", function()
+    describe( "Provider", function()
     {
-        var injector = type.injector();
-        var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
-        var temp = window.require;
-        window.require = function( module, callback )
+        it( "can be listed as a dependency", function()
         {
-            setTimeout( function()
-            {
-                callback( function() { return 2; } );
-            }, 0 );
-        };
-        var out;
-        runs( function()
+            var injector = type.injector();
+            injector.bind( "foo" ).to( 2 );
+            var provider = injector.resolve( type.providerOf( "foo" ) ).value();
+            expect( provider() ).toBe( 2 );
+        });
+
+        it( "should forward additional arguments to the underlying service provider", function()
         {
-            provider().then( function( result )
+            var injector = type.injector();
+            injector.bind( "foo" ).to( function( a ) { return a + 2; } );
+            var provider = injector.resolve( type.providerOf( "foo" ) ).value();
+            expect( provider( 5 ) ).toBe( 7 );
+        });
+
+        it( "should not reuse dependencies", function()
+        {
+            var foo = 0;
+            var bar = function() {};
+            bar.$inject = [ "foo" ];
+            var injector = type.injector();
+            injector.bind( "foo" ).to( function() {
+                return ++foo;
+            });
+            injector.bind( "bar" ).to( bar );
+            var provider = injector.resolve( type.providerOf( "bar" ) ).value();
+            provider();
+            provider();
+            expect( foo ).toBe( 2 );
+        });
+
+        it( "should bind to a static dependency graph when resolved", function()
+        {
+            var calledA = 0;
+            var calledB = 0;
+            var injector = type.injector();
+            injector.bind( "foo" ).to( function() {
+                calledA++;
+                return 2;
+            });
+            var provider = injector.resolve( type.providerOf( "foo" ) ).value();
+            provider();
+            injector.unbind( "foo" );
+            provider();
+            injector.bind( "foo" ).to( function()
             {
-                out = result;
+                calledB++;
+                return 2;
+            });
+            provider();
+            expect( calledA ).toBe( 3 );
+            expect( calledB ).toBe( 0 );
+        });
+
+        it( "should get the underlying service when being fetched", function()
+        {
+            var injector = type.injector();
+            window.require = window.require || function() {};
+            var out = null;
+            spyOn( window, "require" ).andCallFake( function( modules, callback )
+            {
+                out = modules[0];
+                setTimeout( function()
+                {
+                    callback( function() { return 2; } );
+                }, 0 );
+            });
+            runs( function()
+            {
+                injector.resolve( type.providerOf( "foo" ) ).then( function( fooProvider )
+                {
+                    out = fooProvider();
+                });
+                expect( out ).toBe( "foo" );
+                out = null;
+            });
+            waits(0);
+            runs( function()
+            {
+                expect( out ).toBe( 2 );
             });
         });
-        waits(0);
-        runs( function()
+    });
+
+    describe( "LazyProvider", function()
+    {
+        it( "should behave as a Provider, but return a Promise instead of the service instance", function()
         {
-            expect( out ).toBe( 2 );
+            var injector = type.injector();
+            injector.bind( "foo" ).to( 2 );
+            var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
+            var out = null;
+            runs( function()
+            {
+                provider().then( function( foo )
+                {
+                    out = foo;
+                });
+            });
+            waits(0);
+            runs( function()
+            {
+                expect( out ).toBe( 2 );
+            });
         });
-        waits(0);
-        runs( function()
+
+        it( "should resolve its dependency graph on the first call", function()
         {
+            var injector = type.injector();
+            var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
+            var temp = window.require;
             window.require = function( module, callback )
             {
                 setTimeout( function()
                 {
-                    callback( function() { return 3; } );
+                    callback( function() { return 2; } );
                 }, 0 );
             };
-            provider().then( function( result )
+            var out;
+            runs( function()
             {
-                out = result;
+                provider().then( function( result )
+                {
+                    out = result;
+                });
             });
-        });
-        waits(0);
-        runs( function()
-        {
-            expect( out ).toBe( 2 );
-        });
-        waits(0);
-        runs( function()
-        {
-            injector.bind( "foo" ).to( 4 );
-            provider().then( function( result )
+            waits(0);
+            runs( function()
             {
-                out = result;
+                expect( out ).toBe( 2 );
             });
-        });
-        waits(0);
-        runs( function()
-        {
-            expect( out ).toBe( 2 );
-        });
-        waits(0);
-        runs( function()
-        {
-            window.require = temp;
+            waits(0);
+            runs( function()
+            {
+                window.require = function( module, callback )
+                {
+                    setTimeout( function()
+                    {
+                        callback( function() { return 3; } );
+                    }, 0 );
+                };
+                provider().then( function( result )
+                {
+                    out = result;
+                });
+            });
+            waits(0);
+            runs( function()
+            {
+                expect( out ).toBe( 2 );
+            });
+            waits(0);
+            runs( function()
+            {
+                injector.bind( "foo" ).to( 4 );
+                provider().then( function( result )
+                {
+                    out = result;
+                });
+            });
+            waits(0);
+            runs( function()
+            {
+                expect( out ).toBe( 2 );
+            });
+            waits(0);
+            runs( function()
+            {
+                window.require = temp;
+            });
         });
     });
 });
