@@ -146,7 +146,7 @@ type.deferred = type().def(
                 if ( isFunc( then ) )
                 {
                     this.callbacks[ type ] = this.callbacks[ type ].slice( i + 1 );
-                    then.call( result, function( result )
+                    then.call( undefined, function( result )
                     {
                         self.resolve( result );
                     }, function( error )

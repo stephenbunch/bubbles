@@ -72,19 +72,19 @@ type.injector = type().def(
      * @param {...Object} [args]
      * @return {Deferred.<TService>}
      */
-    resolve: function( service, args )
+    resolve: function( target, args )
     {
         var self = this;
         var def = type.deferred();
         args = makeArray( arguments );
         args.shift( 0 );
-        this.resolveTree( this.getDependencyTree( service ) ).then( function( binding )
+        this.resolveTarget( target ).then( function( recipe )
         {
-            var provider = self.makeProvider( binding );
-            if ( binding.provider )
-                def.resolve( provider );
+            var factory = self.makeFactory( recipe );
+            if ( recipe.theory.isProvider )
+                def.resolve( factory );
             else
-                def.resolve( provider.apply( undefined, args ) );
+                def.resolve( factory.apply( undefined, args ) );
 
         }, function( e ) {
             def.reject( e );
@@ -100,7 +100,7 @@ type.injector = type().def(
 
     /**
      * @private
-     * @description Registers a service.
+     * @description Binds a service to a provider and returns the binding.
      * @param {string} service
      * @param {Array|function()} provider
      * @return {Binding}
@@ -132,123 +132,128 @@ type.injector = type().def(
         return this.container[ service ];
     },
 
-    /**
-     * @param {string|Array|function()} service
-     * @return {BindingTree}
-     */
-    __getDependencyTree: function( service )
+    __registerGraph: function( path, graph )
     {
-        /**
-         * @param {string} service
-         * @param {function()} callback
-         */
-        function watchFor( service, callback )
+        var self = this,
+            prefix = path === "" ?  "" : path + ".";
+        each( graph, function( type, name )
         {
-            var lazy = service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service );
-            var provider = lazy || service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service );
-            var handler = function( bindings )
-            {
-                var svc = bindings[ service ];
-                if ( svc )
-                {
-                    var dependency = self.getBinding( svc );
-                    if ( dependency )
-                    {
-                        dependency.provider = provider;
-                        dependency.lazy = lazy;
-                        callback( dependency );
-                        resolve( dependency );
-                    }
-                    else
-                    {
-                        missing.push( svc );
-                        watchFor( svc, callback );
-                    }
-                    watches.splice( indexOf( watches, handler ), 1 );
-                }
-            };
-            watches.push( handler );
-        }
-
-        /**
-         * @param {Binding}
-         */
-        function resolve( binding )
-        {
-            // Optimization: short-circuits an extra function call.
-            if ( binding.lazy )
-                return;
-
-            var current = [ binding ], next;
-            while ( current.length )
-            {
-                next = [];
-                each( current, function( binding )
-                {
-                    if ( binding.lazy )
-                        return;
-
-                    each( binding.inject, function( service, index )
-                    {
-                        var dependency = self.getBinding( service );
-                        if ( dependency )
-                        {
-                            binding.inject[ index ] = dependency;
-                            next.push( dependency );
-                        }
-                        else
-                        {
-                            missing.push( service );
-                            watchFor( service, function( dependency ) {
-                                binding.inject[ index ] = dependency;
-                            });
-                        }
-                    });
-                });
-                current = next;
-            }
-        }
-
-        var self = this;
-        var missing = [];
-        var watches = [];
-        var binding = this.getBinding( service );
-
-        if ( binding )
-            resolve( binding );
-        else
-        {
-            missing.push( service );
-            watchFor( service, function( binding ) {
-                tree.binding = binding;
-            });
-        }
-
-        var tree =
-        {
-            binding: binding,
-            missing: missing,
-            update: function( bindings )
-            {
-                missing.splice( 0 );
-                each( watches.slice( 0 ), function( handler ) {
-                    handler( bindings );
-                });
-            }
-        };
-        return tree;
+            if ( isPlainObject( type ) )
+                self.registerGraph( prefix + name, type );
+            else
+                self.register( prefix + name, type );
+        });
     },
 
     /**
-     * @description Attempts to load the missing nodes in the tree.
-     * @param {BindingTree} tree
-     * @return {Deferred.<BindingNode>}
+     * @param {Recipe} recipe
+     * @return {function()}
      */
-    __resolveTree: function( tree )
+    __makeFactory: function( recipe )
+    {
+        if ( recipe.theory.isLazy )
+            return this.makeLazyFactory( recipe );
+
+        /**
+         * @param {Recipe} recipe
+         * @return {Component}
+         */
+        function toComponent( recipe )
+        {
+            return {
+                parent: null,
+                position: null,
+                cache: [],
+                recipe: recipe
+            };
+        }
+
+        var self = this;
+        var generations = [];
+        var root = toComponent( recipe );
+        var current = [ root ];
+        var next;
+
+        while ( current.length )
+        {
+            next = [];
+            each( current, function( component )
+            {
+                if ( component.recipe.theory.isLazy )
+                    return;
+
+                each( component.recipe.dependencies, function( recipe, position )
+                {
+                    var dependency = toComponent( recipe );
+                    dependency.parent = component;
+                    dependency.position = position;
+                    next.push( dependency );
+                });
+            });
+            generations.push( current );
+            current = next;
+        }
+
+        generations.reverse();
+        generations.pop();
+
+        return function()
+        {
+            each( generations, function( generation )
+            {
+                each( generation, function( component )
+                {
+                    component.parent.cache[ component.position ] =
+                        component.recipe.theory.isProvider ?
+                        self.makeFactory( component.recipe ) :
+                        component.recipe.theory.resolve.apply( undefined, component.cache );
+                    component.cache = [];
+                });
+            });
+            var args = root.cache.concat( makeArray( arguments ) );
+            root.cache = [];
+            return root.recipe.theory.resolve.apply( undefined, args );
+        };
+    },
+
+    /**
+     * @param {Recipe} recipe
+     * @return {function()}
+     */
+    __makeLazyFactory: function( recipe )
+    {
+        var self = this;
+        var factory = null;
+        return function()
+        {
+            var def = type.deferred();
+            var args = arguments;
+            if ( !factory )
+            {
+                self.resolveTarget( recipe.theory.name ).then( function( recipe )
+                {
+                    factory = self.makeFactory( recipe );
+                    def.resolve( factory.apply( undefined, args ) );
+                }, function( e ) {
+                    def.reject( e );
+                });
+            }
+            else
+                def.resolve( factory.apply( undefined, args ) );
+            return def.promise();
+        };
+    },
+
+    /**
+     * @description Attempts to resolve a target.
+     * @param {string|Array|function()} target
+     * @return {Deferred.<Recipe>}
+     */
+    __resolveTarget: function( target )
     {
         function load()
         {
-            modules = map( tree.missing, function( service )
+            modules = map( plan.missing, function( service )
             {
                 if ( service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
                     service = service.substr( PROVIDER.length );
@@ -264,7 +269,7 @@ type.injector = type().def(
             var bindings = {};
             var args = arguments;
 
-            each( tree.missing, function( service, index )
+            each( plan.missing, function( service, index )
             {
                 // Validate the returned service. If there's no way we can turn it into a binding,
                 // we'll get ourselves into a neverending loop trying to resolve it.
@@ -298,12 +303,12 @@ type.injector = type().def(
             if ( def.state === "rejected" )
                 return;
 
-            tree.update( bindings );
+            plan.update( bindings );
 
-            if ( tree.missing.length )
+            if ( plan.missing.length )
                 load();
             else
-                def.resolve( tree.binding );
+                def.resolve( plan.recipe );
         }
 
         function fail( e ) {
@@ -312,193 +317,219 @@ type.injector = type().def(
 
         var def = type.deferred();
         var modules;
+        var plan = this.getExecutionPlan( target );
 
-        if ( tree.missing.length )
+        if ( plan.missing.length )
         {
             if ( window.require )
                 load();
             else
             {
-                def.reject( new InvalidOperationError( "Service(s) " + map( tree.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) +
-                    " have not been registered. Failed to load service(s) dynamically. Expected \"require\" to be defined. (Is RequireJS being included?)" ) );
+                def.reject( new InvalidOperationError( "Service(s) " +
+                    map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
             }
         }
         else
-            def.resolve( tree.binding );
+            def.resolve( plan.recipe );
 
         return def.promise();
     },
 
     /**
-     * @param {BindingNode} binding
-     * @return {function()}
+     * @private
+     * @description Creates an execution plan for resolving a target.
+     * @param {string|Array|function()} target
+     * @return {Plan}
      */
-    __makeProvider: function( binding )
+    __getExecutionPlan: function( target )
     {
-        if ( binding.lazy )
-            return this.makeLazyProvider( binding );
+        /**
+         * @param {string} service
+         * @param {function( Recipe )} callback
+         */
+        function watchFor( service, callback )
+        {
+            var isLazy = service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service );
+            var isProvider = isLazy || service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service );
+            var handler = function( bindings )
+            {
+                var svc = bindings[ service ];
+                if ( svc )
+                {
+                    var theory = self.parse( svc );
+                    if ( theory )
+                    {
+                        theory.isProvider = isProvider;
+                        theory.isLazy = isLazy;
+                        callback( resolve( theory ) );
+                    }
+                    else
+                    {
+                        missing.push( svc );
+                        watchFor( svc, callback );
+                    }
+                    watches.splice( indexOf( watches, handler ), 1 );
+                }
+            };
+            watches.push( handler );
+        }
 
-        function extend( binding )
+        /**
+         * @param {Theory} theory
+         * @return {Recipe}
+         */
+        function toRecipe( theory )
         {
             return {
-                parent: null,
-                index: null,
-                cache: [],
-                binding: binding
+                theory: theory,
+                dependencies: []
             };
         }
 
-        var self = this;
-        var generations = [];
-        var root = extend( binding );
-        var current = [ root ];
-        var next;
-
-        while ( current.length )
+        /**
+         * @description
+         * Turns a theory into something that can be resolved. A theory cannot be resolved unless
+         * all of its dependencies can also be resolved.
+         * @param {Theory} theory
+         * @return {Recipe}
+         */
+        function resolve( theory )
         {
-            next = [];
-            each( current, function( frame )
-            {
-                if ( frame.binding.lazy )
-                    return;
+            var recipe = toRecipe( theory );
 
-                each( frame.binding.inject, function( binding, index )
+            // Optimization: short-circuits an extra function call.
+            if ( recipe.theory.isLazy )
+                return recipe;
+
+            var current = [ recipe ], next;
+            while ( current.length )
+            {
+                next = [];
+                each( current, function( recipe )
                 {
-                    var dependency = extend( binding );
-                    dependency.parent = frame;
-                    dependency.index = index;
-                    next.push( dependency );
+                    if ( recipe.theory.isLazy )
+                        return;
+
+                    each( recipe.theory.inject, function( service, position )
+                    {
+                        var dependency = self.parse( service );
+                        if ( dependency )
+                        {
+                            dependency = toRecipe( dependency );
+                            recipe.dependencies[ position ] = dependency;
+                            next.push( dependency );
+                        }
+                        else
+                        {
+                            missing.push( service );
+                            watchFor( service, function( dependency ) {
+                                recipe.dependencies[ position ] = dependency;
+                            });
+                        }
+                    });
                 });
-            });
-            generations.push( current );
-            current = next;
+                current = next;
+            }
+            return recipe;
         }
 
-        generations.reverse();
-        generations.pop();
-
-        return function()
-        {
-            each( generations, function( generation )
-            {
-                each( generation, function( frame )
-                {
-                    frame.parent.cache[ frame.index ] =
-                        frame.binding.provider ?
-                        self.makeProvider( frame.binding ) :
-                        frame.binding.resolve.apply( undefined, frame.cache );
-                    frame.cache = [];
-                });
-            });
-            var args = root.cache.concat( makeArray( arguments ) );
-            root.cache = [];
-            return root.binding.resolve.apply( undefined, args );
-        };
-    },
-
-    /**
-     * @param {BindingNode} binding
-     * @return {function()}
-     */
-    __makeLazyProvider: function( binding )
-    {
         var self = this;
-        var provider;
-        return function()
+        var missing = [];
+        var watches = [];
+        var theory = this.parse( target );
+        var recipe = null;
+
+        if ( theory )
+            recipe = resolve( theory );
+        else
         {
-            var def = type.deferred();
-            var args = arguments;
-            if ( !provider )
+            // The only way .parse() would return null is if the target was a name (string)
+            // pointing to a service that hasn't been bound yet.
+            missing.push( target );
+            watchFor( target, function( recipe ) {
+                plan.recipe = recipe;
+            });
+        }
+
+        var plan =
+        {
+            recipe: recipe,
+            missing: missing,
+            update: function( bindings )
             {
-                self.resolveTree( self.getDependencyTree( binding.service ) ).then( function( binding )
-                {
-                    provider = self.makeProvider( binding );
-                    def.resolve( provider.apply( undefined, args ) );
-                }, function( e ) {
-                    def.reject( e );
+                missing.splice( 0 );
+                each( watches.slice( 0 ), function( handler ) {
+                    handler( bindings );
                 });
             }
-            else
-                def.resolve( provider.apply( undefined, args ) );
-            return def.promise();
         };
+        return plan;
     },
 
     /**
-     * @param {string|Array|function()} service
-     * @return {Binding}
+     * @private
+     * @description Analyzes a target and returns a theory on how to resolve it.
+     * @param {string|Array|function()} target
+     * @return {Theory}
      */
-    __getBinding: function( service )
+    __parse: function( target )
     {
-        if ( !service )
+        if ( !target )
             return null;
 
-        var binding = null;
-        if ( isFunc( service ) )
+        var result = null;
+        if ( isFunc( target ) )
         {
-            binding = {
-                resolve: service,
-                inject: ( service.$inject || [] ).slice( 0 )
+            result = {
+                resolve: target,
+                inject: ( target.$inject || [] ).slice( 0 )
             };
         }
-        else if ( isArray( service ) )
+        else if ( isArray( target ) )
         {
-            service = service.slice( 0 );
-            binding = {
-                resolve: service.pop(),
-                inject: service
+            target = target.slice( 0 );
+            result = {
+                resolve: target.pop(),
+                inject: target
             };
         }
-        else if ( isString( service ) )
+        else if ( isString( target ) )
         {
-            binding = this.container[ service ] || null;
+            var binding = this.container[ target ] || null;
             if ( binding )
             {
-                binding = {
+                result = {
                     resolve: binding.resolve,
                     inject: binding.inject.slice( 0 ),
-                    service: service
+                    name: target
                 };
             }
-            if ( !binding && service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
+            if ( !result && target !== PROVIDER && new RegExp( "^" + PROVIDER ).test( target ) )
             {
-                binding = this.container[ service.substr( PROVIDER.length ) ] || null;
+                binding = this.container[ target.substr( PROVIDER.length ) ] || null;
                 if ( binding )
                 {
-                    binding = {
+                    result = {
                         resolve: binding.resolve,
                         inject: binding.inject.slice( 0 ),
-                        service: service.substr( PROVIDER.length ),
-                        provider: true
+                        name: target.substr( PROVIDER.length ),
+                        isProvider: true
                     };
                 }
             }
-            if ( !binding && service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service ) )
+            if ( !result && target !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( target ) )
             {
-                binding = {
-                    resolve: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).resolve || null,
-                    inject: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).inject || null,
-                    service: service.substr( LAZY_PROVIDER.length ),
-                    provider: true,
-                    lazy: true
+                result = {
+                    resolve: ( this.container[ target.substr( LAZY_PROVIDER.length ) ] || {} ).resolve || null,
+                    inject: ( this.container[ target.substr( LAZY_PROVIDER.length ) ] || {} ).inject || null,
+                    name: target.substr( LAZY_PROVIDER.length ),
+                    isProvider: true,
+                    isLazy: true
                 };
-                if ( binding.inject )
-                    binding.inject = binding.inject.slice( 0 );
+                if ( result.inject )
+                    result.inject = result.inject.slice( 0 );
             }
         }
-        return binding;
-    },
-
-    __registerGraph: function( path, graph )
-    {
-        var self = this,
-            prefix = path === "" ?  "" : path + ".";
-        each( graph, function( type, name )
-        {
-            if ( isPlainObject( type ) )
-                self.registerGraph( prefix + name, type );
-            else
-                self.register( prefix + name, type );
-        });
+        return result;
     }
 });

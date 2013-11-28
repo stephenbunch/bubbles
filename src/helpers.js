@@ -58,7 +58,7 @@ function each( obj, callback )
     {
         for ( ; i < obj.length; i++ )
         {
-            if ( callback.call( obj[ i ], obj[ i ], i ) === false )
+            if ( callback.call( undefined, obj[ i ], i ) === false )
                 break;
         }
     }
@@ -66,7 +66,7 @@ function each( obj, callback )
     {
         for ( i in obj )
         {
-            if ( hasOwnProperty( obj, i ) && callback.call( obj[ i ], obj[ i ], i ) === false )
+            if ( hasOwnProperty( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
                 break;
         }
     }
