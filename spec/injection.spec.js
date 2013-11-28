@@ -4,7 +4,8 @@ describe( "Injector", function()
     {
         it( "should bind a factory to a service", function()
         {
-            var injector = type.injector().register( "foo", function() {
+            var injector = type.injector();
+            injector.bind( "foo" ).to( function() {
                 return 2;
             });
             expect( injector.resolve( "foo" ).value() ).toBe( 2 );
@@ -15,7 +16,8 @@ describe( "Injector", function()
     {
         it( "should support the array syntax for listing dependencies", function()
         {
-            var injector = type.injector().constant( "foo", 2 );
+            var injector = type.injector();
+            injector.bind( "foo" ).to( 2 );
             var out = 0;
             injector.resolve( [ "foo", function( x )
             {
@@ -26,7 +28,8 @@ describe( "Injector", function()
 
         it( "should check the '$inject' property for an array listing dependencies", function()
         {
-            var injector = type.injector().register( "foo", function() {
+            var injector = type.injector();
+            injector.bind( "foo" ).to( function() {
                 return 2;
             });
             var Bar = function( baz )
@@ -44,7 +47,8 @@ describe( "Injector", function()
 
         it( "should throw an error if any dependencies are missing", function()
         {
-            var injector = type.injector().register( "bar", [ "foo", function() {} ] );
+            var injector = type.injector();
+            injector.bind( "bar" ).to( [ "foo", function() {} ] );
             var out = null;
             try
             {            
@@ -64,7 +68,8 @@ describe( "Injector", function()
     {
         it( "should behave as '.resolve()', but return a Promise instead of the resolved dependency", function()
         {
-            var injector = type.injector().constant( "foo", 2 );
+            var injector = type.injector();
+            injector.bind( "foo" ).to( 2 );
             var out = null;
             injector.resolve( "foo" ).then( function( foo )
             {
@@ -201,30 +206,10 @@ describe( "Injector", function()
     {
         it( "should register and bind services to constants", function()
         {
-            var injector = type.injector().constant( "foo", 2 );
-            var out = 0;
-            injector.resolve( [ "foo", function( foo )
-            {
-                out = foo;
-            }]).value();
-            expect( out ).toBe( 2 );
-        });
-
-        it( "should support binding multiple constants using the hash syntax", function()
-        {
-            var injector = type.injector().constant({
-                foo: 2,
-                bar: 3
-            });
-            var f = 0;
-            var b = 0;
-            injector.resolve( [ "foo", "bar", function( foo, bar )
-            {
-                f = foo;
-                b = bar;
-            }]).value();
-            expect( f ).toBe( 2 );
-            expect( b ).toBe( 3 );
+            var injector = type.injector();
+            injector.bind( "foo" ).to( function() { return {}; } ).asSingleton();
+            var out = injector.resolve( "foo" ).value();
+            expect( injector.resolve( "foo" ).value() ).toBe( out );
         });
     });
 
@@ -239,7 +224,7 @@ describe( "Injector", function()
                     called += 1;
                 }
             });
-            var injector = type.injector().autoRegister({ app: graph });
+            var injector = type.injector().autoBind({ app: graph });
             var foo = injector.resolve( "app.bar.Foo" ).value();
             expect( called ).toBe( 1 );
         });
@@ -247,7 +232,7 @@ describe( "Injector", function()
         it( "should work with value types", function()
         {
             var graph = { foo: 2 };
-            var injector = type.injector().autoRegister( graph );
+            var injector = type.injector().autoBind( graph );
             expect( injector.resolve( "foo" ).value() ).toBe( 2 );
         });
     });
@@ -257,14 +242,16 @@ describe( "Provider", function()
 {
     it( "can be listed as a dependency", function()
     {
-        var injector = type.injector().constant( "foo", 2 );
+        var injector = type.injector();
+        injector.bind( "foo" ).to( 2 );
         var provider = injector.resolve( type.providerOf( "foo" ) ).value();
         expect( provider() ).toBe( 2 );
     });
 
     it( "should forward additional arguments to the underlying service provider", function()
     {
-        var injector = type.injector().register( "foo", function( a ) { return a + 2; } );
+        var injector = type.injector();
+        injector.bind( "foo" ).to( function( a ) { return a + 2; } );
         var provider = injector.resolve( type.providerOf( "foo" ) ).value();
         expect( provider( 5 ) ).toBe( 7 );
     });
@@ -274,13 +261,11 @@ describe( "Provider", function()
         var foo = 0;
         var bar = function() {};
         bar.$inject = [ "foo" ];
-        var injector = type.injector().register(
-        {
-            foo: function() {
-                return ++foo;
-            },
-            bar: bar
+        var injector = type.injector();
+        injector.bind( "foo" ).to( function() {
+            return ++foo;
         });
+        injector.bind( "bar" ).to( bar );
         var provider = injector.resolve( type.providerOf( "bar" ) ).value();
         provider();
         provider();
@@ -291,15 +276,16 @@ describe( "Provider", function()
     {
         var calledA = 0;
         var calledB = 0;
-        var injector = type.injector().register( "foo", function() {
+        var injector = type.injector();
+        injector.bind( "foo" ).to( function() {
             calledA++;
             return 2;
         });
         var provider = injector.resolve( type.providerOf( "foo" ) ).value();
         provider();
-        injector.unregister( "foo" );
+        injector.unbind( "foo" );
         provider();
-        injector.register( "foo", function()
+        injector.bind( "foo" ).to( function()
         {
             calledB++;
             return 2;
@@ -343,7 +329,8 @@ describe( "LazyProvider", function()
 {
     it( "should behave as a Provider, but return a Promise instead of the service instance", function()
     {
-        var injector = type.injector().constant( "foo", 2 );
+        var injector = type.injector();
+        injector.bind( "foo" ).to( 2 );
         var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
         var out = null;
         runs( function()
@@ -408,7 +395,7 @@ describe( "LazyProvider", function()
         waits(0);
         runs( function()
         {
-            injector.constant( "foo", 4 );
+            injector.bind( "foo" ).to( 4 );
             provider().then( function( result )
             {
                 out = result;

@@ -27,7 +27,8 @@ describe( "type", function()
                     return this.foo;
                 }
             });
-            var injector = type.injector().register( "bar", function() { return 2; } );
+            var injector = type.injector();
+            injector.bind( "bar" ).to( function() { return 2; } );
             var a = injector.resolve( A ).value();
             expect( a.value() ).toBe( 2 );
         });
@@ -53,10 +54,9 @@ describe( "type", function()
                 baz: null,
                 qux: null
             });
-            var injector = type.injector().constant({
-                foo: 1,
-                baz: 3
-            });
+            var injector = type.injector();
+            injector.bind( "foo" ).to( 1 );
+            injector.bind( "baz" ).to( 3 );
             var b = injector.resolve( B, 2, 4 ).value();
             expect( b.foo ).toBe( 1 );
             expect( b.bar ).toBe( 2 );

@@ -1496,43 +1496,41 @@ type.injector = type().def(
     /**
      * @description Registers a service.
      * @param {string} service
-     * @param {Array|function()} provider
-     * @return {injector}
+     * @return {BindingConfiguration}
      */
-    register: function( service, provider )
+    bind: function( service )
     {
         var self = this;
-        var bindings;
-        if ( arguments.length === 1 )
-            bindings = service;
-        else
-        {
-            bindings = {};
-            bindings[ service ] = provider;
-        }
-        each( bindings, function( provider, service )
-        {
-            if ( isArray( provider ) )
+        return {
+            to: function( provider )
             {
-                self.container[ service ] = {
-                    create: provider.pop(),
-                    inject: provider
+                var binding = self.register( service, provider );
+                var configure =
+                {
+                    asSingleton: function()
+                    {
+                        var _resolve = binding.resolve;
+                        var resolved = false;
+                        var result;
+                        binding.resolve = function()
+                        {
+                            if ( !resolved )
+                            {
+                                result = _resolve.apply( undefined, arguments );
+                                resolved = true;
+                            }
+                            return result;
+                        };
+                        delete configure.asSingleton;
+                    },
+
+                    whenFor: function() {
+
+                    }
                 };
+                return configure;
             }
-            else
-            {
-                self.container[ service ] = {
-                    create: provider,
-                    inject: provider.$inject || []
-                };
-            }
-            if ( !isFunc( self.container[ service ].create ) )
-            {
-                delete self.container[ service ];
-                throw new TypeError( "The provider for service \"" + service + "\" must be a function." );
-            }
-        });
-        return this._pub;
+        };
     },
 
     /**
@@ -1540,7 +1538,7 @@ type.injector = type().def(
      * @param {string} service
      * @return {injector}
      */
-    unregister: function( service )
+    unbind: function( service )
     {
         delete this.container[ service ];
         return this._pub;
@@ -1572,30 +1570,44 @@ type.injector = type().def(
         return def.promise();
     },
 
-    /**
-     * @description Binds a constant to a service.
-     * @param {string} service
-     * @param {mixed} constant
-     * @return {injector}
-     */
-    constant: function( service, constant )
-    {
-        var self = this;
-        if ( arguments.length === 1 )
-        {
-            each( service, function( constant, service ) {
-                self.register( service, function() { return constant; } );
-            });
-            return this._pub;
-        }
-        else
-            return this.register( service, function() { return constant; } );
-    },
-
-    autoRegister: function( graph )
+    autoBind: function( graph )
     {
         this.registerGraph( "", graph );
         return this._pub;
+    },
+
+    /**
+     * @private
+     * @description Registers a service.
+     * @param {string} service
+     * @param {Array|function()} provider
+     * @return {Binding}
+     */
+    __register: function( service, provider )
+    {
+        if ( isArray( provider ) )
+        {
+            provider = provider.slice( 0 );
+            this.container[ service ] = {
+                resolve: provider.pop(),
+                inject: provider
+            };
+        }
+        else
+        {
+            this.container[ service ] = {
+                resolve: provider,
+                inject: ( provider.$inject || [] ).slice( 0 )
+            };
+        }
+        if ( !isFunc( this.container[ service ].resolve ) )
+        {
+            var value = this.container[ service ].resolve;
+            this.container[ service ].resolve = function() {
+                return value;
+            };
+        }
+        return this.container[ service ];
     },
 
     /**
@@ -1809,7 +1821,7 @@ type.injector = type().def(
             return {
                 parent: null,
                 index: null,
-                dependencies: [],
+                cache: [],
                 binding: binding
             };
         }
@@ -1849,16 +1861,16 @@ type.injector = type().def(
             {
                 each( generation, function( frame )
                 {
-                    frame.parent.dependencies[ frame.index ] =
+                    frame.parent.cache[ frame.index ] =
                         frame.binding.provider ?
                         self.makeProvider( frame.binding ) :
-                        frame.binding.create.apply( undefined, frame.dependencies );
-                    frame.dependencies = [];
+                        frame.binding.resolve.apply( undefined, frame.cache );
+                    frame.cache = [];
                 });
             });
-            var args = root.dependencies.concat( makeArray( arguments ) );
-            root.dependencies = [];
-            return root.binding.create.apply( undefined, args );
+            var args = root.cache.concat( makeArray( arguments ) );
+            root.cache = [];
+            return root.binding.resolve.apply( undefined, args );
         };
     },
 
@@ -1903,7 +1915,7 @@ type.injector = type().def(
         if ( isFunc( service ) )
         {
             binding = {
-                create: service,
+                resolve: service,
                 inject: ( service.$inject || [] ).slice( 0 )
             };
         }
@@ -1911,7 +1923,7 @@ type.injector = type().def(
         {
             service = service.slice( 0 );
             binding = {
-                create: service.pop(),
+                resolve: service.pop(),
                 inject: service
             };
         }
@@ -1921,7 +1933,7 @@ type.injector = type().def(
             if ( binding )
             {
                 binding = {
-                    create: binding.create,
+                    resolve: binding.resolve,
                     inject: binding.inject.slice( 0 ),
                     service: service
                 };
@@ -1932,7 +1944,7 @@ type.injector = type().def(
                 if ( binding )
                 {
                     binding = {
-                        create: binding.create,
+                        resolve: binding.resolve,
                         inject: binding.inject.slice( 0 ),
                         service: service.substr( PROVIDER.length ),
                         provider: true
@@ -1942,7 +1954,7 @@ type.injector = type().def(
             if ( !binding && service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service ) )
             {
                 binding = {
-                    create: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).create || null,
+                    resolve: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).resolve || null,
                     inject: ( this.container[ service.substr( LAZY_PROVIDER.length ) ] || {} ).inject || null,
                     service: service.substr( LAZY_PROVIDER.length ),
                     provider: true,
