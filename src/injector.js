@@ -69,49 +69,21 @@ type.injector = type().def(
      * @description Resolves a service and its dependencies.
      * @param {string|function()|Array} service
      * @param {...Object} [args]
-     * @return {TService}
+     * @return {Deferred.<TService>}
      */
     resolve: function( service, args )
     {
-        var tree = this.getDependencyTree( service );
-        if ( tree.missing.length )
-        {
-            throw new InvalidOperationError( "Service(s) " +
-                map( tree.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." );
-        }
-
-        var provider = this.makeProvider( tree.binding );
-        if ( tree.binding.provider )
-            return provider;
-        else
-        {
-            args = makeArray( arguments );
-            args.shift( 0 );
-            return provider.apply( undefined, args );
-        }
-    },
-
-    /**
-     * @description
-     * @param {string|function()|Array} service
-     * @param {...Object} [args]
-     * @return {Deferred.<TService>}
-     */
-    fetch: function( service, args )
-    {
         var self = this;
         var def = type.deferred();
+        args = makeArray( arguments );
+        args.shift( 0 );
         this.resolveTree( this.getDependencyTree( service ) ).then( function( binding )
         {
             var provider = self.makeProvider( binding );
             if ( binding.provider )
                 def.resolve( provider );
             else
-            {
-                args = makeArray( arguments );
-                args.shift( 0 );
                 def.resolve( provider.apply( undefined, args ) );
-            }
 
         }, function( e ) {
             def.reject( e );
@@ -328,7 +300,7 @@ type.injector = type().def(
 
         if ( tree.missing.length )
         {
-            if ( require )
+            if ( window.require )
                 load();
             else
             {

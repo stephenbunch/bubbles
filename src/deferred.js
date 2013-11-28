@@ -7,9 +7,19 @@ type.deferred = type().def(
             fail: []
         };
         this.state = "pending";
+        this.result = null;
     },
 
     state: { get: null, __set: null },
+
+    value: function()
+    {
+        if ( this.state === "rejected" )
+            throw this.result;
+        else if ( this.state === "pending" )
+            throw new type.InvalidOperationError( "Object is still in pending state." );
+        return this.result;
+    },
 
     resolve: function( result )
     {
@@ -92,6 +102,10 @@ type.deferred = type().def(
             {
                 self.always.apply( self, arguments );
                 return promise;
+            },
+
+            value: function() {
+                return self.value();
             }
         };
         return promise;

@@ -7,7 +7,7 @@ describe( "Injector", function()
             var injector = type.injector().register( "foo", function() {
                 return 2;
             });
-            expect( injector.resolve( "foo" ) ).toBe( 2 );
+            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
         });
     });
 
@@ -20,7 +20,7 @@ describe( "Injector", function()
             injector.resolve( [ "foo", function( x )
             {
                 out = x;
-            }]);
+            }]).value();
             expect( out ).toBe( 2 );
         });
 
@@ -36,9 +36,9 @@ describe( "Injector", function()
                 this.foo = baz;
             };
             Bar.$inject = [ "foo" ];
-            var bar = injector.resolve( Bar );
+            var bar = injector.resolve( Bar ).value();
             expect( bar.foo ).toBe( 2 );
-            bar = injector.resolve( Bar );
+            bar = injector.resolve( Bar ).value();
             expect( bar.foo ).toBe( 2 );
         });
 
@@ -48,7 +48,7 @@ describe( "Injector", function()
             var out = null;
             try
             {            
-                injector.resolve( [ "bar", "baz", function() {} ] );
+                injector.resolve( [ "bar", "baz", function() {} ] ).value();
             }
             catch ( e )
             {
@@ -66,7 +66,7 @@ describe( "Injector", function()
         {
             var injector = type.injector().constant( "foo", 2 );
             var out = null;
-            injector.fetch( "foo" ).then( function( foo )
+            injector.resolve( "foo" ).then( function( foo )
             {
                 out = foo;
             });
@@ -88,7 +88,7 @@ describe( "Injector", function()
             var injector = type.injector();
             runs( function()
             {
-                injector.fetch( "app.foo" ).then( function( foo )
+                injector.resolve( "app.foo" ).then( function( foo )
                 {
                     out = foo;
                 });
@@ -121,7 +121,7 @@ describe( "Injector", function()
                     return a + b;
                 };
                 service.$inject = [ "foo", "bar" ];
-                injector.fetch( service ).then( function( result )
+                injector.resolve( service ).then( function( result )
                 {
                     out = result;
                 });
@@ -149,7 +149,7 @@ describe( "Injector", function()
             runs( function()
             {
                 out = null;
-                injector.fetch( "foo" ).then( null, function( e )
+                injector.resolve( "foo" ).then( null, function( e )
                 {
                     out = e;
                 });
@@ -166,7 +166,7 @@ describe( "Injector", function()
                         callback();
                     }, 0 );
                 };
-                injector.fetch( "foo" ).then( null, function( e )
+                injector.resolve( "foo" ).then( null, function( e )
                 {
                     out = e;
                 });
@@ -183,7 +183,7 @@ describe( "Injector", function()
                         callback( [ "bla" ] );
                     }, 0 );
                 };
-                injector.fetch( "foo" ).then( null, function( e )
+                injector.resolve( "foo" ).then( null, function( e )
                 {
                     out = e;
                 });
@@ -206,7 +206,7 @@ describe( "Injector", function()
             injector.resolve( [ "foo", function( foo )
             {
                 out = foo;
-            }]);
+            }]).value();
             expect( out ).toBe( 2 );
         });
 
@@ -222,7 +222,7 @@ describe( "Injector", function()
             {
                 f = foo;
                 b = bar;
-            }]);
+            }]).value();
             expect( f ).toBe( 2 );
             expect( b ).toBe( 3 );
         });
@@ -240,7 +240,7 @@ describe( "Injector", function()
                 }
             });
             var injector = type.injector().autoRegister({ app: graph });
-            var foo = injector.resolve( "app.bar.Foo" );
+            var foo = injector.resolve( "app.bar.Foo" ).value();
             expect( called ).toBe( 1 );
         });
 
@@ -248,7 +248,7 @@ describe( "Injector", function()
         {
             var graph = { foo: 2 };
             var injector = type.injector().autoRegister( graph );
-            expect( injector.resolve( "foo" ) ).toBe( 2 );
+            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
         });
     });
 });
@@ -258,14 +258,14 @@ describe( "Provider", function()
     it( "can be listed as a dependency", function()
     {
         var injector = type.injector().constant( "foo", 2 );
-        var provider = injector.resolve( type.providerOf( "foo" ) );
+        var provider = injector.resolve( type.providerOf( "foo" ) ).value();
         expect( provider() ).toBe( 2 );
     });
 
     it( "should forward additional arguments to the underlying service provider", function()
     {
         var injector = type.injector().register( "foo", function( a ) { return a + 2; } );
-        var provider = injector.resolve( type.providerOf( "foo" ) );
+        var provider = injector.resolve( type.providerOf( "foo" ) ).value();
         expect( provider( 5 ) ).toBe( 7 );
     });
 
@@ -281,7 +281,7 @@ describe( "Provider", function()
             },
             bar: bar
         });
-        var provider = injector.resolve( type.providerOf( "bar" ) );
+        var provider = injector.resolve( type.providerOf( "bar" ) ).value();
         provider();
         provider();
         expect( foo ).toBe( 2 );
@@ -295,7 +295,7 @@ describe( "Provider", function()
             calledA++;
             return 2;
         });
-        var provider = injector.resolve( type.providerOf( "foo" ) );
+        var provider = injector.resolve( type.providerOf( "foo" ) ).value();
         provider();
         injector.unregister( "foo" );
         provider();
@@ -324,7 +324,7 @@ describe( "Provider", function()
         });
         runs( function()
         {
-            injector.fetch( type.providerOf( "foo" ) ).then( function( fooProvider )
+            injector.resolve( type.providerOf( "foo" ) ).then( function( fooProvider )
             {
                 out = fooProvider();
             });
@@ -344,7 +344,7 @@ describe( "LazyProvider", function()
     it( "should behave as a Provider, but return a Promise instead of the service instance", function()
     {
         var injector = type.injector().constant( "foo", 2 );
-        var provider = injector.resolve( type.lazyProviderOf( "foo" ) );
+        var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
         var out = null;
         runs( function()
         {
@@ -363,7 +363,7 @@ describe( "LazyProvider", function()
     it( "should resolve its dependency graph on the first call", function()
     {
         var injector = type.injector();
-        var provider = injector.resolve( type.lazyProviderOf( "foo" ) );
+        var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
         var temp = window.require;
         window.require = function( module, callback )
         {

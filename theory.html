@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+<head>
+    <title>Theory</title>
+</head>
+<body>
+    <script src="/assets/app/vendor/typejs/0.1.0/type.js"></script>
+    <script>
+        var injector = type.injector();
+        
+        // Specify a base path to look for scripts.
+        injector.autoLoad( "/assets/app/src" );
+
+        // Advanced configuration syntax.
+        injector.autoLoad({
+            baseUrl: "/assets/app/src",
+            waitSeconds: 7,
+            urlArgs: "v=0.1",
+            scriptType: "text/javascript;version=1.8"
+        });
+
+        // For custom load behavior (e.g. testing), supply a callback that returns a promise.
+        injector.autoLoad( function( path ) {
+            return type.deferred().promise();
+        });
+
+        // Bind a service to a provider.
+        injector.bind( "foo" ).to( function() { return 2; } );
+
+        // Bind a service to a specific implementation.
+        // Use a single instance for all types resolved by this injector.
+        // Apply this binding only when resolving for the app/EventTarget script.
+
+        // .toPath() expects a URL to a script that defines a type.
+        // .whenFor() expects a path to a type, or a type (which is represented as a function.)
+        injector.bind( "app.Application" ).toPath( "app/Application" ).asSingleton().whenFor([ "app/EventTarget" ]);
+
+        // Bind multiple named types.
+        injector.autoBind({
+            app: {
+                Application: "app/Application"
+                Hub: "app/Hub"
+            }
+        });
+
+        // Unbind a named type.
+        injector.unbind( "app.Hub" );
+
+        // Unbind for a specific implementation.
+        injector.unbind( "app.Application", [ "app/EventTarget" ]);
+
+        // Get a new instance of a type.
+        injector.resolve( "app.Application" ).done( function( app )
+        {
+            app.doEvents();
+        });
+
+        // Define a type with named type dependencies (as opposed to named instance dependencies.)
+        var Foo = type().extend( "app.EventTarget" ).def({
+            // members ...
+        });
+
+        // InvalidOperationError: Type has named dependencies and must be resolved first.
+        new Foo();
+
+        Foo.resolve( "/assets/app/src/app/EventTarget" ).done( function( Type )
+        {
+            var foo = new Type();
+
+            foo instanceof Type; // true
+            foo instanceof Foo; // true
+        });
+
+        // Resolve a type definition using an injector.
+        Foo.resolve( injector );
+
+        // This syntax is required if there are multiple named type parameters.
+        Foo.resolve({
+            "app.EventTarget": "/assets/app/src/app/EventTarget"
+        });
+
+        // RULES:
+        // 1. Cannot define multiple types in a file. Loading that script will result in an error.
+        // 2. Deferred.value() returns the result of the promise. If the result has not been retrieved yet, null is returned.
+
+        // Alternate syntax for defining types whose implementation depends on globals.
+        var Foo = type([ "app.util" ], function( util )
+        {
+            // TODO: Clean this up. Syntax is confusing.
+            this.require([ "style.css", "template.html" ]);
+
+            this.extend( "app.EventTarget" ).def(
+            {
+                test: function() {
+                    util.doSomething();
+                }
+            });
+        });
+
+        Foo.resolve({
+            "app.util": "app/helpers",
+            "app.EventTarget": "app/EventTarget"
+        }).done( function( Type ) {
+            var foo = new Type();
+        });
+
+        // Bind a name to a package.
+        // Default behavior is to expect a global with the same name as the package name.
+        injector.bind( "vendor" ).toPackage(
+        {
+            // Use array syntax to load library plugins.
+            jQuery: [
+                "/assets/vendor/jquery/1.10.2/jquery",
+                "/assets/vendor/jqueryui/1.10.3/jquery-ui",
+            ],
+            moment: "/assets/vendor/moment/2.3.1/moment",
+            linq: "/assets/vendor/linqjs/0.1.0/linq"
+        });
+
+        // Use case.
+        type([ "vendor" ], function( vendor )
+        {
+            var $ = vendor.jQuery;
+            var moment = vendor.moment;
+            var linq = vendor.linq;
+
+            this.def({
+                // members ...
+            });
+        });
+
+        // Create a binding redirect.
+        injector.bind( "foo" ).toName( "bar" );
+
+    </script>
+
+    <!-- Example include statement from third party website. -->
+    <script src="//portal.officetoolspro.com/js?include=app.Application,app.util,app.scheduling"></script>
+
+    <!-- Example type definition. -->
+    <script>
+    type([ "vendor" ], function( vendor )
+    {
+        var $ = vendor.jQuery;
+        var moment = vendor.moment;
+        var linq = vendor.linq;
+
+        this.extend( "linq.enumerable" );
+        this.include([ "app.EventTarget" ]);
+        this.events([
+            "load",
+            "click"
+        ]);
+
+        this.def(
+        {
+            ctor: [ "app.Hub", function( hub )
+            {
+                this.hub = hub;
+            }],
+
+            test: function()
+            {
+                this.click.raise();
+            }
+        });
+    });
+    </script>
+</body>
+</html>

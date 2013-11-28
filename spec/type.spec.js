@@ -28,7 +28,7 @@ describe( "type", function()
                 }
             });
             var injector = type.injector().register( "bar", function() { return 2; } );
-            var a = injector.resolve( A );
+            var a = injector.resolve( A ).value();
             expect( a.value() ).toBe( 2 );
         });
 
@@ -57,7 +57,7 @@ describe( "type", function()
                 foo: 1,
                 baz: 3
             });
-            var b = injector.resolve( B, 2, 4 );
+            var b = injector.resolve( B, 2, 4 ).value();
             expect( b.foo ).toBe( 1 );
             expect( b.bar ).toBe( 2 );
             expect( b.baz ).toBe( 3 );

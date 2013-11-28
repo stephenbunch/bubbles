@@ -117,6 +117,36 @@ describe( "Deferred", function()
         });
     });
 
+    describe( ".value()", function()
+    {
+        it( "should return the result if the deferred has been resolved", function()
+        {
+            var def = type.deferred();
+            def.resolve( 2 );
+            expect( def.value() ).toBe( 2 );
+        });
+
+        it( "should throw an error if the deferred is still pending", function()
+        {
+            var def = type.deferred();
+            expect( function()
+            {
+                def.value();
+            }).toThrowOf( type.InvalidOperationError );
+        });
+
+        it( "should throw the resulting error if the deferred was rejected", function()
+        {
+            var def = type.deferred();
+            var e = new Error( "test" );
+            def.reject( e );
+            expect( function()
+            {
+                def.value();
+            }).toThrow( e );
+        });
+    });
+
     describe( "'done' callback", function()
     {
         it( "should fire immediately if the deferred has already been resolved", function()
