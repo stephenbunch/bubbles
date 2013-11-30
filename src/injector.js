@@ -78,17 +78,20 @@ type.injector = type().def(
         var def = type.deferred();
         args = makeArray( arguments );
         args.shift( 0 );
-        this.resolveTarget( target ).then( function( recipe )
-        {
-            var factory = self.makeFactory( recipe );
-            if ( recipe.theory.isProvider )
-                def.resolve( factory );
-            else
-                def.resolve( factory.apply( undefined, args ) );
+        this.resolveTarget( target )
+            .done( function( recipe )
+            {
+                var factory = self.makeFactory( recipe );
+                if ( recipe.theory.isProvider )
+                    def.resolve( factory );
+                else
+                    def.resolve( factory.apply( undefined, args ) );
 
-        }, function( e ) {
-            def.reject( e );
-        });
+            })
+            .fail( function( reason )
+            {
+                def.reject( reason );
+            });
         return def.promise();
     },
 
@@ -230,13 +233,16 @@ type.injector = type().def(
             var args = arguments;
             if ( !factory )
             {
-                self.resolveTarget( recipe.theory.name ).then( function( recipe )
-                {
-                    factory = self.makeFactory( recipe );
-                    def.resolve( factory.apply( undefined, args ) );
-                }, function( e ) {
-                    def.reject( e );
-                });
+                self.resolveTarget( recipe.theory.name )
+                    .done( function( recipe )
+                    {
+                        factory = self.makeFactory( recipe );
+                        def.resolve( factory.apply( undefined, args ) );
+                    })
+                    .fail( function( reason )
+                    {
+                        def.reject( reason );
+                    });
             }
             else
                 def.resolve( factory.apply( undefined, args ) );
@@ -311,8 +317,8 @@ type.injector = type().def(
                 def.resolve( plan.recipe );
         }
 
-        function fail( e ) {
-            def.reject( e );
+        function fail( reason ) {
+            def.reject( reason );
         }
 
         var def = type.deferred();

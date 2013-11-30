@@ -1,17 +1,8 @@
 describe( "Deferred", function()
 {
-    describe( ".state", function()
-    {
-        it( "[get] should return the state of the deferred", function()
-        {
-            var def = type.deferred();
-            expect( def.state ).toBe( "pending" );
-        });
-    });
-
     describe( ".resolve()", function()
     {
-        it( "should set the state to 'resolved' and fire all the 'done' callbacks", function()
+        it( "should set the state to 'fulfilled' and fire all the 'done' callbacks", function()
         {
             var out = null;
             var def = type.deferred().done( function( result )
@@ -20,7 +11,6 @@ describe( "Deferred", function()
             });
             def.resolve( 2 );
             expect( out ).toBe( 2 );
-            expect( def.state ).toBe( "resolved" );
         });
     });
 
@@ -35,7 +25,6 @@ describe( "Deferred", function()
             });
             def.reject( 2 );
             expect( out ).toBe( 2 );
-            expect( def.state ).toBe( "rejected" );
         });
     });
 
@@ -55,26 +44,32 @@ describe( "Deferred", function()
 
     describe( ".then()", function()
     {
-        it( "should add a 'done' and/or 'fail' callback", function()
+        it( "should add a 'done' and/or 'fail' callback and return a promise", function()
         {
             var called1 = false;
             var called2 = false;
-            var def1 = type.deferred().then( function() {
+            var def1 = type.deferred();
+            def1.then( function() {
                 called1 = true;
             });
-            var def2 = type.deferred().then( null, function() {
+            var def2 = type.deferred();
+            def2.then( null, function() {
                 called2 = true;
             });
             def1.resolve();
             def2.reject();
-            expect( called1 ).toBe( true );
-            expect( called2 ).toBe( true );
+            waits(0);
+            runs( function()
+            {
+                expect( called1 ).toBe( true );
+                expect( called2 ).toBe( true );
+            });
         });
     });
 
     describe( ".done()", function()
     {
-        it( "should add a callback to run when the deferred is resolved", function()
+        it( "should add a callback to run when the deferred is fulfilled", function()
         {
             var called = false;
             var def = type.deferred().done( function()
@@ -102,7 +97,7 @@ describe( "Deferred", function()
 
     describe( ".always()", function()
     {
-        it( "should add a callback to run when the deferred is either resolved or rejected", function()
+        it( "should add a callback to run when the deferred is either fulfilled or rejected", function()
         {
             var called1 = false;
             var called2 = false;
@@ -123,7 +118,7 @@ describe( "Deferred", function()
 
     describe( ".value()", function()
     {
-        it( "should return the result if the deferred has been resolved", function()
+        it( "should return the result if the deferred has been fulfilled", function()
         {
             var def = type.deferred();
             def.resolve( 2 );
@@ -153,7 +148,7 @@ describe( "Deferred", function()
 
     describe( "'done' callback", function()
     {
-        it( "should fire immediately if the deferred has already been resolved", function()
+        it( "should fire immediately if the deferred has already been fulfilled", function()
         {
             var out = null;
             var def = type.deferred().resolve( 2 );
@@ -187,7 +182,7 @@ describe( "Deferred", function()
             var def2 = type.deferred();
             var def3 = type.deferred();
             var out = null;
-            type.deferred.when([ def1, def2, def3 ]).then( function( results )
+            type.deferred.when([ def1, def2, def3 ]).done( function( results )
             {
                 out = results;
             });

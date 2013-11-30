@@ -3,7 +3,7 @@
  * @description
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
- * @param {Object} obj
+ * @param {*} obj
  * @return {boolean}
  */
 function isArrayLike( obj )
@@ -29,7 +29,7 @@ function isArrayLike( obj )
 /**
  * @private
  * @description Turns an object into a true array.
- * @param {Object} obj
+ * @param {Object|Array} obj
  * @return {Array}
  */
 function makeArray( obj )
@@ -77,19 +77,24 @@ function each( obj, callback )
  * @description
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
- * @param {Object} object
+ * @param {*} object
  * @return {string}
  */
 function typeOf( object )
 {
-    return SPECIAL[ object ] || Object.prototype.toString.call( object )
+    // In IE8, Object.toString on null and undefined returns "object".
+    if ( object === null )
+        return "null";
+    if ( object === undefined )
+        return "undefined";
+    return Object.prototype.toString.call( object )
         .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
 }
 
 /**
  * @private
  * @description Determines whether an object is a function.
- * @param {Object} object
+ * @param {*} object
  * @return {boolean}
  */
 function isFunc( object ) {
@@ -99,7 +104,7 @@ function isFunc( object ) {
 /**
  * @private
  * @description Determines whether an object is an array.
- * @param {Object} object
+ * @param {*} object
  * @return {boolean}
  */
 function isArray( object ) {
@@ -155,7 +160,7 @@ function hasOwnProperty( obj, prop ) {
  * @description
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
  * @param {Array} array
- * @param {Object} item
+ * @param {*} item
  * @return {number}
  */
 function indexOf( array, item )

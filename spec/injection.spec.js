@@ -74,12 +74,7 @@ describe( "Injector", function()
         {
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 );
-            var out = null;
-            injector.resolve( "foo" ).then( function( foo )
-            {
-                out = foo;
-            });
-            expect( out ).toBe( 2 );
+            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
         });
 
         it( "should try to use RequireJS to load missing dependencies", function()
@@ -97,7 +92,7 @@ describe( "Injector", function()
             var injector = type.injector();
             runs( function()
             {
-                injector.resolve( "app.foo" ).then( function( foo )
+                injector.resolve( "app.foo" ).done( function( foo )
                 {
                     out = foo;
                 });
@@ -130,7 +125,7 @@ describe( "Injector", function()
                     return a + b;
                 };
                 service.$inject = [ "foo", "bar" ];
-                injector.resolve( service ).then( function( result )
+                injector.resolve( service ).done( function( result )
                 {
                     out = result;
                 });
@@ -158,7 +153,7 @@ describe( "Injector", function()
             runs( function()
             {
                 out = null;
-                injector.resolve( "foo" ).then( null, function( e )
+                injector.resolve( "foo" ).fail( function( e )
                 {
                     out = e;
                 });
@@ -175,7 +170,7 @@ describe( "Injector", function()
                         callback();
                     }, 0 );
                 };
-                injector.resolve( "foo" ).then( null, function( e )
+                injector.resolve( "foo" ).fail( function( e )
                 {
                     out = e;
                 });
@@ -192,7 +187,7 @@ describe( "Injector", function()
                         callback( [ "bla" ] );
                     }, 0 );
                 };
-                injector.resolve( "foo" ).then( null, function( e )
+                injector.resolve( "foo" ).fail( function( e )
                 {
                     out = e;
                 });
@@ -345,7 +340,7 @@ describe( "Injector", function()
             });
             runs( function()
             {
-                injector.resolve( type.providerOf( "foo" ) ).then( function( fooProvider )
+                injector.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
                 {
                     out = fooProvider();
                 });
@@ -367,19 +362,7 @@ describe( "Injector", function()
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 );
             var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
-            var out = null;
-            runs( function()
-            {
-                provider().then( function( foo )
-                {
-                    out = foo;
-                });
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out ).toBe( 2 );
-            });
+            expect( provider().value() ).toBe( 2 );
         });
 
         it( "should resolve its dependency graph on the first call", function()
@@ -397,7 +380,7 @@ describe( "Injector", function()
             var out;
             runs( function()
             {
-                provider().then( function( result )
+                provider().done( function( result )
                 {
                     out = result;
                 });
@@ -417,7 +400,7 @@ describe( "Injector", function()
                         callback( function() { return 3; } );
                     }, 0 );
                 };
-                provider().then( function( result )
+                provider().done( function( result )
                 {
                     out = result;
                 });
@@ -431,7 +414,7 @@ describe( "Injector", function()
             runs( function()
             {
                 injector.bind( "foo" ).to( 4 );
-                provider().then( function( result )
+                provider().done( function( result )
                 {
                     out = result;
                 });

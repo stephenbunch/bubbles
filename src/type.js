@@ -4,7 +4,7 @@
  *
  * Inspired by John Resig's "Simple JavaScript Inheritance" class.
  */
-var type = window.type = function()
+var type = function()
 {
     var Scope = null;
     var run = true;
