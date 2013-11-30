@@ -90,6 +90,7 @@ function typeOf( object )
     return Object.prototype.toString.call( object )
         .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
 }
+type.of = typeOf;
 
 /**
  * @private
@@ -133,8 +134,10 @@ function trim( value ) {
  * @param {Object} object
  * @return {Array}
  */
-var keys = Object.keys || function( object )
+function keys( object )
 {
+    if ( Object.keys )
+        return Object.keys( object );
     var ret = [];
     for ( var key in object )
     {
@@ -142,7 +145,7 @@ var keys = Object.keys || function( object )
             ret.push( key );
     }
     return ret;
-};
+}
 
 /**
  * @private

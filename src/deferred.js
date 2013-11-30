@@ -1,6 +1,6 @@
 // 2.1
 var PENDING = "pending";
-var RESOLVED = "resolved";
+var FULFILLED = "fulfilled";
 var REJECTED = "rejected";
 
 /**
@@ -49,7 +49,7 @@ function resolve( promise, x )
                             if ( !resolve( promise, y ) )
                             {
                                 // 2.3.4
-                                promise.set( RESOLVED, y );
+                                promise.set( FULFILLED, y );
                             }
                         }
                     },
@@ -85,6 +85,8 @@ var Promise = type().def(
         this.result = null;
     },
 
+    state: { get: null, __set: null },
+
     value: function()
     {
         if ( this.state === REJECTED )
@@ -111,7 +113,7 @@ var Promise = type().def(
             // 2.2.4
             setTimeout( function()
             {
-                var callback = state === RESOLVED ? onFulfilled : onRejected, x;
+                var callback = state === FULFILLED ? onFulfilled : onRejected, x;
                 // 2.2.7.3
                 // 2.2.7.4
                 if ( !isFunc( callback ) )
@@ -134,7 +136,7 @@ var Promise = type().def(
                 if ( !resolve( promise, x ) )
                 {
                     // 2.3.4
-                    promise.set( RESOLVED, x );
+                    promise.set( FULFILLED, x );
                 }
             }, 0 );
         };
@@ -150,7 +152,7 @@ var Promise = type().def(
     {
         var handler = function( state, result )
         {
-            if ( state === RESOLVED )
+            if ( state === FULFILLED )
                 callback.call( undefined, result );
         };
         if ( this.state === PENDING )
@@ -201,24 +203,12 @@ var Promise = type().def(
     }
 });
 
-var Deferred = type().extend( Promise ).def(
+var Deferred = type.defer = type().extend( Promise ).def(
 {
-    resolve: function( result )
-    {
-        this.set( RESOLVED, result );
-        return this._pub;
-    },
-
-    reject: function( reason )
-    {
-        this.set( REJECTED, reason );
-        return this._pub;
-    },
-
-    promise: function()
+    ctor: function()
     {
         var self = this;
-        var promise =
+        this.promise =
         {
             then: function() {
                 return self.then.apply( self, arguments );
@@ -227,32 +217,45 @@ var Deferred = type().extend( Promise ).def(
             done: function()
             {
                 self.done.apply( self, arguments );
-                return promise;
+                return self.promise;
             },
 
             fail: function()
             {
                 self.fail.apply( self, arguments );
-                return promise;
+                return self.promise;
             },
 
             always: function()
             {
                 self.always.apply( self, arguments );
-                return promise;
+                return self.promise;
             },
 
             value: function() {
                 return self.value();
             }
         };
-        return promise;
+    },
+
+    promise: { get: null, __set: null },
+
+    resolve: function( result )
+    {
+        this.set( FULFILLED, result );
+        return this._pub;
+    },
+
+    reject: function( reason )
+    {
+        this.set( REJECTED, reason );
+        return this._pub;
     }
 });
 
 Deferred.when = function( promises )
 {
-    var def = type.deferred();
+    var deferred = new Deferred();
     var tasks = isArray( promises ) ? promises : makeArray( arguments );
     var progress = 0;
     var results = [];
@@ -263,14 +266,14 @@ Deferred.when = function( promises )
             {
                 results[ index ] = value;
                 if ( ++progress === tasks.length )
-                    def.resolve( results );
+                    deferred.resolve( results );
             })
             .fail( function( reason )
             {
-                def.reject( reason );
+                deferred.reject( reason );
             });
     });
     if ( !tasks.length )
-        def.resolve( [] );
-    return def.promise();
+        deferred.resolve( [] );
+    return deferred.promise;
 };

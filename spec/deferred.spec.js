@@ -1,11 +1,27 @@
 describe( "Deferred", function()
 {
+    describe( ".promise", function()
+    {
+        it( "should return a read-only interface to the deferred that is also Promise/A+ compliant", function()
+        {
+            var def = type.defer();
+            var promise = def.promise;
+            expect( promise.then ).toBeDefined();
+            expect( promise.done ).toBeDefined();
+            expect( promise.fail ).toBeDefined();
+            expect( promise.always ).toBeDefined();
+            expect( promise.value ).toBeDefined();
+            expect( promise.resolve ).not.toBeDefined();
+            expect( promise.reject ).not.toBeDefined();
+        });
+    });
+
     describe( ".resolve()", function()
     {
         it( "should set the state to 'fulfilled' and fire all the 'done' callbacks", function()
         {
             var out = null;
-            var def = type.deferred().done( function( result )
+            var def = type.defer().done( function( result )
             {
                 out = result;
             });
@@ -19,26 +35,12 @@ describe( "Deferred", function()
         it( "should set the state to 'rejected' and fire all the 'fail' callbacks", function()
         {
             var out = null;
-            var def = type.deferred().fail( function( error )
+            var def = type.defer().fail( function( error )
             {
                 out = error;
             });
             def.reject( 2 );
             expect( out ).toBe( 2 );
-        });
-    });
-
-    describe( ".promise()", function()
-    {
-        it( "should return a read-only interface to the deferred that is also Promise/A+ compliant", function()
-        {
-            var def = type.deferred();
-            var promise = def.promise();
-            expect( promise.then ).toBeDefined();
-            expect( promise.done ).toBeDefined();
-            expect( promise.fail ).toBeDefined();
-            expect( promise.always ).toBeDefined();
-            expect( promise.value ).toBeDefined();
         });
     });
 
@@ -48,11 +50,11 @@ describe( "Deferred", function()
         {
             var called1 = false;
             var called2 = false;
-            var def1 = type.deferred();
+            var def1 = type.defer();
             def1.then( function() {
                 called1 = true;
             });
-            var def2 = type.deferred();
+            var def2 = type.defer();
             def2.then( null, function() {
                 called2 = true;
             });
@@ -72,7 +74,7 @@ describe( "Deferred", function()
         it( "should add a callback to run when the deferred is fulfilled", function()
         {
             var called = false;
-            var def = type.deferred().done( function()
+            var def = type.defer().done( function()
             {
                 called = true;
             });
@@ -86,7 +88,7 @@ describe( "Deferred", function()
         it( "should add a callback to run when the deferred is rejected", function()
         {
             var called = false;
-            var def = type.deferred().fail( function()
+            var def = type.defer().fail( function()
             {
                 called = true;
             });
@@ -101,11 +103,11 @@ describe( "Deferred", function()
         {
             var called1 = false;
             var called2 = false;
-            var def1 = type.deferred().always( function()
+            var def1 = type.defer().always( function()
             {
                 called1 = true;
             });
-            var def2 = type.deferred().always( function()
+            var def2 = type.defer().always( function()
             {
                 called2 = true;
             });
@@ -120,14 +122,14 @@ describe( "Deferred", function()
     {
         it( "should return the result if the deferred has been fulfilled", function()
         {
-            var def = type.deferred();
+            var def = type.defer();
             def.resolve( 2 );
             expect( def.value() ).toBe( 2 );
         });
 
         it( "should throw an error if the deferred is still pending", function()
         {
-            var def = type.deferred();
+            var def = type.defer();
             expect( function()
             {
                 def.value();
@@ -136,7 +138,7 @@ describe( "Deferred", function()
 
         it( "should throw the resulting error if the deferred was rejected", function()
         {
-            var def = type.deferred();
+            var def = type.defer();
             var e = new Error( "test" );
             def.reject( e );
             expect( function()
@@ -151,7 +153,7 @@ describe( "Deferred", function()
         it( "should fire immediately if the deferred has already been fulfilled", function()
         {
             var out = null;
-            var def = type.deferred().resolve( 2 );
+            var def = type.defer().resolve( 2 );
             def.done( function( result )
             {
                 out = result;
@@ -165,7 +167,7 @@ describe( "Deferred", function()
         it( "should fire immediately if the deferred has already been rejected", function()
         {
             var out = null;
-            var def = type.deferred().reject( 2 );
+            var def = type.defer().reject( 2 );
             def.fail( function( error )
             {
                 out = error;
@@ -174,15 +176,15 @@ describe( "Deferred", function()
         });
     });
 
-    describe( "type.deferred.when()", function()
+    describe( "type.defer.when()", function()
     {
         it( "should combine multiple promises into a single promise", function()
         {
-            var def1 = type.deferred();
-            var def2 = type.deferred();
-            var def3 = type.deferred();
+            var def1 = type.defer();
+            var def2 = type.defer();
+            var def3 = type.defer();
             var out = null;
-            type.deferred.when([ def1, def2, def3 ]).done( function( results )
+            type.defer.when([ def1, def2, def3 ]).done( function( results )
             {
                 out = results;
             });

@@ -71,241 +71,6 @@ ACCESS[ PROTECTED ] = 2;
 ACCESS[ PRIVATE ] = 3;
 
 /**
- * @private
- * @description
- * Determines whether an object can be iterated over like an array.
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
- * @param {*} obj
- * @return {boolean}
- */
-function isArrayLike( obj )
-{
-    var length = obj.length,
-        type = typeOf( obj );
-
-    if ( typeOf( obj ) === "window" )
-        return false;
-
-    if ( obj.nodeType === 1 && length )
-        return true;
-
-    return (
-        type === "array" ||
-        type !== "function" && (
-            length === 0 ||
-            typeof length === "number" && length > 0 && ( length - 1 ) in obj
-        )
-    );
-}
-
-/**
- * @private
- * @description Turns an object into a true array.
- * @param {Object|Array} obj
- * @return {Array}
- */
-function makeArray( obj )
-{
-    if ( isArray( obj ) )
-        return obj;
-    var result = [];
-    each( obj, function( item ) {
-        result.push( item );
-    });
-    return result;
-}
-
-/**
- * @private
- * @description
- * Iterates of an array or object, passing in the item and index / key.
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
- * @param {Object|Array} obj
- * @param {function()} callback
- */
-function each( obj, callback )
-{
-    var i = 0, value;
-    if ( isArrayLike( obj ) )
-    {
-        for ( ; i < obj.length; i++ )
-        {
-            if ( callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
-    }
-    else
-    {
-        for ( i in obj )
-        {
-            if ( hasOwnProperty( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
-    }
-}
-
-/**
- * @private
- * @description
- * Gets the internal JavaScript [[Class]] of an object.
- * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
- * @param {*} object
- * @return {string}
- */
-function typeOf( object )
-{
-    // In IE8, Object.toString on null and undefined returns "object".
-    if ( object === null )
-        return "null";
-    if ( object === undefined )
-        return "undefined";
-    return Object.prototype.toString.call( object )
-        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
-}
-
-/**
- * @private
- * @description Determines whether an object is a function.
- * @param {*} object
- * @return {boolean}
- */
-function isFunc( object ) {
-    return typeOf( object ) === "function";
-}
-
-/**
- * @private
- * @description Determines whether an object is an array.
- * @param {*} object
- * @return {boolean}
- */
-function isArray( object ) {
-    return typeOf( object ) === "array";
-}
-
-function isString( object ) {
-    return typeOf( object ) === "string";
-}
-
-/**
- * @private
- * @description
- * Removes trailing whitespace from a string.
- * http://stackoverflow.com/a/2308157/740996
- * @param {string} value
- * @return {string}
- */
-function trim( value ) {
-    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
-}
-
-/**
- * @private
- * @description Gets the keys of an object.
- * @param {Object} object
- * @return {Array}
- */
-var keys = Object.keys || function( object )
-{
-    var ret = [];
-    for ( var key in object )
-    {
-        if ( hasOwnProperty( object, key ) )
-            ret.push( key );
-    }
-    return ret;
-};
-
-/**
- * @private
- * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
- * @param {Object} obj
- * @param {string} prop
- * @return {boolean}
- */
-function hasOwnProperty( obj, prop ) {
-    return Object.prototype.hasOwnProperty.call( obj, prop );
-}
-
-/**
- * @private
- * @description
- * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
- * @param {Array} array
- * @param {*} item
- * @return {number}
- */
-function indexOf( array, item )
-{
-    if ( array.indexOf )
-        return array.indexOf( item );
-    else
-    {
-        var index = -1;
-        each( array, function( obj, i )
-        {
-            if ( obj === item )
-            {
-                index = i;
-                return false;
-            }
-        });
-        return index;
-    }
-}
-
-/**
- * @private
- * @description Determines whether an object was created using "{}" or "new Object".
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
- * @param {Object} obj
- * @return {boolean}
- */
-function isPlainObject( obj )
-{
-    // Not plain objects:
-    // - Any object or value whose internal [[Class]] property is not "[object Object]"
-    // - DOM nodes
-    // - window
-    if ( typeOf( obj ) !== "object" || obj.nodeType || typeOf( obj ) === "window" )
-        return false;
-
-    // Support: Firefox <20
-    // The try/catch suppresses exceptions thrown when attempting to access
-    // the "constructor" property of certain host objects, ie. |window.location|
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
-    try
-    {
-        if (
-            obj.constructor &&
-            !hasOwnProperty( obj.constructor.prototype, "isPrototypeOf" )
-        )
-            return false;
-    }
-    catch ( e ) {
-        return false;
-    }
-
-    // If the function hasn't returned already, we're confident that
-    // |obj| is a plain object, created by {} or constructed with new Object
-    return true;
-}
-
-function map( items, callback, context )
-{
-    items = makeArray( items );
-    if ( Array.prototype.map )
-        return items.map( callback, context );
-    else
-    {
-        var result = [];
-        each( items, function( item, index ) {
-            result.push( callback.call( context, item, index ) );
-        });
-    }
-}
-
-/**
  * @description Defines a new type.
  * @return {Type}
  *
@@ -531,6 +296,244 @@ var type = function()
 
     return Type;
 };
+
+/**
+ * @private
+ * @description
+ * Determines whether an object can be iterated over like an array.
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
+ * @param {*} obj
+ * @return {boolean}
+ */
+function isArrayLike( obj )
+{
+    var length = obj.length,
+        type = typeOf( obj );
+
+    if ( typeOf( obj ) === "window" )
+        return false;
+
+    if ( obj.nodeType === 1 && length )
+        return true;
+
+    return (
+        type === "array" ||
+        type !== "function" && (
+            length === 0 ||
+            typeof length === "number" && length > 0 && ( length - 1 ) in obj
+        )
+    );
+}
+
+/**
+ * @private
+ * @description Turns an object into a true array.
+ * @param {Object|Array} obj
+ * @return {Array}
+ */
+function makeArray( obj )
+{
+    if ( isArray( obj ) )
+        return obj;
+    var result = [];
+    each( obj, function( item ) {
+        result.push( item );
+    });
+    return result;
+}
+
+/**
+ * @private
+ * @description
+ * Iterates of an array or object, passing in the item and index / key.
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
+ * @param {Object|Array} obj
+ * @param {function()} callback
+ */
+function each( obj, callback )
+{
+    var i = 0, value;
+    if ( isArrayLike( obj ) )
+    {
+        for ( ; i < obj.length; i++ )
+        {
+            if ( callback.call( undefined, obj[ i ], i ) === false )
+                break;
+        }
+    }
+    else
+    {
+        for ( i in obj )
+        {
+            if ( hasOwnProperty( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
+                break;
+        }
+    }
+}
+
+/**
+ * @private
+ * @description
+ * Gets the internal JavaScript [[Class]] of an object.
+ * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+ * @param {*} object
+ * @return {string}
+ */
+function typeOf( object )
+{
+    // In IE8, Object.toString on null and undefined returns "object".
+    if ( object === null )
+        return "null";
+    if ( object === undefined )
+        return "undefined";
+    return Object.prototype.toString.call( object )
+        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
+}
+type.of = typeOf;
+
+/**
+ * @private
+ * @description Determines whether an object is a function.
+ * @param {*} object
+ * @return {boolean}
+ */
+function isFunc( object ) {
+    return typeOf( object ) === "function";
+}
+
+/**
+ * @private
+ * @description Determines whether an object is an array.
+ * @param {*} object
+ * @return {boolean}
+ */
+function isArray( object ) {
+    return typeOf( object ) === "array";
+}
+
+function isString( object ) {
+    return typeOf( object ) === "string";
+}
+
+/**
+ * @private
+ * @description
+ * Removes trailing whitespace from a string.
+ * http://stackoverflow.com/a/2308157/740996
+ * @param {string} value
+ * @return {string}
+ */
+function trim( value ) {
+    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
+}
+
+/**
+ * @private
+ * @description Gets the keys of an object.
+ * @param {Object} object
+ * @return {Array}
+ */
+function keys( object )
+{
+    if ( Object.keys )
+        return Object.keys( object );
+    var ret = [];
+    for ( var key in object )
+    {
+        if ( hasOwnProperty( object, key ) )
+            ret.push( key );
+    }
+    return ret;
+}
+
+/**
+ * @private
+ * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
+ * @param {Object} obj
+ * @param {string} prop
+ * @return {boolean}
+ */
+function hasOwnProperty( obj, prop ) {
+    return Object.prototype.hasOwnProperty.call( obj, prop );
+}
+
+/**
+ * @private
+ * @description
+ * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
+ * @param {Array} array
+ * @param {*} item
+ * @return {number}
+ */
+function indexOf( array, item )
+{
+    if ( array.indexOf )
+        return array.indexOf( item );
+    else
+    {
+        var index = -1;
+        each( array, function( obj, i )
+        {
+            if ( obj === item )
+            {
+                index = i;
+                return false;
+            }
+        });
+        return index;
+    }
+}
+
+/**
+ * @private
+ * @description Determines whether an object was created using "{}" or "new Object".
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
+ * @param {Object} obj
+ * @return {boolean}
+ */
+function isPlainObject( obj )
+{
+    // Not plain objects:
+    // - Any object or value whose internal [[Class]] property is not "[object Object]"
+    // - DOM nodes
+    // - window
+    if ( typeOf( obj ) !== "object" || obj.nodeType || typeOf( obj ) === "window" )
+        return false;
+
+    // Support: Firefox <20
+    // The try/catch suppresses exceptions thrown when attempting to access
+    // the "constructor" property of certain host objects, ie. |window.location|
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
+    try
+    {
+        if (
+            obj.constructor &&
+            !hasOwnProperty( obj.constructor.prototype, "isPrototypeOf" )
+        )
+            return false;
+    }
+    catch ( e ) {
+        return false;
+    }
+
+    // If the function hasn't returned already, we're confident that
+    // |obj| is a plain object, created by {} or constructed with new Object
+    return true;
+}
+
+function map( items, callback, context )
+{
+    items = makeArray( items );
+    if ( Array.prototype.map )
+        return items.map( callback, context );
+    else
+    {
+        var result = [];
+        each( items, function( item, index ) {
+            result.push( callback.call( context, item, index ) );
+        });
+    }
+}
 
 var DefinitionError = type.DefinitionError = function( message ) {
     this.message = message;
@@ -1300,7 +1303,7 @@ function getPlainDOMObject()
 
 // 2.1
 var PENDING = "pending";
-var RESOLVED = "resolved";
+var FULFILLED = "fulfilled";
 var REJECTED = "rejected";
 
 /**
@@ -1349,7 +1352,7 @@ function resolve( promise, x )
                             if ( !resolve( promise, y ) )
                             {
                                 // 2.3.4
-                                promise.set( RESOLVED, y );
+                                promise.set( FULFILLED, y );
                             }
                         }
                     },
@@ -1385,6 +1388,8 @@ var Promise = type().def(
         this.result = null;
     },
 
+    state: { get: null, __set: null },
+
     value: function()
     {
         if ( this.state === REJECTED )
@@ -1411,7 +1416,7 @@ var Promise = type().def(
             // 2.2.4
             setTimeout( function()
             {
-                var callback = state === RESOLVED ? onFulfilled : onRejected, x;
+                var callback = state === FULFILLED ? onFulfilled : onRejected, x;
                 // 2.2.7.3
                 // 2.2.7.4
                 if ( !isFunc( callback ) )
@@ -1434,7 +1439,7 @@ var Promise = type().def(
                 if ( !resolve( promise, x ) )
                 {
                     // 2.3.4
-                    promise.set( RESOLVED, x );
+                    promise.set( FULFILLED, x );
                 }
             }, 0 );
         };
@@ -1450,7 +1455,7 @@ var Promise = type().def(
     {
         var handler = function( state, result )
         {
-            if ( state === RESOLVED )
+            if ( state === FULFILLED )
                 callback.call( undefined, result );
         };
         if ( this.state === PENDING )
@@ -1501,24 +1506,12 @@ var Promise = type().def(
     }
 });
 
-var Deferred = type().extend( Promise ).def(
+var Deferred = type.defer = type().extend( Promise ).def(
 {
-    resolve: function( result )
-    {
-        this.set( RESOLVED, result );
-        return this._pub;
-    },
-
-    reject: function( reason )
-    {
-        this.set( REJECTED, reason );
-        return this._pub;
-    },
-
-    promise: function()
+    ctor: function()
     {
         var self = this;
-        var promise =
+        this.promise =
         {
             then: function() {
                 return self.then.apply( self, arguments );
@@ -1527,32 +1520,45 @@ var Deferred = type().extend( Promise ).def(
             done: function()
             {
                 self.done.apply( self, arguments );
-                return promise;
+                return self.promise;
             },
 
             fail: function()
             {
                 self.fail.apply( self, arguments );
-                return promise;
+                return self.promise;
             },
 
             always: function()
             {
                 self.always.apply( self, arguments );
-                return promise;
+                return self.promise;
             },
 
             value: function() {
                 return self.value();
             }
         };
-        return promise;
+    },
+
+    promise: { get: null, __set: null },
+
+    resolve: function( result )
+    {
+        this.set( FULFILLED, result );
+        return this._pub;
+    },
+
+    reject: function( reason )
+    {
+        this.set( REJECTED, reason );
+        return this._pub;
     }
 });
 
 Deferred.when = function( promises )
 {
-    var def = type.deferred();
+    var deferred = new Deferred();
     var tasks = isArray( promises ) ? promises : makeArray( arguments );
     var progress = 0;
     var results = [];
@@ -1563,16 +1569,16 @@ Deferred.when = function( promises )
             {
                 results[ index ] = value;
                 if ( ++progress === tasks.length )
-                    def.resolve( results );
+                    deferred.resolve( results );
             })
             .fail( function( reason )
             {
-                def.reject( reason );
+                deferred.reject( reason );
             });
     });
     if ( !tasks.length )
-        def.resolve( [] );
-    return def.promise();
+        deferred.resolve( [] );
+    return deferred.promise;
 };
 
 type.providerOf = function( service ) {
@@ -1583,7 +1589,7 @@ type.lazyProviderOf = function( service ) {
     return LAZY_PROVIDER + service;
 };
 
-type.injector = type().def(
+var Injector = type.injector = type().def(
 {
     ctor: function() {
         this.container = {};
@@ -1635,7 +1641,7 @@ type.injector = type().def(
     /**
      * @description Unregisters a service.
      * @param {string} service
-     * @return {injector}
+     * @return {Injector}
      */
     unbind: function( service )
     {
@@ -1652,7 +1658,7 @@ type.injector = type().def(
     resolve: function( target, args )
     {
         var self = this;
-        var def = type.deferred();
+        var deferred = new Deferred();
         args = makeArray( arguments );
         args.shift( 0 );
         this.resolveTarget( target )
@@ -1660,16 +1666,16 @@ type.injector = type().def(
             {
                 var factory = self.makeFactory( recipe );
                 if ( recipe.theory.isProvider )
-                    def.resolve( factory );
+                    deferred.resolve( factory );
                 else
-                    def.resolve( factory.apply( undefined, args ) );
+                    deferred.resolve( factory.apply( undefined, args ) );
 
             })
             .fail( function( reason )
             {
-                def.reject( reason );
+                deferred.reject( reason );
             });
-        return def.promise();
+        return deferred.promise;
     },
 
     autoBind: function( graph )
@@ -1806,7 +1812,7 @@ type.injector = type().def(
         var factory = null;
         return function()
         {
-            var def = type.deferred();
+            var deferred = new Deferred();
             var args = arguments;
             if ( !factory )
             {
@@ -1814,16 +1820,16 @@ type.injector = type().def(
                     .done( function( recipe )
                     {
                         factory = self.makeFactory( recipe );
-                        def.resolve( factory.apply( undefined, args ) );
+                        deferred.resolve( factory.apply( undefined, args ) );
                     })
                     .fail( function( reason )
                     {
-                        def.reject( reason );
+                        deferred.reject( reason );
                     });
             }
             else
-                def.resolve( factory.apply( undefined, args ) );
-            return def.promise();
+                deferred.resolve( factory.apply( undefined, args ) );
+            return deferred.promise;
         };
     },
 
@@ -1860,7 +1866,7 @@ type.injector = type().def(
 
                 if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
                 {
-                    def.reject(
+                    deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Expected service to be a string, array, or function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
@@ -1871,7 +1877,7 @@ type.injector = type().def(
                 if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
                 {
                     svc = svc[ svc.length - 1 ];
-                    def.reject(
+                    deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
@@ -1883,7 +1889,7 @@ type.injector = type().def(
                 bindings[ service ] = args[ index ];
             });
 
-            if ( def.state === "rejected" )
+            if ( deferred.state === "rejected" )
                 return;
 
             plan.update( bindings );
@@ -1891,14 +1897,14 @@ type.injector = type().def(
             if ( plan.missing.length )
                 load();
             else
-                def.resolve( plan.recipe );
+                deferred.resolve( plan.recipe );
         }
 
         function fail( reason ) {
-            def.reject( reason );
+            deferred.reject( reason );
         }
 
-        var def = type.deferred();
+        var deferred = new Deferred();
         var modules;
         var plan = this.getExecutionPlan( target );
 
@@ -1908,14 +1914,14 @@ type.injector = type().def(
                 load();
             else
             {
-                def.reject( new InvalidOperationError( "Service(s) " +
+                deferred.reject( new InvalidOperationError( "Service(s) " +
                     map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
             }
         }
         else
-            def.resolve( plan.recipe );
+            deferred.resolve( plan.recipe );
 
-        return def.promise();
+        return deferred.promise;
     },
 
     /**
@@ -2116,9 +2122,6 @@ type.injector = type().def(
         return result;
     }
 });
-
-type.deferred = Deferred;
-type.of = typeOf;
 
 if ( typeof module !== "undefined" )
     module.exports = type;

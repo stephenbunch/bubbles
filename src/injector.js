@@ -6,7 +6,7 @@ type.lazyProviderOf = function( service ) {
     return LAZY_PROVIDER + service;
 };
 
-type.injector = type().def(
+var Injector = type.injector = type().def(
 {
     ctor: function() {
         this.container = {};
@@ -58,7 +58,7 @@ type.injector = type().def(
     /**
      * @description Unregisters a service.
      * @param {string} service
-     * @return {injector}
+     * @return {Injector}
      */
     unbind: function( service )
     {
@@ -75,7 +75,7 @@ type.injector = type().def(
     resolve: function( target, args )
     {
         var self = this;
-        var def = type.deferred();
+        var deferred = new Deferred();
         args = makeArray( arguments );
         args.shift( 0 );
         this.resolveTarget( target )
@@ -83,16 +83,16 @@ type.injector = type().def(
             {
                 var factory = self.makeFactory( recipe );
                 if ( recipe.theory.isProvider )
-                    def.resolve( factory );
+                    deferred.resolve( factory );
                 else
-                    def.resolve( factory.apply( undefined, args ) );
+                    deferred.resolve( factory.apply( undefined, args ) );
 
             })
             .fail( function( reason )
             {
-                def.reject( reason );
+                deferred.reject( reason );
             });
-        return def.promise();
+        return deferred.promise;
     },
 
     autoBind: function( graph )
@@ -229,7 +229,7 @@ type.injector = type().def(
         var factory = null;
         return function()
         {
-            var def = type.deferred();
+            var deferred = new Deferred();
             var args = arguments;
             if ( !factory )
             {
@@ -237,16 +237,16 @@ type.injector = type().def(
                     .done( function( recipe )
                     {
                         factory = self.makeFactory( recipe );
-                        def.resolve( factory.apply( undefined, args ) );
+                        deferred.resolve( factory.apply( undefined, args ) );
                     })
                     .fail( function( reason )
                     {
-                        def.reject( reason );
+                        deferred.reject( reason );
                     });
             }
             else
-                def.resolve( factory.apply( undefined, args ) );
-            return def.promise();
+                deferred.resolve( factory.apply( undefined, args ) );
+            return deferred.promise;
         };
     },
 
@@ -283,7 +283,7 @@ type.injector = type().def(
 
                 if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
                 {
-                    def.reject(
+                    deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Expected service to be a string, array, or function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
@@ -294,7 +294,7 @@ type.injector = type().def(
                 if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
                 {
                     svc = svc[ svc.length - 1 ];
-                    def.reject(
+                    deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
@@ -306,7 +306,7 @@ type.injector = type().def(
                 bindings[ service ] = args[ index ];
             });
 
-            if ( def.state === "rejected" )
+            if ( deferred.state === "rejected" )
                 return;
 
             plan.update( bindings );
@@ -314,14 +314,14 @@ type.injector = type().def(
             if ( plan.missing.length )
                 load();
             else
-                def.resolve( plan.recipe );
+                deferred.resolve( plan.recipe );
         }
 
         function fail( reason ) {
-            def.reject( reason );
+            deferred.reject( reason );
         }
 
-        var def = type.deferred();
+        var deferred = new Deferred();
         var modules;
         var plan = this.getExecutionPlan( target );
 
@@ -331,14 +331,14 @@ type.injector = type().def(
                 load();
             else
             {
-                def.reject( new InvalidOperationError( "Service(s) " +
+                deferred.reject( new InvalidOperationError( "Service(s) " +
                     map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
             }
         }
         else
-            def.resolve( plan.recipe );
+            deferred.resolve( plan.recipe );
 
-        return def.promise();
+        return deferred.promise;
     },
 
     /**

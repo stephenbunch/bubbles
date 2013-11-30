@@ -14,8 +14,8 @@ module.exports = function( grunt )
             dist: {
                 src: [
                     "src/intro.js",
-                    "src/helpers.js",
                     "src/type.js",
+                    "src/helpers.js",
                     "src/errors.js",
                     "src/define.js",
                     "src/build.js",
@@ -76,14 +76,8 @@ module.exports = function( grunt )
         var run = require( "promises-aplus-tests" );
         var type = require( "./dist/type.js" );
         var adapter = {
-            deferred: function()
-            {
-                var deferred = type.deferred();
-                return {
-                    promise: deferred.promise(),
-                    resolve: deferred.resolve,
-                    reject: deferred.reject
-                };
+            deferred: function() {
+                return type.defer();
             }
         };
         var options = {
