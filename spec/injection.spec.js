@@ -95,7 +95,7 @@ describe( "Injector", function()
                 injector.resolve( "app.foo" ).done( function( foo )
                 {
                     out = foo;
-                });
+                }, false );
             });
             waits(0);
             runs( function()
@@ -128,7 +128,7 @@ describe( "Injector", function()
                 injector.resolve( service ).done( function( result )
                 {
                     out = result;
-                });
+                }, false );
             });
             waits(0);
             runs( function()
@@ -156,7 +156,7 @@ describe( "Injector", function()
                 injector.resolve( "foo" ).fail( function( e )
                 {
                     out = e;
-                });
+                }, false );
             });
             waits(0);
             runs( function()
@@ -173,7 +173,7 @@ describe( "Injector", function()
                 injector.resolve( "foo" ).fail( function( e )
                 {
                     out = e;
-                });
+                }, false );
             });
             waits(0);
             runs( function()
@@ -190,7 +190,7 @@ describe( "Injector", function()
                 injector.resolve( "foo" ).fail( function( e )
                 {
                     out = e;
-                });
+                }, false );
             });
             waits(0);
             runs( function()
@@ -343,7 +343,7 @@ describe( "Injector", function()
                 injector.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
                 {
                     out = fooProvider();
-                });
+                }, false );
                 expect( out ).toBe( "foo" );
                 out = null;
             });
@@ -383,7 +383,7 @@ describe( "Injector", function()
                 provider().done( function( result )
                 {
                     out = result;
-                });
+                }, false );
             });
             waits(0);
             runs( function()
@@ -403,7 +403,7 @@ describe( "Injector", function()
                 provider().done( function( result )
                 {
                     out = result;
-                });
+                }, false );
             });
             waits(0);
             runs( function()
@@ -417,7 +417,7 @@ describe( "Injector", function()
                 provider().done( function( result )
                 {
                     out = result;
-                });
+                }, false );
             });
             waits(0);
             runs( function()

@@ -24,7 +24,7 @@ describe( "Deferred", function()
             var def = type.defer().done( function( result )
             {
                 out = result;
-            });
+            }, false );
             def.resolve( 2 );
             expect( out ).toBe( 2 );
         });
@@ -38,7 +38,7 @@ describe( "Deferred", function()
             var def = type.defer().fail( function( error )
             {
                 out = error;
-            });
+            }, false );
             def.reject( 2 );
             expect( out ).toBe( 2 );
         });
@@ -53,19 +53,15 @@ describe( "Deferred", function()
             var def1 = type.defer();
             def1.then( function() {
                 called1 = true;
-            });
+            }, null, false );
             var def2 = type.defer();
             def2.then( null, function() {
                 called2 = true;
-            });
+            }, false );
             def1.resolve();
             def2.reject();
-            waits(0);
-            runs( function()
-            {
-                expect( called1 ).toBe( true );
-                expect( called2 ).toBe( true );
-            });
+            expect( called1 ).toBe( true );
+            expect( called2 ).toBe( true );
         });
     });
 
@@ -77,7 +73,7 @@ describe( "Deferred", function()
             var def = type.defer().done( function()
             {
                 called = true;
-            });
+            }, false );
             def.resolve();
             expect( called ).toBe( true );
         });
@@ -91,7 +87,7 @@ describe( "Deferred", function()
             var def = type.defer().fail( function()
             {
                 called = true;
-            });
+            }, false );
             def.reject();
             expect( called ).toBe( true );
         });
@@ -106,11 +102,11 @@ describe( "Deferred", function()
             var def1 = type.defer().always( function()
             {
                 called1 = true;
-            });
+            }, false );
             var def2 = type.defer().always( function()
             {
                 called2 = true;
-            });
+            }, false );
             def1.resolve();
             def2.reject();
             expect( called1 ).toBe( true );
@@ -157,7 +153,7 @@ describe( "Deferred", function()
             def.done( function( result )
             {
                 out = result;
-            });
+            }, false );
             expect( out ).toBe( 2 );
         });
     });
@@ -171,7 +167,7 @@ describe( "Deferred", function()
             def.fail( function( error )
             {
                 out = error;
-            });
+            }, false );
             expect( out ).toBe( 2 );
         });
     });
@@ -187,7 +183,7 @@ describe( "Deferred", function()
             type.defer.when([ def1, def2, def3 ]).done( function( results )
             {
                 out = results;
-            });
+            }, false );
             def2.resolve( 2 );
             def3.resolve( 3 );
             def1.resolve( 1 );

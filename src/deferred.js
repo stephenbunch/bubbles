@@ -80,6 +80,7 @@ var Promise = type().def(
 {
     ctor: function()
     {
+        var self = this;
         this.queue = [];
         this.state = PENDING;
         this.result = null;
@@ -105,87 +106,29 @@ var Promise = type().def(
      * @param {function()} [onRejected]
      * @return {Promise}
      */ 
-    then: function( onFulfilled, onRejected )
+    then: function( onFulfilled, onRejected, async )
     {
         var promise = this._pry( new Promise() );
-        var handler = function( state, result )
-        {
-            // 2.2.4
-            setTimeout( function()
-            {
-                var callback = state === FULFILLED ? onFulfilled : onRejected, x;
-                // 2.2.7.3
-                // 2.2.7.4
-                if ( !isFunc( callback ) )
-                {
-                    promise.set( state, result );
-                    return;
-                }
-                try
-                {
-                    // 2.2.5
-                    x = callback.call( undefined, result );
-                }
-                catch ( e )
-                {
-                    // 2.2.7.2
-                    promise.set( REJECTED, e );
-                    return;
-                }
-                // 2.2.7.1
-                if ( !resolve( promise, x ) )
-                {
-                    // 2.3.4
-                    promise.set( FULFILLED, x );
-                }
-            }, 0 );
-        };
-        if ( this.state === PENDING )
-            this.queue.push( handler );
-        else
-            handler( this.state, this.result );
-        // 2.2.7
+        async = async === false ? false : true;
+        this.enqueue( this.handle( promise, onFulfilled, onRejected ), async );
         return promise._pub;
     },
 
-    done: function( callback )
+    done: function( callback, async )
     {
-        var handler = function( state, result )
-        {
-            if ( state === FULFILLED )
-                callback.call( undefined, result );
-        };
-        if ( this.state === PENDING )
-            this.queue.push( handler );
-        else
-            handler( this.state, this.result );
+        this.then( callback, null, async );
         return this._pub;
     },
 
-    fail: function( callback )
+    fail: function( callback, async )
     {
-        var handler = function( state, result )
-        {
-            if ( state === REJECTED )
-                callback.call( undefined, result );
-        };
-        if ( this.state === PENDING )
-            this.queue.push( handler );
-        else
-            handler( this.state, this.result );
+        this.then( null, callback, async );
         return this._pub;
     },
 
-    always: function( callback )
+    always: function( callback, async )
     {
-        if ( this.state === PENDING )
-        {
-            this.queue.push( function( state, result ) {
-                callback.call( undefined, result );
-            });
-        }
-        else
-            callback.call( undefined, this.result );
+        this.then( callback, callback, async );
         return this._pub;
     },
 
@@ -200,6 +143,57 @@ var Promise = type().def(
                 this.queue[ i ]( state, result );
             this.queue = [];
         }
+    },
+
+    __enqueue: function( handler, async )
+    {
+        if ( async )
+        {
+            var _handler = handler;
+            handler = function()
+            {
+                var args = arguments;
+                setTimeout( function() {
+                    _handler.apply( undefined, args );
+                }, 0 );
+            };
+        }
+        if ( this.state === PENDING )
+            this.queue.push( handler );
+        else
+            handler( this.state, this.result );
+    },
+
+    __handle: function( promise, onFulfilled, onRejected )
+    {
+        return function( state, result )
+        {
+            var callback = state === FULFILLED ? onFulfilled : onRejected, x;
+            // 2.2.7.3
+            // 2.2.7.4
+            if ( !isFunc( callback ) )
+            {
+                promise.set( state, result );
+                return;
+            }
+            try
+            {
+                // 2.2.5
+                x = callback.call( undefined, result );
+            }
+            catch ( e )
+            {
+                // 2.2.7.2
+                promise.set( REJECTED, e );
+                return;
+            }
+            // 2.2.7.1
+            if ( !resolve( promise, x ) )
+            {
+                // 2.3.4
+                promise.set( FULFILLED, x );
+            }
+        };
     }
 });
 
@@ -213,25 +207,21 @@ var Deferred = type.defer = type().extend( Promise ).def(
             then: function() {
                 return self.then.apply( self, arguments );
             },
-
             done: function()
             {
                 self.done.apply( self, arguments );
                 return self.promise;
             },
-
             fail: function()
             {
                 self.fail.apply( self, arguments );
                 return self.promise;
             },
-
             always: function()
             {
                 self.always.apply( self, arguments );
                 return self.promise;
             },
-
             value: function() {
                 return self.value();
             }
@@ -262,16 +252,15 @@ Deferred.when = function( promises )
     each( tasks, function( task, index )
     {
         task
-            .done( function( value )
+            .then( function( value )
             {
                 results[ index ] = value;
                 if ( ++progress === tasks.length )
                     deferred.resolve( results );
-            })
-            .fail( function( reason )
+            }, function( reason )
             {
                 deferred.reject( reason );
-            });
+            }, false );
     });
     if ( !tasks.length )
         deferred.resolve( [] );

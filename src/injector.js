@@ -79,7 +79,7 @@ var Injector = type.injector = type().def(
         args = makeArray( arguments );
         args.shift( 0 );
         this.resolveTarget( target )
-            .done( function( recipe )
+            .then( function( recipe )
             {
                 var factory = self.makeFactory( recipe );
                 if ( recipe.theory.isProvider )
@@ -87,11 +87,10 @@ var Injector = type.injector = type().def(
                 else
                     deferred.resolve( factory.apply( undefined, args ) );
 
-            })
-            .fail( function( reason )
+            }, function( reason )
             {
                 deferred.reject( reason );
-            });
+            }, false );
         return deferred.promise;
     },
 
@@ -234,15 +233,14 @@ var Injector = type.injector = type().def(
             if ( !factory )
             {
                 self.resolveTarget( recipe.theory.name )
-                    .done( function( recipe )
+                    .then( function( recipe )
                     {
                         factory = self.makeFactory( recipe );
                         deferred.resolve( factory.apply( undefined, args ) );
-                    })
-                    .fail( function( reason )
+                    }, function( reason )
                     {
                         deferred.reject( reason );
-                    });
+                    }, false );
             }
             else
                 deferred.resolve( factory.apply( undefined, args ) );
