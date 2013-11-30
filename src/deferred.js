@@ -86,8 +86,6 @@ var Promise = type().def(
         this.result = null;
     },
 
-    state: { get: null, __set: null },
-
     value: function()
     {
         if ( this.state === REJECTED )
@@ -99,13 +97,12 @@ var Promise = type().def(
 
     /**
      * @description
-     * Satisfies 2.2 of the Promise/A+ spec. Note: Callbacks added through .then() are executed
-     * async unlike when added through .done(), .fail() and .always(). Callbacks can change the
-     * result of the subsequent promise by returning a value, another promise, or throwing an error.
+     * Satisfies 2.2 of the Promise/A+ spec.
      * @param {function()} [onFulfilled]
      * @param {function()} [onRejected]
+     * @param {boolean} [async]
      * @return {Promise}
-     */ 
+     */
     then: function( onFulfilled, onRejected, async )
     {
         var promise = this._pry( new Promise() );
