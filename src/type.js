@@ -130,14 +130,14 @@ var type = function()
                 {
                     Type.$inject = member;
                     member = member.pop();
-                    if ( Type.$inject[0] === "..." )
-                    {
-                        var inherited = getInheritedDependencies( Type );
-                        if ( inherited.length === 0 )
-                            throw new DefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
-                        Type.$inject.splice( 0, 1 );
-                        Type.$inject = inherited.concat( Type.$inject );
-                    }
+                    // if ( Type.$inject[0] === "..." )
+                    // {
+                    //     var inherited = getInheritedDependencies( Type );
+                    //     if ( inherited.length === 0 )
+                    //         throw new DefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
+                    //     Type.$inject.splice( 0, 1 );
+                    //     Type.$inject = inherited.concat( Type.$inject );
+                    // }
                 }
                 if ( !isFunc( member ) )
                     throw new TypeError( "Constructor must be a function." );

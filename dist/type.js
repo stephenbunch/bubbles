@@ -202,14 +202,14 @@ var type = function()
                 {
                     Type.$inject = member;
                     member = member.pop();
-                    if ( Type.$inject[0] === "..." )
-                    {
-                        var inherited = getInheritedDependencies( Type );
-                        if ( inherited.length === 0 )
-                            throw new DefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
-                        Type.$inject.splice( 0, 1 );
-                        Type.$inject = inherited.concat( Type.$inject );
-                    }
+                    // if ( Type.$inject[0] === "..." )
+                    // {
+                    //     var inherited = getInheritedDependencies( Type );
+                    //     if ( inherited.length === 0 )
+                    //         throw new DefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
+                    //     Type.$inject.splice( 0, 1 );
+                    //     Type.$inject = inherited.concat( Type.$inject );
+                    // }
                 }
                 if ( !isFunc( member ) )
                     throw new TypeError( "Constructor must be a function." );
@@ -1245,15 +1245,13 @@ function addProperty( obj, name, accessors )
         throw new InitializationError( "JavaScript properties are not supported by this browser." );
 }
 
-function readOnlyGet( name )
-{
+function readOnlyGet( name ) {
     return function() {
         throw new AccessViolationError( "Cannot read from write only property '" + name + "'." );
     };
 }
 
-function writeOnlySet( name )
-{
+function writeOnlySet( name ) {
     return function() {
         throw new AccessViolationError( "Cannot assign to read only property '" + name + "'." );
     };
@@ -1278,12 +1276,6 @@ function applyPrototypeMembers( type, obj )
 
 function getPlainDOMObject()
 {
-    var obj = document.createElement(), prop;
-    for ( prop in obj )
-    {
-        if ( hasOwnProperty( obj, prop ) )
-            overwrite( obj, prop );
-    }
     function overwrite( obj, prop )
     {
         var _value;
@@ -1297,6 +1289,12 @@ function getPlainDOMObject()
                 _value = value;
             }
         });
+    }
+    var obj = document.createElement(), prop;
+    for ( prop in obj )
+    {
+        if ( hasOwnProperty( obj, prop ) )
+            overwrite( obj, prop );
     }
     return obj;
 }
@@ -1636,8 +1634,8 @@ var Injector = type.injector = type().def(
     },
 
     /**
-     * @description Resolves a service and its dependencies.
-     * @param {string|function()|Array} service
+     * @description Resolves a target and its dependencies.
+     * @param {string|function()|Array} target
      * @param {...Object} [args]
      * @return {Deferred.<TService>}
      */

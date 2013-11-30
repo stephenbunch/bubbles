@@ -67,8 +67,8 @@ var Injector = type.injector = type().def(
     },
 
     /**
-     * @description Resolves a service and its dependencies.
-     * @param {string|function()|Array} service
+     * @description Resolves a target and its dependencies.
+     * @param {string|function()|Array} target
      * @param {...Object} [args]
      * @return {Deferred.<TService>}
      */

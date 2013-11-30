@@ -15,7 +15,7 @@ beforeEach( function()
                 this.message = function() {
                     return "Expected function to " + not + "throw an exception of type " + error.prototype.name + ".";
                 };
-                return !this.isNot;
+                return this.isNot;
             }
             catch ( ex )
             {

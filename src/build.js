@@ -388,15 +388,13 @@ function addProperty( obj, name, accessors )
         throw new InitializationError( "JavaScript properties are not supported by this browser." );
 }
 
-function readOnlyGet( name )
-{
+function readOnlyGet( name ) {
     return function() {
         throw new AccessViolationError( "Cannot read from write only property '" + name + "'." );
     };
 }
 
-function writeOnlySet( name )
-{
+function writeOnlySet( name ) {
     return function() {
         throw new AccessViolationError( "Cannot assign to read only property '" + name + "'." );
     };
@@ -421,12 +419,6 @@ function applyPrototypeMembers( type, obj )
 
 function getPlainDOMObject()
 {
-    var obj = document.createElement(), prop;
-    for ( prop in obj )
-    {
-        if ( hasOwnProperty( obj, prop ) )
-            overwrite( obj, prop );
-    }
     function overwrite( obj, prop )
     {
         var _value;
@@ -440,6 +432,12 @@ function getPlainDOMObject()
                 _value = value;
             }
         });
+    }
+    var obj = document.createElement(), prop;
+    for ( prop in obj )
+    {
+        if ( hasOwnProperty( obj, prop ) )
+            overwrite( obj, prop );
     }
     return obj;
 }
