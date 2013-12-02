@@ -202,14 +202,6 @@ var type = function()
                 {
                     Type.$inject = member;
                     member = member.pop();
-                    // if ( Type.$inject[0] === "..." )
-                    // {
-                    //     var inherited = getInheritedDependencies( Type );
-                    //     if ( inherited.length === 0 )
-                    //         throw new DefinitionError( "The '...' syntax is invalid when a base type does not exist or has no dependencies." );
-                    //     Type.$inject.splice( 0, 1 );
-                    //     Type.$inject = inherited.concat( Type.$inject );
-                    // }
                 }
                 if ( !isFunc( member ) )
                     throw new TypeError( "Constructor must be a function." );
@@ -838,25 +830,6 @@ function defineProperty( Type, info, property )
 
 /**
  * @private
- * @description Gets the dependencies required by the parent and any mixins.
- * @return {array<string>}
- */
-function getInheritedDependencies( type )
-{
-    var ret = [];
-    if ( type.parent !== null && type.parent.$inject )
-        ret = ret.concat( type.parent.$inject );
-
-    each( type.mixins, function( mixin )
-    {
-        if ( mixin.$inject )
-            ret = ret.concat( mixin.$inject );
-    });
-    return ret;
-}
-
-/**
- * @private
  * @description Initializes the type.
  * @param {Type} type The type to initialize.
  * @param {Object} pub The public interface to initialize on.
@@ -1451,9 +1424,15 @@ var Promise = type().def(
             handler = function()
             {
                 var args = arguments;
-                setTimeout( function() {
+                var run = function() {
                     _handler.apply( undefined, args );
-                }, 0 );
+                };
+                if ( window.process && window.process.nextTick )
+                    window.process.nextTick( run );
+                else if ( window.setImmediate )
+                    window.setImmediate( run );
+                else
+                    setTimeout( run, 0 );
             };
         }
         if ( this.state === PENDING )
@@ -1590,11 +1569,22 @@ var Injector = type.injector = type().def(
         if ( !service || !isString( service ) )
             throw new type.ArgumentError( "Argument 'service' must have a value." );
         return {
+            /**
+             * @description Specifies which provider to bind the service to.
+             * @param {Array|function()} provider
+             * @return {BindingConfigurator}
+             */
             to: function( provider )
             {
                 var binding = self.register( service, provider );
                 var config =
                 {
+                    /**
+                     * @description
+                     * Causes the binding to return the same instance for all instances resolved through
+                     * the injector.
+                     * @return {BindingConfigurator}
+                     */
                     asSingleton: function()
                     {
                         var _resolve = binding.resolve;
@@ -1609,12 +1599,23 @@ var Injector = type.injector = type().def(
                             }
                             return result;
                         };
-                        delete config.asSingleton;
                         return config;
                     },
 
-                    whenFor: function() {
-
+                    /**
+                     * @description
+                     * Adds a constraint to the binding so that it is only used when the bound
+                     * service is injected into one of the specified services.
+                     * @param {string[]} services
+                     * @return {BindingConfigurator}
+                     */
+                    whenFor: function( services )
+                    {
+                        if ( isArray( services ) && services.length )
+                            binding.filter = services.slice( 0 );
+                        else
+                            throw new ArgumentError( "Expected 'services' to be an array of string." );
+                        return config;
                     }
                 };
                 return config;
@@ -1625,11 +1626,47 @@ var Injector = type.injector = type().def(
     /**
      * @description Unregisters a service.
      * @param {string} service
+     * @param {string[]} [filter]
      * @return {Injector}
      */
-    unbind: function( service )
+    unbind: function( service, filter )
     {
-        delete this.container[ service ];
+        filter = filter || [];
+        var bindings = this.container[ service ] || [];
+        var flen = filter.length;
+        if ( flen )
+        {
+            var b = 0, blen = bindings.length, f, i;
+            for ( ; b < blen; b++ )
+            {
+                if ( bindings[ b ].filter )
+                {
+                    // Remove each service in the filter parameter from the binding's filter list.
+                    f = 0;
+                    for ( ; f < flen; f++ )
+                    {
+                        // Account for sloppy programming and remove all occurences of the service.
+                        i = indexOf( bindings[ b ].filter, filter[ f ] );
+                        while ( i > -1 )
+                        {
+                            bindings[ b ].filter.splice( i, 1 );
+                            i = indexOf( bindings[ b ].filter, filter[ f ] );
+                        }
+                    }
+                }
+                if ( !bindings[ b ].filter.length )
+                {
+                    // If the binding now has an empty filter list, remove it because it is useless.
+                    // Note: Move the cursor (b) back one slot so that we don't skip the next item.
+                    bindings.splice( b, 1 );
+                    b--;
+                }
+            }
+            if ( !bindings.length )
+                delete this.container[ service ];
+        }
+        else
+            delete this.container[ service ];
         return this._pub;
     },
 
@@ -1661,6 +1698,24 @@ var Injector = type.injector = type().def(
         return deferred.promise;
     },
 
+    /**
+     * @description
+     * Binds an object graph.
+     * For example:
+     *   <pre>
+     *     .autoBind({
+     *       foo: {
+     *         bar: 2
+     *       }
+     *     });
+     *   </pre>
+     * is equivalent to:
+     *   <pre>
+     *     .bind( "foo.bar" ).to( 2 );
+     *   </pre>
+     * @param {Object} graph
+     * @return {Injector}
+     */
     autoBind: function( graph )
     {
         this.registerGraph( "", graph );
@@ -1676,31 +1731,39 @@ var Injector = type.injector = type().def(
      */
     __register: function( service, provider )
     {
+        var binding = null;
         if ( isArray( provider ) )
         {
             provider = provider.slice( 0 );
-            this.container[ service ] = {
+            binding = {
                 resolve: provider.pop(),
                 inject: provider
             };
         }
         else
         {
-            this.container[ service ] = {
+            binding = {
                 resolve: provider,
                 inject: ( provider.$inject || [] ).slice( 0 )
             };
         }
-        if ( !isFunc( this.container[ service ].resolve ) )
+        if ( !isFunc( binding.resolve ) )
         {
-            var value = this.container[ service ].resolve;
-            this.container[ service ].resolve = function() {
+            var value = binding.resolve;
+            binding.resolve = function() {
                 return value;
             };
         }
-        return this.container[ service ];
+        this.container[ service ] = this.container[ service ] || [];
+        this.container[ service ].push( binding );
+        return binding;
     },
 
+    /**
+     * @private
+     * @param {string} path
+     * @param {Object} graph
+     */
     __registerGraph: function( path, graph )
     {
         var self = this,
@@ -1927,7 +1990,7 @@ var Injector = type.injector = type().def(
                 var svc = bindings[ service ];
                 if ( svc )
                 {
-                    var theory = self.parse( svc );
+                    var theory = self.theorize( svc );
                     if ( theory )
                     {
                         theory.isProvider = isProvider;
@@ -1983,7 +2046,7 @@ var Injector = type.injector = type().def(
 
                     each( recipe.theory.inject, function( service, position )
                     {
-                        var dependency = self.parse( service );
+                        var dependency = self.evaluate( service, recipe.theory.name );
                         if ( dependency )
                         {
                             dependency = toRecipe( dependency );
@@ -2007,14 +2070,14 @@ var Injector = type.injector = type().def(
         var self = this;
         var missing = [];
         var watches = [];
-        var theory = this.parse( target );
+        var theory = this.evaluate( target );
         var recipe = null;
 
         if ( theory )
             recipe = resolve( theory );
         else
         {
-            // The only way .parse() would return null is if the target was a name (string)
+            // The only time .evaluate() would return null is if the target was a name (string)
             // pointing to a service that hasn't been bound yet.
             missing.push( target );
             watchFor( target, function( recipe ) {
@@ -2039,15 +2102,14 @@ var Injector = type.injector = type().def(
 
     /**
      * @private
-     * @description Analyzes a target and returns a theory on how to resolve it.
-     * @param {string|Array|function()} target
+     * @description Converts an anonymous target to a theory.
+     * @param {Array|function()} target
      * @return {Theory}
      */
-    __parse: function( target )
+    __theorize: function( target )
     {
         if ( !target )
             return null;
-
         var result = null;
         if ( isFunc( target ) )
         {
@@ -2064,9 +2126,39 @@ var Injector = type.injector = type().def(
                 inject: target
             };
         }
-        else if ( isString( target ) )
+        return result;
+    },
+
+    /**
+     * @private
+     * @description Analyzes a target (named or anonymous) and returns a theory on how to resolve it.
+     * @param {string|Array|function()} target
+     * @return {Theory}
+     */
+    __evaluate: function( target, destination )
+    {
+        function find( service )
         {
-            var binding = this.container[ target ] || null;
+            var bindings = self.container[ service ] || [];
+            var i = bindings.length - 1;
+            for ( ; i >= 0; i-- )
+            {
+                if ( !destination )
+                {
+                    if ( !bindings[ i ].filter )
+                        break;
+                }
+                else if ( !bindings[ i ].filter || indexOf( bindings[ i ].filter, destination ) > -1 )
+                    break;
+            }
+            return bindings[ i ] || null;
+        }
+
+        var self = this;
+        var result = this.theorize( target );
+        if ( !result && isString( target ) )
+        {
+            var binding = find( target );
             if ( binding )
             {
                 result = {
@@ -2077,7 +2169,7 @@ var Injector = type.injector = type().def(
             }
             if ( !result && target !== PROVIDER && new RegExp( "^" + PROVIDER ).test( target ) )
             {
-                binding = this.container[ target.substr( PROVIDER.length ) ] || null;
+                binding = find( target.substr( PROVIDER.length ) );
                 if ( binding )
                 {
                     result = {
@@ -2090,9 +2182,10 @@ var Injector = type.injector = type().def(
             }
             if ( !result && target !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( target ) )
             {
+                binding = find( target.substr( LAZY_PROVIDER.length ) ) || {};
                 result = {
-                    resolve: ( this.container[ target.substr( LAZY_PROVIDER.length ) ] || {} ).resolve || null,
-                    inject: ( this.container[ target.substr( LAZY_PROVIDER.length ) ] || {} ).inject || null,
+                    resolve: binding.resolve || null,
+                    inject: binding.inject || null,
                     name: target.substr( LAZY_PROVIDER.length ),
                     isProvider: true,
                     isLazy: true

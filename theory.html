@@ -33,7 +33,7 @@
 
         // .toPath() expects a URL to a script that defines a type.
         // .whenFor() expects a path to a type, or a type (which is represented as a function.)
-        injector.bind( "app.Application" ).toPath( "app/Application" ).asSingleton().whenFor([ "app/EventTarget" ]);
+        injector.bind( "app.Application" ).toPath( "app/Application" ).asSingleton().whenFor([ "app.EventTarget" ]);
 
         // Bind multiple named types.
         injector.autoBind({

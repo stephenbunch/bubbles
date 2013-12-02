@@ -150,9 +150,15 @@ var Promise = type().def(
             handler = function()
             {
                 var args = arguments;
-                setTimeout( function() {
+                var run = function() {
                     _handler.apply( undefined, args );
-                }, 0 );
+                };
+                if ( window.process && window.process.nextTick )
+                    window.process.nextTick( run );
+                else if ( window.setImmediate )
+                    window.setImmediate( run );
+                else
+                    setTimeout( run, 0 );
             };
         }
         if ( this.state === PENDING )

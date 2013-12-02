@@ -19,6 +19,36 @@ describe( "Injector", function()
         });
     });
 
+    describe( ".unbind()", function()
+    {
+        it( "should remove the binding for a service", function()
+        {
+            var injector = type.injector();
+            injector.bind( "foo" ).to( 2 );
+            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
+            injector.unbind( "foo" );
+            expect( function()
+            {
+                injector.resolve( "foo" ).value();
+            }).toThrowOf( type.InvalidOperationError );
+        });
+
+        it( "can remove bindings of services with specific constraints", function()
+        {
+            var injector = type.injector();
+            injector.bind( "foo" ).to( 2 ).whenFor([ "bar", "baz" ]);
+            injector.bind( "bar" ).to([ "foo", function( foo ) {} ]);
+            injector.bind( "baz" ).to([ "foo", function( foo ) {} ]);
+            injector.resolve( "bar" ).value();
+            injector.unbind( "foo", [ "bar" ]);
+            expect( function()
+            {
+                injector.resolve( "bar" ).value();
+            }).toThrowOf( type.InvalidOperationError );
+            injector.resolve( "baz" ).value();
+        });
+    });
+
     describe( ".resolve()", function()
     {
         it( "should support the array syntax for listing dependencies", function()
@@ -70,13 +100,6 @@ describe( "Injector", function()
             expect( out ).toContain( "baz" );
         });
 
-        it( "should return a Promise", function()
-        {
-            var injector = type.injector();
-            injector.bind( "foo" ).to( 2 );
-            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
-        });
-
         it( "should try to use RequireJS to load missing dependencies", function()
         {
             var out = null;
@@ -87,7 +110,7 @@ describe( "Injector", function()
                 setTimeout( function()
                 {
                     callback( function() { return 2; } );
-                }, 0 );
+                });
             });
             var injector = type.injector();
             runs( function()
@@ -104,39 +127,6 @@ describe( "Injector", function()
             });
         });
 
-        it( "should load all missing dependencies in one go", function()
-        {
-            var out = null;
-            window.require = window.require || function() {};
-            spyOn( window, "require" ).andCallFake( function( modules, callback )
-            {
-                setTimeout( function()
-                {
-                    callback(
-                        function() { return 2; },
-                        function() { return 3; }
-                    );
-                }, 0 );
-            });
-            var injector = type.injector();
-            runs( function()
-            {
-                var service = function( a, b ) {
-                    return a + b;
-                };
-                service.$inject = [ "foo", "bar" ];
-                injector.resolve( service ).done( function( result )
-                {
-                    out = result;
-                }, false );
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out ).toBe( 5 );
-            });
-        });
-
         it( "should reject the promise if the service cannot be found", function()
         {
             var injector = type.injector();
@@ -147,7 +137,7 @@ describe( "Injector", function()
                 setTimeout( function()
                 {
                     callback( "" );
-                }, 0 );
+                });
             };
             var out;
             runs( function()
@@ -168,7 +158,7 @@ describe( "Injector", function()
                     setTimeout( function()
                     {
                         callback();
-                    }, 0 );
+                    });
                 };
                 injector.resolve( "foo" ).fail( function( e )
                 {
@@ -185,7 +175,7 @@ describe( "Injector", function()
                     setTimeout( function()
                     {
                         callback( [ "bla" ] );
-                    }, 0 );
+                    });
                 };
                 injector.resolve( "foo" ).fail( function( e )
                 {
@@ -216,13 +206,6 @@ describe( "Injector", function()
             var foo = injector.resolve( "app.bar.Foo" ).value();
             expect( called ).toBe( 1 );
         });
-
-        it( "should work with value types", function()
-        {
-            var graph = { foo: 2 };
-            var injector = type.injector().autoBind( graph );
-            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
-        });
     });
 
     describe( "BindingSelector", function()
@@ -244,13 +227,6 @@ describe( "Injector", function()
                 injector.bind( "foo" ).to( 2 );
                 expect( injector.resolve( "foo" ).value() ).toBe( 2 );
             });
-
-            it( "should return a BindingConfigurator", function()
-            {
-                var injector = type.injector();
-                var configurator = injector.bind( "foo" ).to( 2 );
-                expect( configurator.asSingleton ).toBeDefined();
-            });
         });
     });
 
@@ -258,12 +234,46 @@ describe( "Injector", function()
     {
         describe( ".asSingleton()", function()
         {
-            it( "should set binding to return the same instance for all times resolved", function()
+            it( "should cause binding to resolve to the same instance", function()
             {
                 var injector = type.injector();
                 injector.bind( "foo" ).to( function() { return {}; } ).asSingleton();
                 var out = injector.resolve( "foo" ).value();
                 expect( injector.resolve( "foo" ).value() ).toBe( out );
+            });
+        });
+
+        describe( ".whenFor()", function()
+        {
+            it( "should cause binding to resolve only when injected into one of the specified types", function()
+            {
+                var injector = type.injector();
+                var out = null;
+                injector.bind( "foo" ).to( 1 );
+                injector.bind( "foo" ).to( 2 ).whenFor([ "bar" ]);
+                injector.bind( "foo" ).to( 3 ).whenFor([ "bar" ]);
+                injector.bind( "foo" ).to( 4 ).whenFor([ "baz" ]);
+                injector.bind( "bar" ).to([ "foo", function( foo )
+                {
+                    out = foo;
+                }]);
+                injector.bind( "baz" ).to([ "foo", function( foo )
+                {
+                    out = foo;
+                }]);
+
+                // Bindings should be tried in reverse order.
+                injector.resolve( "bar" );
+                expect( out ).toBe( 3 );
+
+                injector.resolve( "baz" );
+                expect( out ).toBe( 4 );
+
+                // Resolving an anonymous service should use the default binding if it exists.
+                injector.resolve([ "foo", function( foo ) {
+                    out = foo;
+                }]);
+                expect( out ).toBe( 1 );
             });
         });
     });
@@ -336,7 +346,7 @@ describe( "Injector", function()
                 setTimeout( function()
                 {
                     callback( function() { return 2; } );
-                }, 0 );
+                });
             });
             runs( function()
             {
@@ -357,7 +367,7 @@ describe( "Injector", function()
 
     describe( "LazyProvider", function()
     {
-        it( "should behave as a Provider, but return a Promise instead of the service instance", function()
+        it( "should behave as a Provider, but should return a Promise of an instance", function()
         {
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 );
@@ -375,7 +385,7 @@ describe( "Injector", function()
                 setTimeout( function()
                 {
                     callback( function() { return 2; } );
-                }, 0 );
+                });
             };
             var out;
             runs( function()
@@ -398,7 +408,7 @@ describe( "Injector", function()
                     setTimeout( function()
                     {
                         callback( function() { return 3; } );
-                    }, 0 );
+                    });
                 };
                 provider().done( function( result )
                 {
