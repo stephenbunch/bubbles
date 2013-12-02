@@ -153,10 +153,10 @@ var Promise = type().def(
                 var run = function() {
                     _handler.apply( undefined, args );
                 };
-                if ( window.process && window.process.nextTick )
-                    window.process.nextTick( run );
-                else if ( window.setImmediate )
-                    window.setImmediate( run );
+                if ( typeof process === "object" && typeof process.nextTick === "function" )
+                    process.nextTick( run );
+                else if ( typeof setImmediate === "function" )
+                    setImmediate( run );
                 else
                     setTimeout( run, 0 );
             };
