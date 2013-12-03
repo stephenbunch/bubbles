@@ -17,7 +17,8 @@
     "grunt-browserify": "~1.2.11",
     "mocha": "~1.15.0",
     "chai": "~1.8.1",
-    "sinon": "~1.7.3"
+    "sinon": "~1.7.3",
+    "browserify": "~2.36.1"
   },
   "scripts": {
     "test": "grunt"

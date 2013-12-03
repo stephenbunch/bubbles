@@ -23,7 +23,6 @@ module.exports = function( grunt )
                             next( err, src );
                             return;
                         }
-
                         var path = require( "path" );
                         var options = grunt.config( "browserify" ).dist.options;
                         var lines = src.split( "\n" );
@@ -55,7 +54,7 @@ module.exports = function( grunt )
                     expr: true
                 },
                 files: {
-                    src: [ "spec/**/*.js" ]
+                    src: [ "test/**/*.js" ]
                 }
             }
         },
@@ -108,7 +107,7 @@ module.exports = function( grunt )
             bail: true,
             grep: grunt.option( "grep" )
         });
-        grunt.file.expand( "spec/**/*.js" ).forEach( function( file )
+        grunt.file.expand( "test/**/*.js" ).forEach( function( file )
         {
             mocha.addFile( file );
         });
