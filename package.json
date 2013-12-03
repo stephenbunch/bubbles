@@ -14,8 +14,9 @@
     "grunt-contrib-jasmine": "~0.5.2",
     "grunt-cli": "~0.1.9",
     "promises-aplus-tests": "~2.0.2",
-    "minifyify": "~1.0.3",
-    "browserify": "~2.36.0"
+    "browserify": "~2.36.0",
+    "through": "~2.3.4",
+    "grunt-browserify": "~1.2.11"
   },
   "scripts": {
     "test": "grunt"

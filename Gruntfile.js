@@ -3,40 +3,39 @@ module.exports = function( grunt )
     grunt.initConfig({
         pkg: grunt.file.readJSON( "package.json" ),
 
-        // browserify: {
-        //     dist: {
-        //         files: {
-        //             "dist/type.js": [ "src/type.js" ]
-        //         },
-        //         options: {
-        //             debug: true,
-        //             banner: "/*!\n" +
-        //                 " * <%= pkg.name %> v<%= pkg.version %>\n" +
-        //                 " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs\n" +
-        //                 " * License: MIT\n" +
-        //                 " */\n",
-        //             sourceMap: "dist/type.map",
-        //             postBundleCB: function( err, src, next )
-        //             {
-        //                 var path = require( "path" );
-        //                 var options = grunt.config( "browserify" ).dist.options;
-        //                 var lines = src.split( "\n" );
-        //                 var map = lines.slice( lines.length - 2 ).join( "\n" );
-        //                 grunt.file.write( options.sourceMap, map );
-
-        //                 src = lines.slice( 0, lines.length - 2 ).join( "\n" ) + ";";
-        //                 next( err, options.banner + "//@ sourceMappingURL=" + path.basename( options.sourceMap ) + "\n" + src );
-        //             }
-        //         }
-        //     }
-        // },
-
         browserify: {
-            options: {
-                banner: "/*! <%= pkg.name %> v<%= pkg.version %> */\n"
-            },
-            files: {
-                "dist/type.min.js": [ "src/type.js" ]
+            dist: {
+                files: {
+                    "dist/type.js": [ "src/type.js" ]
+                },
+                options: {
+                    debug: true,
+                    banner: "/*!\n" +
+                        " * <%= pkg.name %> v<%= pkg.version %>\n" +
+                        " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs\n" +
+                        " * License: MIT\n" +
+                        " */\n",
+                    sourceMap: "dist/map.json",
+                    postBundleCB: function( err, src, next )
+                    {
+                        var path = require( "path" );
+                        var options = grunt.config( "browserify" ).dist.options;
+                        var lines = src.split( "\n" );
+
+                        var map = lines.splice( lines.length - 2, 1 )[0];
+                        map = map.substr( "//@ sourceMappingURL=data:application/json;base64,".length );
+                        map = new Buffer( map, "base64" ).toString( "binary" );
+                        map = JSON.parse( map );
+                        map.sources = map.sources.map( function( source ) {
+                            return source.substr( __dirname.length + 1 );
+                        });
+                        map = JSON.stringify( map );
+                        grunt.file.write( options.sourceMap, map );
+
+                        src = lines.join( "\n" );
+                        next( err, options.banner + "//@ sourceMappingURL=" + path.basename( options.sourceMap ) + "\n" + src );
+                    }
+                }
             }
         },
 
@@ -47,15 +46,15 @@ module.exports = function( grunt )
             uses_defaults: [ "src/**/*.js", "spec/**/*.js" ]
         },
 
-        // uglify: {
-        //     options: {
-        //         banner: "/*! <%= pkg.name %> v<%= pkg.version %> */\n"
-        //     },
-        //     dist: {
-        //         src: "dist/type.js",
-        //         dest: "dist/type.min.js"
-        //     }
-        // },
+        uglify: {
+            options: {
+                banner: "/*! <%= pkg.name %> v<%= pkg.version %> */\n"
+            },
+            dist: {
+                src: "dist/type.js",
+                dest: "dist/type.min.js"
+            }
+        },
 
         jasmine: {
             all: {
@@ -80,6 +79,7 @@ module.exports = function( grunt )
     grunt.loadNpmTasks( "grunt-contrib-concat" );
     grunt.loadNpmTasks( "grunt-contrib-watch" );
     grunt.loadNpmTasks( "grunt-contrib-jasmine" );
+    grunt.loadNpmTasks( "grunt-browserify" );
 
     grunt.registerTask( "aplus", function()
     {
@@ -102,21 +102,5 @@ module.exports = function( grunt )
         });
     });
 
-    grunt.registerTask( "browserify", function()
-    {
-        var browserify = require( "browserify" );
-        var minifyify = require( "minifyify" );
-        var config = grunt.config( "browserify" );
-        var fs = require( "fs" );
-
-        var b, out, stream;
-        for ( out in config.files )
-        {
-            stream = fs.createWriteStream( out );
-            b = browserify( config.files[ out ].map( function( path ) { return "./" + path; } ) );
-            b.bundle({ debug: true }).pipe( minifyify() ).pipe( stream );
-        }
-    });
-
-    grunt.registerTask( "default", [ "jshint", "browserify", "jasmine", "aplus" ] );
+    grunt.registerTask( "default", [ "jshint", "browserify", "uglify", "jasmine", "aplus" ] );
 };
