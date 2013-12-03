@@ -12,7 +12,7 @@ module.exports = function( grunt )
                     debug: true,
                     banner: "/*!\n" +
                         " * <%= pkg.name %> v<%= pkg.version %>\n" +
-                        " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typeful\n" +
+                        " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs\n" +
                         " * License: MIT\n" +
                         " */\n",
                     sourceMap: "dist/map.json",

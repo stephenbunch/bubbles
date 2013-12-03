@@ -1,4 +1,4 @@
-# Typeful [![Build Status](https://api.travis-ci.org/stephenbunch/typeful.png)](https://travis-ci.org/stephenbunch/typeful)
+# TypeJS [![Build Status](https://api.travis-ci.org/stephenbunch/typejs.png)](https://travis-ci.org/stephenbunch/typejs)
 
 Be sure to check out the [wiki](../../wiki)!
 
@@ -7,7 +7,7 @@ Browser support: ![Internet Explorer](http://www.w3schools.com/images/compatible
 ## Download
 
 ```bash
-$ git clone https://github.com/stephenbunch/typeful
+$ git clone https://github.com/stephenbunch/typejs
 $ bundle install
 $ rackup
 ```
