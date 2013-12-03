@@ -1,3 +1,19 @@
+module.exports =
+{
+    makeArray: makeArray,
+    each: each,
+    typeOf: typeOf,
+    isFunc: isFunc,
+    isString: isString,
+    isArray: isArray,
+    trim: trim,
+    keys: keys,
+    hasOwn: hasOwn,
+    indexOf: indexOf,
+    isPlainObject: isPlainObject,
+    map: map
+};
+
 /**
  * @private
  * @description
@@ -66,7 +82,7 @@ function each( obj, callback )
     {
         for ( i in obj )
         {
-            if ( hasOwnProperty( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
+            if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
                 break;
         }
     }
@@ -90,7 +106,6 @@ function typeOf( object )
     return Object.prototype.toString.call( object )
         .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
 }
-type.of = typeOf;
 
 /**
  * @private
@@ -141,7 +156,7 @@ function keys( object )
     var ret = [];
     for ( var key in object )
     {
-        if ( hasOwnProperty( object, key ) )
+        if ( hasOwn( object, key ) )
             ret.push( key );
     }
     return ret;
@@ -154,7 +169,7 @@ function keys( object )
  * @param {string} prop
  * @return {boolean}
  */
-function hasOwnProperty( obj, prop ) {
+function hasOwn( obj, prop ) {
     return Object.prototype.hasOwnProperty.call( obj, prop );
 }
 
@@ -209,7 +224,7 @@ function isPlainObject( obj )
     {
         if (
             obj.constructor &&
-            !hasOwnProperty( obj.constructor.prototype, "isPrototypeOf" )
+            !hasOwn( obj.constructor.prototype, "isPrototypeOf" )
         )
             return false;
     }

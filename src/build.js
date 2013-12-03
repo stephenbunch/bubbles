@@ -1,3 +1,13 @@
+var access = require( "./access" );
+var environment = require( "./environment" );
+var errors = require( "./errors" );
+var inits = require( "./inits" );
+var special = require( "./special" );
+var tunnel = require( "./tunnel" );
+var util = require( "./util" );
+
+module.exports = init;
+
 /**
  * @private
  * @description Initializes the type.
@@ -8,9 +18,9 @@
  */
 function init( type, pub, args, ctor )
 {
-    inits |= SCOPE;
+    inits.on( inits.SCOPE );
     var scope = type();
-    inits &= ~SCOPE;
+    inits.off( inits.SCOPE );
 
     scope.self._pub = pub;
 
@@ -23,8 +33,9 @@ function init( type, pub, args, ctor )
      * @internal
      * Use in conjunction with _pry to expose the private scope.
      */
-    pub.$scope = function() {
-        if ( pry === type )
+    pub.$scope = function()
+    {
+        if ( tunnel.value() === type )
             return scope.self;
     };
 
@@ -43,12 +54,12 @@ function init( type, pub, args, ctor )
 function build( type, scope )
 {
     // Instantiate mixins and add proxies to their members.
-    each( type.mixins, function( mixin )
+    util.each( type.mixins, function( mixin )
     {
         init( mixin, scope.self._pub, [], false );
-        pry = mixin;
+        tunnel.open( mixin );
         var inner = scope.self._pub.$scope();
-        pry = null;
+        tunnel.close();
         createProxy( mixin, inner, type, scope.self );
         scope.mixins.push( inner );
     });
@@ -61,11 +72,11 @@ function build( type, scope )
             type.parent.members.ctor.params.length > 0 &&
             ( !type.members.ctor || !type.members.ctor.callsuper )
         )
-            throw new InitializationError( "Base constructor contains parameters and must be called explicitly." );
+            throw new errors.InitializationError( "Base constructor contains parameters and must be called explicitly." );
 
-        inits |= SCOPE;
+        inits.on( inits.SCOPE );
         scope.parent = type.parent();
-        inits &= ~SCOPE;
+        inits.off( inits.SCOPE );
         scope.parent.self._pub = scope.self._pub;
         build( type.parent, scope.parent );
     }
@@ -75,7 +86,7 @@ function build( type, scope )
         createProxy( type.parent, scope.parent.self, type, scope.self );
 
     // Add type members.
-    each( type.members, function( member, name )
+    util.each( type.members, function( member, name )
     {
         if ( member.method )
             buildMethod( type, scope, name, member );
@@ -88,13 +99,13 @@ function build( type, scope )
     // If a constructor isn't defined, provide a default one.
     if ( !scope.self.ctor )
     {
-        buildMethod( type, scope, "ctor",
+        buildMethod( type, scope, special.CTOR,
         {
             callsuper: false,
             params: [],
-            access: PRIVATE,
+            access: access.PRIVATE,
             isVirtual: false,
-            name: "ctor",
+            name: special.CTOR,
             method: function() {}
         });
     }
@@ -102,11 +113,11 @@ function build( type, scope )
 
 function createProxy( srcType, srcObj, dstType, dstObj )
 {
-    each( srcType.members, function( member, name )
+    util.each( srcType.members, function( member, name )
     {
         // If the member is private or if it's been overridden by the child, don't make a reference
         // to the parent implementation.
-        if ( member.access === PRIVATE || dstType.members[ name ] ) return;
+        if ( member.access === access.PRIVATE || dstType.members[ name ] ) return;
 
         if ( member.method || member.isEvent )
             dstObj[ name ] = srcObj[ name ];
@@ -114,10 +125,10 @@ function createProxy( srcType, srcObj, dstType, dstObj )
         {
             addProperty( dstObj, name,
             {
-                get: !member.get || member.get.access === PRIVATE ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access === access.PRIVATE ? readOnlyGet( name ) : function() {
                     return srcObj[ name ];
                 },
-                set: !member.set || member.set.access === PRIVATE ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access === access.PRIVATE ? writeOnlySet( name ) : function( value ) {
                     srcObj[ name ] = value;
                 }
             });
@@ -149,7 +160,7 @@ function buildMethod( type, scope, name, member )
                 _super: scope.self._super
             };
 
-            each( type.mixins, function( mixin, i )
+            util.each( type.mixins, function( mixin, i )
             {
                 if ( mixin.members.ctor )
                 {
@@ -166,13 +177,13 @@ function buildMethod( type, scope, name, member )
                 scope.self._init = function( mixin )
                 {
                     // Make sure we're initializing a valid mixin.
-                    var i = indexOf( queue, mixin );
+                    var i = util.indexOf( queue, mixin );
                     if ( i === -1 )
-                        throw new InitializationError( "Mixin is not defined for this type or has already been initialized." );
+                        throw new errors.InitializationError( "Mixin is not defined for this type or has already been initialized." );
 
-                    var args = makeArray( arguments );
+                    var args = util.makeArray( arguments );
                     args.shift();
-                    mixin.members.ctor.method.apply( scope.mixins[ indexOf( type.mixins, mixin ) ], args );
+                    mixin.members.ctor.method.apply( scope.mixins[ util.indexOf( type.mixins, mixin ) ], args );
 
                     // Remove mixin from the queue.
                     queue.splice( i, 1 );
@@ -194,7 +205,7 @@ function buildMethod( type, scope, name, member )
 
             if ( queue.length > 0 )
             {
-                throw new InitializationError( "Some mixins were not initialized. Please make sure the constructor " +
+                throw new errors.InitializationError( "Some mixins were not initialized. Please make sure the constructor " +
                     "calls this._init() for each mixin having parameters in its constructor." );
             }
         };
@@ -301,7 +312,7 @@ function buildEvent( type, scope, name )
 
         removeHandler: function( handler )
         {
-            var i = indexOf( handlers, handler );
+            var i = util.indexOf( handlers, handler );
             if ( i > -1 )
                 handlers.splice( i, 1 );
         },
@@ -327,9 +338,9 @@ function expose( type, scope, pub )
     if ( type.parent !== null )
         expose( type.parent, scope.parent, pub );
 
-    each( type.members, function( member, name )
+    util.each( type.members, function( member, name )
     {
-        if ( member.access !== PUBLIC )
+        if ( member.access !== access.PUBLIC )
             return;
 
         if ( member.method )
@@ -348,10 +359,10 @@ function expose( type, scope, pub )
         {
             addProperty( pub, name,
             {
-                get: !member.get || member.get.access !== PUBLIC ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access !== access.PUBLIC ? readOnlyGet( name ) : function() {
                     return scope.self[ name ];
                 },
-                set: !member.set || member.set.access !== PUBLIC ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access !== access.PUBLIC ? writeOnlySet( name ) : function( value ) {
                     scope.self[ name ] = value;
                 }
             });
@@ -371,73 +382,31 @@ function expose( type, scope, pub )
 function addProperty( obj, name, accessors )
 {
     // IE8 apparently doesn't support this configuration option.
-    if ( !IE8 )
+    if ( !environment.IE8 )
         accessors.enumerable = true;
 
     accessors.configurable = true;
 
     // IE8 requires that we delete the property first before reconfiguring it.
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( IE8 && hasOwnProperty( obj, name ) )
+    if ( environment.IE8 && util.hasOwn( obj, name ) )
         delete obj[ name ];
 
     // obj must be a DOM object in IE8
     if ( Object.defineProperty )
         Object.defineProperty( obj, name, accessors );
     else
-        throw new InitializationError( "JavaScript properties are not supported by this browser." );
+        throw new errors.InitializationError( "JavaScript properties are not supported by this browser." );
 }
 
 function readOnlyGet( name ) {
     return function() {
-        throw new AccessViolationError( "Cannot read from write only property '" + name + "'." );
+        throw new errors.AccessViolationError( "Cannot read from write only property '" + name + "'." );
     };
 }
 
 function writeOnlySet( name ) {
     return function() {
-        throw new AccessViolationError( "Cannot assign to read only property '" + name + "'." );
+        throw new errors.AccessViolationError( "Cannot assign to read only property '" + name + "'." );
     };
-}
-
-/**
- * @private
- * @param {Type} type
- * @param {Object} obj
- */
-function applyPrototypeMembers( type, obj )
-{
-    var proto = type.prototype;
-    if ( proto.constructor.prototype !== proto )
-        applyPrototypeMembers( proto.constructor, obj );
-    for ( var prop in proto )
-    {
-        if ( hasOwnProperty( proto, prop ) )
-            obj[ prop ] = proto[ prop ];
-    }
-}
-
-function getPlainDOMObject()
-{
-    function overwrite( obj, prop )
-    {
-        var _value;
-        Object.defineProperty( obj, prop,
-        {
-            configurable: true,
-            get: function() {
-                return _value;
-            },
-            set: function( value ) {
-                _value = value;
-            }
-        });
-    }
-    var obj = document.createElement(), prop;
-    for ( prop in obj )
-    {
-        if ( hasOwnProperty( obj, prop ) )
-            overwrite( obj, prop );
-    }
-    return obj;
 }

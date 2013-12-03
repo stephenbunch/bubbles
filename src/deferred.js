@@ -1,3 +1,9 @@
+var errors = require( "./errors" );
+var type = require( "./define" );
+var util = require( "./util" );
+
+var Deferred = require( "./deferred" );
+
 // 2.1
 var PENDING = "pending";
 var FULFILLED = "fulfilled";
@@ -24,7 +30,7 @@ function resolve( promise, x )
         try
         {
             // 2.3.3.1
-            if ( hasOwnProperty( x, "then" ) )
+            if ( util.hasOwn( x, "then" ) )
                 then = x.then;
         }
         catch ( e )
@@ -34,7 +40,7 @@ function resolve( promise, x )
             return true;
         }
         // 2.3.3.3
-        if ( isFunc( then ) )
+        if ( util.isFunc( then ) )
         {
             try
             {
@@ -91,7 +97,7 @@ var Promise = type().def(
         if ( this.state === REJECTED )
             throw this.result;
         else if ( this.state === PENDING )
-            throw new type.InvalidOperationError( "Promise is still in pending state." );
+            throw new errors.InvalidOperationError( "Promise is still in pending state." );
         return this.result;
     },
 
@@ -153,12 +159,7 @@ var Promise = type().def(
                 var run = function() {
                     _handler.apply( undefined, args );
                 };
-                if ( typeof process === "object" && typeof process.nextTick === "function" )
-                    process.nextTick( run );
-                else if ( typeof setImmediate === "function" )
-                    setImmediate( run );
-                else
-                    setTimeout( run, 0 );
+                process.nextTick( run );
             };
         }
         if ( this.state === PENDING )
@@ -174,7 +175,7 @@ var Promise = type().def(
             var callback = state === FULFILLED ? onFulfilled : onRejected, x;
             // 2.2.7.3
             // 2.2.7.4
-            if ( !isFunc( callback ) )
+            if ( !util.isFunc( callback ) )
             {
                 promise.set( state, result );
                 return;
@@ -200,7 +201,7 @@ var Promise = type().def(
     }
 });
 
-var Deferred = type.defer = type().extend( Promise ).def(
+var Deferred = module.exports = type().extend( Promise ).def(
 {
     ctor: function()
     {
@@ -249,10 +250,10 @@ var Deferred = type.defer = type().extend( Promise ).def(
 Deferred.when = function( promises )
 {
     var deferred = new Deferred();
-    var tasks = isArray( promises ) ? promises : makeArray( arguments );
+    var tasks = util.isArray( promises ) ? promises : util.makeArray( arguments );
     var progress = 0;
     var results = [];
-    each( tasks, function( task, index )
+    util.each( tasks, function( task, index )
     {
         task
             .then( function( value )

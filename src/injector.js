@@ -1,12 +1,14 @@
-type.providerOf = function( service ) {
-    return PROVIDER + service;
-};
+var environment = require( "./environment" );
+var errors = require( "./errors" );
+var type = require( "./define" );
+var util = require( "./util" );
 
-type.lazyProviderOf = function( service ) {
-    return LAZY_PROVIDER + service;
-};
+var Deferred = require( "./deferred" );
 
-var Injector = type.injector = type().def(
+var PROVIDER = "Provider`";
+var LAZY_PROVIDER = "LazyProvider`";
+
+var Injector = module.exports = type().def(
 {
     ctor: function() {
         this.container = {};
@@ -20,8 +22,8 @@ var Injector = type.injector = type().def(
     bind: function( service )
     {
         var self = this;
-        if ( !service || !isString( service ) )
-            throw new type.ArgumentError( "Argument 'service' must have a value." );
+        if ( !service || !util.isString( service ) )
+            throw new errors.ArgumentError( "Argument 'service' must have a value." );
         return {
             /**
              * @description Specifies which provider to bind the service to.
@@ -65,10 +67,10 @@ var Injector = type.injector = type().def(
                      */
                     whenFor: function( services )
                     {
-                        if ( isArray( services ) && services.length )
+                        if ( util.isArray( services ) && services.length )
                             binding.filter = services.slice( 0 );
                         else
-                            throw new ArgumentError( "Expected 'services' to be an array of string." );
+                            throw new errors.ArgumentError( "Expected 'services' to be an array of string." );
                         return config;
                     }
                 };
@@ -100,11 +102,11 @@ var Injector = type.injector = type().def(
                     for ( ; f < flen; f++ )
                     {
                         // Account for sloppy programming and remove all occurences of the service.
-                        i = indexOf( bindings[ b ].filter, filter[ f ] );
+                        i = util.indexOf( bindings[ b ].filter, filter[ f ] );
                         while ( i > -1 )
                         {
                             bindings[ b ].filter.splice( i, 1 );
-                            i = indexOf( bindings[ b ].filter, filter[ f ] );
+                            i = util.indexOf( bindings[ b ].filter, filter[ f ] );
                         }
                     }
                 }
@@ -134,7 +136,7 @@ var Injector = type.injector = type().def(
     {
         var self = this;
         var deferred = new Deferred();
-        args = makeArray( arguments );
+        args = util.makeArray( arguments );
         args.shift( 0 );
         this.resolveTarget( target )
             .then( function( recipe )
@@ -186,7 +188,7 @@ var Injector = type.injector = type().def(
     __register: function( service, provider )
     {
         var binding = null;
-        if ( isArray( provider ) )
+        if ( util.isArray( provider ) )
         {
             provider = provider.slice( 0 );
             binding = {
@@ -201,7 +203,7 @@ var Injector = type.injector = type().def(
                 inject: ( provider.$inject || [] ).slice( 0 )
             };
         }
-        if ( !isFunc( binding.resolve ) )
+        if ( !util.isFunc( binding.resolve ) )
         {
             var value = binding.resolve;
             binding.resolve = function() {
@@ -222,9 +224,9 @@ var Injector = type.injector = type().def(
     {
         var self = this,
             prefix = path === "" ?  "" : path + ".";
-        each( graph, function( type, name )
+        util.each( graph, function( type, name )
         {
-            if ( isPlainObject( type ) )
+            if ( util.isPlainObject( type ) )
                 self.registerGraph( prefix + name, type );
             else
                 self.register( prefix + name, type );
@@ -263,12 +265,12 @@ var Injector = type.injector = type().def(
         while ( current.length )
         {
             next = [];
-            each( current, function( component )
+            util.each( current, function( component )
             {
                 if ( component.recipe.theory.isLazy )
                     return;
 
-                each( component.recipe.dependencies, function( recipe, position )
+                util.each( component.recipe.dependencies, function( recipe, position )
                 {
                     var dependency = toComponent( recipe );
                     dependency.parent = component;
@@ -285,9 +287,9 @@ var Injector = type.injector = type().def(
 
         return function()
         {
-            each( generations, function( generation )
+            util.each( generations, function( generation )
             {
-                each( generation, function( component )
+                util.each( generation, function( component )
                 {
                     component.parent.cache[ component.position ] =
                         component.recipe.theory.isProvider ?
@@ -296,7 +298,7 @@ var Injector = type.injector = type().def(
                     component.cache = [];
                 });
             });
-            var args = root.cache.concat( makeArray( arguments ) );
+            var args = root.cache.concat( util.makeArray( arguments ) );
             root.cache = [];
             return root.recipe.theory.resolve.apply( undefined, args );
         };
@@ -341,7 +343,7 @@ var Injector = type.injector = type().def(
     {
         function load()
         {
-            modules = map( plan.missing, function( service )
+            modules = util.map( plan.missing, function( service )
             {
                 if ( service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
                     service = service.substr( PROVIDER.length );
@@ -349,7 +351,7 @@ var Injector = type.injector = type().def(
                     service = service.substr( LAZY_PROVIDER.length );
                 return service.replace( /\./g, "/" );
             });
-            require( modules, done, fail );
+            environment.window.require( modules, done, fail );
         }
 
         function done()
@@ -357,29 +359,29 @@ var Injector = type.injector = type().def(
             var bindings = {};
             var args = arguments;
 
-            each( plan.missing, function( service, index )
+            util.each( plan.missing, function( service, index )
             {
                 // Validate the returned service. If there's no way we can turn it into a binding,
                 // we'll get ourselves into a neverending loop trying to resolve it.
                 var svc = args[ index ];
 
-                if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
+                if ( !svc || !( /(string|function|array)/ ).test( util.typeOf( svc ) ) )
                 {
                     deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Expected service to be a string, array, or function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
+                            ( svc && svc.toString ? svc.toString() : util.typeOf( svc ) ) + "' instead."
                         )
                     );
                     return false;
                 }
-                if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
+                if ( util.isArray( svc ) && !util.isFunc( svc[ svc.length - 1 ] ) )
                 {
                     svc = svc[ svc.length - 1 ];
                     deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
+                            ( svc && svc.toString ? svc.toString() : util.typeOf( svc ) ) + "' instead."
                         )
                     );
                     return false;
@@ -409,12 +411,12 @@ var Injector = type.injector = type().def(
 
         if ( plan.missing.length )
         {
-            if ( window.require )
+            if ( environment.window.require )
                 load();
             else
             {
-                deferred.reject( new InvalidOperationError( "Service(s) " +
-                    map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
+                deferred.reject( new errors.InvalidOperationError( "Service(s) " +
+                    util.map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
             }
         }
         else
@@ -456,7 +458,7 @@ var Injector = type.injector = type().def(
                         missing.push( svc );
                         watchFor( svc, callback );
                     }
-                    watches.splice( indexOf( watches, handler ), 1 );
+                    watches.splice( util.indexOf( watches, handler ), 1 );
                 }
             };
             watches.push( handler );
@@ -493,12 +495,12 @@ var Injector = type.injector = type().def(
             while ( current.length )
             {
                 next = [];
-                each( current, function( recipe )
+                util.each( current, function( recipe )
                 {
                     if ( recipe.theory.isLazy )
                         return;
 
-                    each( recipe.theory.inject, function( service, position )
+                    util.each( recipe.theory.inject, function( service, position )
                     {
                         var dependency = self.evaluate( service, recipe.theory.name );
                         if ( dependency )
@@ -546,7 +548,7 @@ var Injector = type.injector = type().def(
             update: function( bindings )
             {
                 missing.splice( 0 );
-                each( watches.slice( 0 ), function( handler ) {
+                util.each( watches.slice( 0 ), function( handler ) {
                     handler( bindings );
                 });
             }
@@ -565,14 +567,14 @@ var Injector = type.injector = type().def(
         if ( !target )
             return null;
         var result = null;
-        if ( isFunc( target ) )
+        if ( util.isFunc( target ) )
         {
             result = {
                 resolve: target,
                 inject: ( target.$inject || [] ).slice( 0 )
             };
         }
-        else if ( isArray( target ) )
+        else if ( util.isArray( target ) )
         {
             target = target.slice( 0 );
             result = {
@@ -602,7 +604,7 @@ var Injector = type.injector = type().def(
                     if ( !bindings[ i ].filter )
                         break;
                 }
-                else if ( !bindings[ i ].filter || indexOf( bindings[ i ].filter, destination ) > -1 )
+                else if ( !bindings[ i ].filter || util.indexOf( bindings[ i ].filter, destination ) > -1 )
                     break;
             }
             return bindings[ i ] || null;
@@ -610,7 +612,7 @@ var Injector = type.injector = type().def(
 
         var self = this;
         var result = this.theorize( target );
-        if ( !result && isString( target ) )
+        if ( !result && util.isString( target ) )
         {
             var binding = find( target );
             if ( binding )
@@ -651,3 +653,11 @@ var Injector = type.injector = type().def(
         return result;
     }
 });
+
+module.exports.providerOf = function( service ) {
+    return PROVIDER + service;
+};
+
+module.exports.lazyProviderOf = function( service ) {
+    return LAZY_PROVIDER + service;
+};
