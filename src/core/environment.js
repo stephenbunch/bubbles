@@ -10,5 +10,5 @@ try {
 
 module.exports = {
     IE8: IE8,
-    window: typeof window === "object" ? window : {}
+    window: typeof window === "object" ? window : global
 };

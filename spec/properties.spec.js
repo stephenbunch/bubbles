@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "properties", function()
 {
     it( "can read and write values", function() {
@@ -7,7 +10,7 @@ describe( "properties", function()
                 });
         var a = new A();
         a.foo = "hello";
-        expect( a.foo ).toBe( "hello" );
+        expect( a.foo ).to.equal( "hello" );
     });
 
     it( "should support custom get and set accessors", function()
@@ -25,7 +28,7 @@ describe( "properties", function()
                 });
         var a = new A();
         a.foo = 2;
-        expect( a.foo ).toBe( 8 );
+        expect( a.foo ).to.equal( 8 );
     });
 
     it( "can be extended", function()
@@ -55,7 +58,7 @@ describe( "properties", function()
                 });
         var b = new B();
         b.foo = "world";
-        expect( b.foo ).toBe( "hello world!" );
+        expect( b.foo ).to.equal( "hello world!" );
     });
 
     it( "can specify a default value", function()
@@ -73,8 +76,8 @@ describe( "properties", function()
         });
         var a = new A();
         var b = new B();
-        expect( a.foo ).toBe( 2 );
-        expect( b.foo ).toBe( 3 );
+        expect( a.foo ).to.equal( 2 );
+        expect( b.foo ).to.equal( 3 );
     });
 
     it( "can be read immediately after being set without leaving the execution context of the set accessor", function()
@@ -92,7 +95,7 @@ describe( "properties", function()
         });
         var a = new A();
         a.foo = "hello";
-        expect( out ).toBe( "hello" );
+        expect( out ).to.equal( "hello" );
     });
 
     it( "can be read within a setter", function()
@@ -113,8 +116,8 @@ describe( "properties", function()
         });
         var a = new A();
         a.foo = "world";
-        expect( out1 ).toBe( "hello" );
-        expect( out2 ).toBe( "world" );
+        expect( out1 ).to.equal( "hello" );
+        expect( out2 ).to.equal( "world" );
     });
 
     it( "should use default accessor implementation when null is given instead of a function", function()
@@ -126,7 +129,7 @@ describe( "properties", function()
             }
         });
         var a = new A();
-        expect( a.foo ).toBe( 1 );
+        expect( a.foo ).to.equal( 1 );
     });
 
     it( "can specify separate access modifers for 'get' and 'set'", function()
@@ -138,11 +141,11 @@ describe( "properties", function()
             foo: { get: null, __set: null }
         });
         var a = new A();
-        expect( a.foo ).toBe( 1 );
+        expect( a.foo ).to.equal( 1 );
         expect( function()
         {
             a.foo = 2;
-        }).toThrowOf( type.AccessViolationError );
+        }).to.throw( type.AccessViolationError );
     });
 
     it( "should throw an error if writing to a read-only property or reading from a write-only property", function()
@@ -152,7 +155,7 @@ describe( "properties", function()
         expect( function()
         {
             a.foo = 2;
-        }).toThrowOf( type.AccessViolationError );
+        }).to.throw( type.AccessViolationError );
     });
 
     it( "can be protected with a private setter", function()
@@ -167,12 +170,12 @@ describe( "properties", function()
             }
         });
         var b = new B();
-        expect( b.foo ).not.toBeDefined();
-        expect( b.read() ).toBe( "hello" );
+        expect( b.foo ).to.be.undefined;
+        expect( b.read() ).to.equal( "hello" );
         expect( function()
         {
             b.write( "test" );
-        }).toThrowOf( type.AccessViolationError );
+        }).to.throw( type.AccessViolationError );
     });
 
     it( "should be enumerable (except in IE8)", function()
@@ -188,6 +191,6 @@ describe( "properties", function()
                 break;
             }
         }
-        expect( found ).toBe( true );
+        expect( found ).to.be.true;
     });
 });

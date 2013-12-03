@@ -1,4 +1,4 @@
-# TypeJS [![Build Status](https://api.travis-ci.org/stephenbunch/typejs.png)](https://travis-ci.org/stephenbunch/typejs)
+# Typeful [![Build Status](https://api.travis-ci.org/stephenbunch/typeful.png)](https://travis-ci.org/stephenbunch/typeful)
 
 Be sure to check out the [wiki](../../wiki)!
 
@@ -7,7 +7,7 @@ Browser support: ![Internet Explorer](http://www.w3schools.com/images/compatible
 ## Download
 
 ```bash
-$ git clone https://github.com/stephenbunch/typejs
+$ git clone https://github.com/stephenbunch/typeful
 $ bundle install
 $ rackup
 ```
@@ -17,3 +17,8 @@ $ rackup
 $ npm install
 $ grunt
 ```
+
+## Debug Tests
+1. Run `node-inspector`
+2. Run `node --debug-brk $(which grunt) mocha`
+3. Launch http://127.0.0.1:8080/debug?port=5858 in Chrome.

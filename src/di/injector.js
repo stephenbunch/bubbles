@@ -1,7 +1,7 @@
-var environment = require( "./environment" );
-var errors = require( "./errors" );
-var type = require( "./define" );
-var util = require( "./util" );
+var environment = require( "../core/environment" );
+var errors = require( "../core/errors" );
+var type = require( "../core/define" );
+var util = require( "../core/util" );
 
 var Deferred = require( "./deferred" );
 

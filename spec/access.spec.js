@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "__<name> (private members)", function()
 {
     it( "should be hidden", function()
@@ -8,7 +11,7 @@ describe( "__<name> (private members)", function()
                 });
 
         var a = new A();
-        expect( a.bar ).toBe( undefined );
+        expect( a.bar ).to.be.undefined;
     });
 
     it( "can be accessible from the inside", function()
@@ -24,7 +27,7 @@ describe( "__<name> (private members)", function()
                 });
 
         var a = new A();
-        expect( a.bar( "hello" ) ).toBe( "hello world!" );
+        expect( a.bar( "hello" ) ).to.equal( "hello world!" );
     });
 
     it( "should not overwrite private parent methods with the same name", function()
@@ -50,7 +53,7 @@ describe( "__<name> (private members)", function()
                 });
 
         var b = new B();
-        expect( b.baz() ).toBe( "hello world!" );
+        expect( b.baz() ).to.equal( "hello world!" );
     });
 
     it( "cannot be defined twice", function()
@@ -64,7 +67,7 @@ describe( "__<name> (private members)", function()
             A.def({
                 __foo: function() { }
             });
-        }).toThrowOf( type.DefinitionError );
+        }).to.throw( type.DefinitionError );
     });
 });
 
@@ -87,7 +90,7 @@ describe( "_<name> (protected members)", function()
                 });
 
         var b = new B();
-        expect( b.bar() ).toBe( "hello" );
+        expect( b.bar() ).to.equal( "hello" );
     });
 
     it( "should be hidden from the outside", function()
@@ -98,7 +101,7 @@ describe( "_<name> (protected members)", function()
                 });
 
         var a = new A();
-        expect( a.foo ).toBe( undefined );
+        expect( a.foo ).to.be.undefined;
     });
 
     it( "should not be overridable by default", function()
@@ -115,7 +118,7 @@ describe( "_<name> (protected members)", function()
             B.def({
                 _foo: function() { }
             });
-        }).toThrowOf( type.DefinitionError );
+        }).to.throw( type.DefinitionError );
     });
 });
 
@@ -141,7 +144,7 @@ describe( "_$<name> (protected virtual members)", function()
                 });
 
         var b = new B();
-        expect( b.bar() ).toBe( "hello world" );
+        expect( b.bar() ).to.equal( "hello world" );
     });
 
     it( "can be sealed", function()
@@ -162,7 +165,7 @@ describe( "_$<name> (protected virtual members)", function()
             C.def({
                 _foo: function() { }
             });
-        }).toThrowOf( type.DefinitionError );
+        }).to.throw( type.DefinitionError );
     });
 
     it( "cannot be made public", function()
@@ -178,7 +181,7 @@ describe( "_$<name> (protected virtual members)", function()
             B.def({
                 $foo: function() { }
             });
-        }).toThrowOf( type.DefinitionError );
+        }).to.throw( type.DefinitionError );
     });
 });
 
@@ -197,7 +200,7 @@ describe( "$<name> (public virtual members)", function()
             B.def({
                 _$foo: function() { }
             });
-        }).toThrowOf( type.DefinitionError );
+        }).to.throw( type.DefinitionError );
     });
 });
 
@@ -221,7 +224,7 @@ describe( "virtual members", function()
             C.def({
                 foo: function() { }
             });
-        }).toThrowOf( type.DefinitionError );
+        }).to.throw( type.DefinitionError );
     });
 });
 
@@ -244,6 +247,6 @@ describe( "base members", function()
                 });
 
         var b = new B();
-        expect( b.foo() + b.bar() ).toBe( "hello world!" );
+        expect( b.foo() + b.bar() ).to.equal( "hello world!" );
     });
 });

@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "type instantiation", function()
 {
     it( "should throw an error if the parent constructor contains parameters and the child constructor does not explicitly call it", function()
@@ -9,7 +12,7 @@ describe( "type instantiation", function()
         expect( function()
         {
             var b = new B();
-        }).toThrowOf( type.InitializationError );
+        }).to.throw( type.InitializationError );
     });
 
     it( "should work without the 'new' operator", function()
@@ -22,7 +25,7 @@ describe( "type instantiation", function()
         });
         var result = 0;
         var a = A( 1, 3, 5 );
-        expect( result ).toBe( 9 );
+        expect( result ).to.equal( 9 );
     });
 
     it( "should throw an error if not all mixins are initialized", function()
@@ -35,7 +38,7 @@ describe( "type instantiation", function()
         expect( function()
         {
             var c = new C();
-        }).toThrowOf( type.InitializationError );
+        }).to.throw( type.InitializationError );
     });
 });
 
@@ -48,13 +51,13 @@ describe( "instanceof operator", function()
         var C = type().extend( B );
 
         var a = new A();
-        expect( a instanceof A ).toBe( true );
+        expect( a ).to.be.instanceof( A );
 
         var b = new B();
-        expect( b instanceof A ).toBe( true );
+        expect( b ).to.be.instanceof( A );
 
         var c = new C();
-        expect( c instanceof A ).toBe( true );
+        expect( c ).to.be.instanceof( A );
     });
 
     it( "should work on the private scope (except in IE8)", function()
@@ -64,7 +67,7 @@ describe( "instanceof operator", function()
                 def({
                     ctor: function() {
                         out += "a";
-                        expect( this instanceof A ).toBe( true );
+                        expect( this ).to.be.instanceof( A );
                     }
                 });
         var B = type().
@@ -72,7 +75,7 @@ describe( "instanceof operator", function()
                 def({
                     ctor: function() {
                         out += "b";
-                        expect( this instanceof A ).toBe( true );
+                        expect( this ).to.be.instanceof( A );
                     }
                 });
         var C = type().
@@ -80,7 +83,7 @@ describe( "instanceof operator", function()
                 def({
                     ctor: function() {
                         out += "c";
-                        expect( this instanceof A ).toBe( true );
+                        expect( this ).to.be.instanceof( A );
                     }
                 });
 
@@ -88,6 +91,6 @@ describe( "instanceof operator", function()
         var b = new B();
         var c = new C();
 
-        expect( out ).toBe( "aababc" );
+        expect( out ).to.equal( "aababc" );
     });
 });

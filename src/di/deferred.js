@@ -1,8 +1,6 @@
-var errors = require( "./errors" );
-var type = require( "./define" );
-var util = require( "./util" );
-
-var Deferred = require( "./deferred" );
+var errors = require( "../core/errors" );
+var type = require( "../core/define" );
+var util = require( "../core/util" );
 
 // 2.1
 var PENDING = "pending";
@@ -95,7 +93,7 @@ var Promise = type().def(
     value: function()
     {
         if ( this.state === REJECTED )
-            throw this.result;
+            throw this.result || new Error( "No reason specified." );
         else if ( this.state === PENDING )
             throw new errors.InvalidOperationError( "Promise is still in pending state." );
         return this.result;

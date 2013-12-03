@@ -1,9 +1,9 @@
 {
-  "name": "typejs",
+  "name": "typeful",
   "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stephenbunch/typejs"
+    "url": "https://github.com/stephenbunch/typeful"
   },
   "main": "src/type.js",
   "devDependencies": {
@@ -11,12 +11,13 @@
     "grunt-contrib-uglify": "~0.2.2",
     "grunt-contrib-concat": "~0.3.0",
     "grunt-contrib-watch": "~0.5.3",
-    "grunt-contrib-jasmine": "~0.5.2",
     "grunt-cli": "~0.1.9",
     "promises-aplus-tests": "~2.0.2",
-    "browserify": "~2.36.0",
     "through": "~2.3.4",
-    "grunt-browserify": "~1.2.11"
+    "grunt-browserify": "~1.2.11",
+    "mocha": "~1.15.0",
+    "chai": "~1.8.1",
+    "sinon": "~1.7.3"
   },
   "scripts": {
     "test": "grunt"

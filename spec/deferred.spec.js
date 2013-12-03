@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "Deferred", function()
 {
     describe( ".promise", function()
@@ -6,13 +9,13 @@ describe( "Deferred", function()
         {
             var def = type.defer();
             var promise = def.promise;
-            expect( promise.then ).toBeDefined();
-            expect( promise.done ).toBeDefined();
-            expect( promise.fail ).toBeDefined();
-            expect( promise.always ).toBeDefined();
-            expect( promise.value ).toBeDefined();
-            expect( promise.resolve ).not.toBeDefined();
-            expect( promise.reject ).not.toBeDefined();
+            expect( promise.then ).to.be.a( "function" );
+            expect( promise.done ).to.be.a( "function" );
+            expect( promise.fail ).to.be.a( "function" );
+            expect( promise.always ).to.be.a( "function" );
+            expect( promise.value ).to.be.a( "function" );
+            expect( promise.resolve ).to.be.undefined;
+            expect( promise.reject ).to.be.undefined;
         });
     });
 
@@ -26,7 +29,7 @@ describe( "Deferred", function()
                 out = result;
             }, false );
             def.resolve( 2 );
-            expect( out ).toBe( 2 );
+            expect( out ).to.equal( 2 );
         });
     });
 
@@ -40,7 +43,7 @@ describe( "Deferred", function()
                 out = error;
             }, false );
             def.reject( 2 );
-            expect( out ).toBe( 2 );
+            expect( out ).to.equal( 2 );
         });
     });
 
@@ -60,8 +63,8 @@ describe( "Deferred", function()
             }, false );
             def1.resolve();
             def2.reject();
-            expect( called1 ).toBe( true );
-            expect( called2 ).toBe( true );
+            expect( called1 ).to.be.true;
+            expect( called2 ).to.be.true;
         });
     });
 
@@ -75,7 +78,7 @@ describe( "Deferred", function()
                 called = true;
             }, false );
             def.resolve();
-            expect( called ).toBe( true );
+            expect( called ).to.be.true;
         });
     });
 
@@ -89,7 +92,7 @@ describe( "Deferred", function()
                 called = true;
             }, false );
             def.reject();
-            expect( called ).toBe( true );
+            expect( called ).to.be.true;
         });
     });
 
@@ -109,8 +112,8 @@ describe( "Deferred", function()
             }, false );
             def1.resolve();
             def2.reject();
-            expect( called1 ).toBe( true );
-            expect( called2 ).toBe( true );
+            expect( called1 ).to.be.true;
+            expect( called2 ).to.be.true;
         });
     });
 
@@ -120,7 +123,7 @@ describe( "Deferred", function()
         {
             var def = type.defer();
             def.resolve( 2 );
-            expect( def.value() ).toBe( 2 );
+            expect( def.value() ).to.equal( 2 );
         });
 
         it( "should throw an error if the deferred is still pending", function()
@@ -129,7 +132,7 @@ describe( "Deferred", function()
             expect( function()
             {
                 def.value();
-            }).toThrowOf( type.InvalidOperationError );
+            }).to.throw( type.InvalidOperationError );
         });
 
         it( "should throw the resulting error if the deferred was rejected", function()
@@ -140,7 +143,7 @@ describe( "Deferred", function()
             expect( function()
             {
                 def.value();
-            }).toThrow( e );
+            }).to.throw( e );
         });
     });
 
@@ -154,7 +157,7 @@ describe( "Deferred", function()
             {
                 out = result;
             }, false );
-            expect( out ).toBe( 2 );
+            expect( out ).to.equal( 2 );
         });
     });
 
@@ -168,7 +171,7 @@ describe( "Deferred", function()
             {
                 out = error;
             }, false );
-            expect( out ).toBe( 2 );
+            expect( out ).to.equal( 2 );
         });
     });
 
@@ -187,7 +190,7 @@ describe( "Deferred", function()
             def2.resolve( 2 );
             def3.resolve( 3 );
             def1.resolve( 1 );
-            expect( out ).toEqual([ 1, 2, 3 ]);
+            expect( out ).to.deep.equal([ 1, 2, 3 ]);
         });
     });
 });

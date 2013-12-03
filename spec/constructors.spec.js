@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "constructors", function()
 {
     it( "should call the parent constructor if it is parameterless", function()
@@ -18,7 +21,7 @@ describe( "constructors", function()
 
         var out = "";
         var b = new B();
-        expect( out ).toBe( "hello world" );
+        expect( out ).to.equal( "hello world" );
 
         out = "";
         var C = type().def({
@@ -28,7 +31,7 @@ describe( "constructors", function()
         });
         var D = type().extend( C );
         var d = new D();
-        expect( out ).toBe( "foo" );
+        expect( out ).to.equal( "foo" );
     });
 
     it( "should not call the parent constructor if it contains parameters", function()
@@ -50,7 +53,7 @@ describe( "constructors", function()
 
         var message = "";
         var b = new B();
-        expect( message ).toBe( "hello world!" );
+        expect( message ).to.equal( "hello world!" );
     });
 
     it( "should call the grandparent constructor when the parent constructor is called if it is parameterless", function()
@@ -79,7 +82,7 @@ describe( "constructors", function()
 
         var message = "";
         var c = new C();
-        expect( message ).toBe( "hello world!" );
+        expect( message ).to.equal( "hello world!" );
     });
 
     it( "cannot be defined twice", function()
@@ -93,7 +96,7 @@ describe( "constructors", function()
             A.def({
                 ctor: function() { }
             });
-        }).toThrowOf( type.DefinitionError );
+        }).to.throw( type.DefinitionError );
     });
 
     it( "should not show up on the private scope or the public interface", function()
@@ -103,16 +106,16 @@ describe( "constructors", function()
                 def({
                     ctor: function() {
                         out += "ctor";
-                        expect( this.ctor ).toBe( undefined );
+                        expect( this.ctor ).to.be.undefined;
                     },
                     foo: function() {
                         out += "foo";
-                        expect( this.ctor ).toBe( undefined );
+                        expect( this.ctor ).to.be.undefined;
                     }
                 });
         var a = new A();
         a.foo();
-        expect( out ).toBe( "ctorfoo" );
-        expect( a.ctor ).toBe( undefined );
+        expect( out ).to.equal( "ctorfoo" );
+        expect( a.ctor ).to.be.undefined;
     });
 });

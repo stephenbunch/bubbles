@@ -12,12 +12,18 @@ module.exports = function( grunt )
                     debug: true,
                     banner: "/*!\n" +
                         " * <%= pkg.name %> v<%= pkg.version %>\n" +
-                        " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs\n" +
+                        " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typeful\n" +
                         " * License: MIT\n" +
                         " */\n",
                     sourceMap: "dist/map.json",
                     postBundleCB: function( err, src, next )
                     {
+                        if ( !src )
+                        {
+                            next( err, src );
+                            return;
+                        }
+
                         var path = require( "path" );
                         var options = grunt.config( "browserify" ).dist.options;
                         var lines = src.split( "\n" );
@@ -43,7 +49,15 @@ module.exports = function( grunt )
             options: {
                 loopfunc: true
             },
-            uses_defaults: [ "src/**/*.js", "spec/**/*.js" ]
+            uses_defaults: [ "src/**/*.js" ],
+            with_overrides: {
+                options: {
+                    expr: true
+                },
+                files: {
+                    src: [ "spec/**/*.js" ]
+                }
+            }
         },
 
         uglify: {
@@ -56,16 +70,6 @@ module.exports = function( grunt )
             }
         },
 
-        jasmine: {
-            all: {
-                src: "dist/type.min.js",
-                options: {
-                    helpers: "spec/helpers.js",
-                    specs: "spec/**/*.spec.js"
-                }
-            }
-        },
-
         watch: {
             src: {
                 files: [ "src/**/*.js" ],
@@ -73,13 +77,6 @@ module.exports = function( grunt )
             }
         }
     });
-
-    grunt.loadNpmTasks( "grunt-contrib-jshint" );
-    grunt.loadNpmTasks( "grunt-contrib-uglify" );
-    grunt.loadNpmTasks( "grunt-contrib-concat" );
-    grunt.loadNpmTasks( "grunt-contrib-watch" );
-    grunt.loadNpmTasks( "grunt-contrib-jasmine" );
-    grunt.loadNpmTasks( "grunt-browserify" );
 
     grunt.registerTask( "aplus", function()
     {
@@ -102,5 +99,29 @@ module.exports = function( grunt )
         });
     });
 
-    grunt.registerTask( "default", [ "jshint", "browserify", "uglify", "jasmine", "aplus" ] );
+    grunt.registerTask( "mocha", function()
+    {
+        grunt.log.writeln( "Running All Tests" );
+        var done = this.async();
+        var Mocha = require( "mocha" );
+        var mocha = new Mocha({
+            bail: true,
+            grep: grunt.option( "grep" )
+        });
+        grunt.file.expand( "spec/**/*.js" ).forEach( function( file )
+        {
+            mocha.addFile( file );
+        });
+        mocha.run( function( failures ) {
+            done( failures === 0 );
+        });
+    });
+
+    grunt.loadNpmTasks( "grunt-contrib-jshint" );
+    grunt.loadNpmTasks( "grunt-contrib-uglify" );
+    grunt.loadNpmTasks( "grunt-contrib-concat" );
+    grunt.loadNpmTasks( "grunt-contrib-watch" );
+    grunt.loadNpmTasks( "grunt-browserify" );
+
+    grunt.registerTask( "default", [ "jshint", "browserify", "uglify", "mocha", "aplus" ] );
 };

@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "mixins", function()
 {
     it( "should mix protected members", function()
@@ -13,8 +16,8 @@ describe( "mixins", function()
             }
         });
         var b = new B();
-        expect( b.bar() ).toBe( "hello world" );
-        expect( b.foo ).not.toBeDefined();
+        expect( b.bar() ).to.equal( "hello world" );
+        expect( b.foo ).to.be.undefined;
     });
 
     it( "should not mix private members", function()
@@ -32,7 +35,7 @@ describe( "mixins", function()
         });
         var b = new B();
         b.bar();
-        expect( out ).not.toBeDefined();
+        expect( out ).to.be.undefined;
     });
 
     it( "should overwrite each other in the order specified", function()
@@ -49,7 +52,7 @@ describe( "mixins", function()
         });
         var C = type().include([ A, B ]);
         var c = new C();
-        expect( c.foo() ).toBe( 2 );
+        expect( c.foo() ).to.equal( 2 );
     });
 
     it( "should not overwrite original or base type members", function()
@@ -73,7 +76,7 @@ describe( "mixins", function()
             }
         });
         var b = new B();
-        expect( b.foo() ).toBe( 2 );
-        expect( b.bar() ).toBe( 2 );
+        expect( b.foo() ).to.equal( 2 );
+        expect( b.bar() ).to.equal( 2 );
     });
 });

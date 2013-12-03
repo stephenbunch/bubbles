@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "event", function()
 {
     describe( ".addHandler()", function()
@@ -16,7 +19,7 @@ describe( "event", function()
                 called = true;
             });
             a.onFoo();
-            expect( called ).toBe( true );
+            expect( called ).to.be.true;
         });
     });
 
@@ -36,14 +39,14 @@ describe( "event", function()
                 out = x;
             });
             a.onFoo( 2 );
-            expect( out ).toBe( 2 );
+            expect( out ).to.equal( 2 );
         });
 
         it( "should be hidden from the outside", function()
         {
             var A = type().events([ "foo" ]);
             var a = new A();
-            expect( a.foo.raise ).not.toBeDefined();
+            expect( a.foo.raise ).to.be.undefined;
         });
 
         it( "should raise on the public interface", function()
@@ -60,7 +63,7 @@ describe( "event", function()
                 out = this;
             });
             a.onFoo();
-            expect( out ).toBe( a );
+            expect( out ).to.equal( a );
         });
     });
 
@@ -82,7 +85,7 @@ describe( "event", function()
             a.onFoo();
             a.foo.removeHandler( handler );
             a.onFoo();
-            expect( called ).toBe( 1 );
+            expect( called ).to.equal( 1 );
         });
 
         it( "should only remove one event handler", function()
@@ -102,10 +105,10 @@ describe( "event", function()
             a.onFoo();
             a.foo.removeHandler( handler );
             a.onFoo();
-            expect( called ).toBe( 3 );
+            expect( called ).to.equal( 3 );
             a.foo.removeHandler( handler );
             a.onFoo();
-            expect( called ).toBe( 3 );
+            expect( called ).to.equal( 3 );
         });
     });
 });

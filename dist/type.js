@@ -1,6 +1,6 @@
 /*!
- * typejs v0.1.0
- * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs
+ * typeful v0.1.0
+ * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typeful
  * License: MIT
  */
 //@ sourceMappingURL=map.json
@@ -479,281 +479,7 @@ function writeOnlySet( name ) {
     };
 }
 
-},{"./access":2,"./environment":6,"./errors":7,"./inits":8,"./special":10,"./tunnel":11,"./util":13}],4:[function(require,module,exports){
-var process=require("__browserify_process");var errors = require( "./errors" );
-var type = require( "./define" );
-var util = require( "./util" );
-
-var Deferred = require( "./deferred" );
-
-// 2.1
-var PENDING = "pending";
-var FULFILLED = "fulfilled";
-var REJECTED = "rejected";
-
-/**
- * @description Satisfies 2.3 of the Promise/A+ spec.
- * @param {Promise} promise
- * @param {*} x
- * @return {boolean}
- */
-function resolve( promise, x )
-{
-    // 2.3.1
-    if ( x === promise._pub )
-    {
-        promise.set( REJECTED, new TypeError( "2.3.1 A promise returned from onFulfilled cannot refer to itself." ) );
-        return true;
-    }
-    // 2.3.3
-    if ( x )
-    {
-        var then, called = false;
-        try
-        {
-            // 2.3.3.1
-            if ( util.hasOwn( x, "then" ) )
-                then = x.then;
-        }
-        catch ( e )
-        {
-            // 2.3.3.2
-            promise.set( REJECTED, e );
-            return true;
-        }
-        // 2.3.3.3
-        if ( util.isFunc( then ) )
-        {
-            try
-            {
-                then.call( x,
-                    // 2.3.3.3.1
-                    function( y )
-                    {
-                        // 2.3.3.3.3
-                        if ( !called )
-                        {
-                            called = true;
-                            if ( !resolve( promise, y ) )
-                            {
-                                // 2.3.4
-                                promise.set( FULFILLED, y );
-                            }
-                        }
-                    },
-                    // 2.3.3.3.2
-                    function( r )
-                    {
-                        // 2.3.3.3.3
-                        if ( !called )
-                        {
-                            called = true;
-                            promise.set( REJECTED, r );
-                        }
-                    }
-                );
-            }
-            catch ( e )
-            {
-                // 2.3.3.3.4
-                if ( !called )
-                    promise.set( REJECTED, e );
-            }
-            return true;
-        }
-    }
-}
-
-var Promise = type().def(
-{
-    ctor: function()
-    {
-        var self = this;
-        this.queue = [];
-        this.state = PENDING;
-        this.result = null;
-    },
-
-    value: function()
-    {
-        if ( this.state === REJECTED )
-            throw this.result;
-        else if ( this.state === PENDING )
-            throw new errors.InvalidOperationError( "Promise is still in pending state." );
-        return this.result;
-    },
-
-    /**
-     * @description
-     * Satisfies 2.2 of the Promise/A+ spec.
-     * @param {function()} [onFulfilled]
-     * @param {function()} [onRejected]
-     * @param {boolean} [async]
-     * @return {Promise}
-     */
-    then: function( onFulfilled, onRejected, async )
-    {
-        var promise = this._pry( new Promise() );
-        async = async === false ? false : true;
-        this.enqueue( this.handle( promise, onFulfilled, onRejected ), async );
-        return promise._pub;
-    },
-
-    done: function( callback, async )
-    {
-        this.then( callback, null, async );
-        return this._pub;
-    },
-
-    fail: function( callback, async )
-    {
-        this.then( null, callback, async );
-        return this._pub;
-    },
-
-    always: function( callback, async )
-    {
-        this.then( callback, callback, async );
-        return this._pub;
-    },
-
-    _set: function( state, result )
-    {
-        if ( this.state === PENDING )
-        {
-            this.state = state;
-            this.result = result;
-            var i = 0, len = this.queue.length;
-            for ( ; i < len; i++ )
-                this.queue[ i ]( state, result );
-            this.queue = [];
-        }
-    },
-
-    __enqueue: function( handler, async )
-    {
-        if ( async )
-        {
-            var _handler = handler;
-            handler = function()
-            {
-                var args = arguments;
-                var run = function() {
-                    _handler.apply( undefined, args );
-                };
-                process.nextTick( run );
-            };
-        }
-        if ( this.state === PENDING )
-            this.queue.push( handler );
-        else
-            handler( this.state, this.result );
-    },
-
-    __handle: function( promise, onFulfilled, onRejected )
-    {
-        return function( state, result )
-        {
-            var callback = state === FULFILLED ? onFulfilled : onRejected, x;
-            // 2.2.7.3
-            // 2.2.7.4
-            if ( !util.isFunc( callback ) )
-            {
-                promise.set( state, result );
-                return;
-            }
-            try
-            {
-                // 2.2.5
-                x = callback.call( undefined, result );
-            }
-            catch ( e )
-            {
-                // 2.2.7.2
-                promise.set( REJECTED, e );
-                return;
-            }
-            // 2.2.7.1
-            if ( !resolve( promise, x ) )
-            {
-                // 2.3.4
-                promise.set( FULFILLED, x );
-            }
-        };
-    }
-});
-
-var Deferred = module.exports = type().extend( Promise ).def(
-{
-    ctor: function()
-    {
-        var self = this;
-        this.promise =
-        {
-            then: function() {
-                return self.then.apply( self, arguments );
-            },
-            done: function()
-            {
-                self.done.apply( self, arguments );
-                return self.promise;
-            },
-            fail: function()
-            {
-                self.fail.apply( self, arguments );
-                return self.promise;
-            },
-            always: function()
-            {
-                self.always.apply( self, arguments );
-                return self.promise;
-            },
-            value: function() {
-                return self.value();
-            }
-        };
-    },
-
-    promise: { get: null, __set: null },
-
-    resolve: function( result )
-    {
-        this.set( FULFILLED, result );
-        return this._pub;
-    },
-
-    reject: function( reason )
-    {
-        this.set( REJECTED, reason );
-        return this._pub;
-    }
-});
-
-Deferred.when = function( promises )
-{
-    var deferred = new Deferred();
-    var tasks = util.isArray( promises ) ? promises : util.makeArray( arguments );
-    var progress = 0;
-    var results = [];
-    util.each( tasks, function( task, index )
-    {
-        task
-            .then( function( value )
-            {
-                results[ index ] = value;
-                if ( ++progress === tasks.length )
-                    deferred.resolve( results );
-            }, function( reason )
-            {
-                deferred.reject( reason );
-            }, false );
-    });
-    if ( !tasks.length )
-        deferred.resolve( [] );
-    return deferred.promise;
-};
-
-},{"./deferred":4,"./define":5,"./errors":7,"./util":13,"__browserify_process":1}],5:[function(require,module,exports){
+},{"./access":2,"./environment":5,"./errors":6,"./inits":7,"./special":8,"./tunnel":9,"./util":10}],4:[function(require,module,exports){
 var access = require( "./access" );
 var build = require( "./build" );
 var environment = require( "./environment" );
@@ -1127,7 +853,7 @@ function validateMember( type, info )
         type.parent.members[ info.name ].access !== info.access
     )
     {
-        throw new errors.DefinitionError( "Cannot change access modifier of member '" + name + "' from " +
+        throw new errors.DefinitionError( "Cannot change access modifier of member '" + info.name + "' from " +
             type.parent.members[ info.name ].access + " to " + info.access + "." );
     }
 }
@@ -1329,8 +1055,8 @@ function getPlainDOMObject()
     return obj;
 }
 
-},{"./access":2,"./build":3,"./environment":6,"./errors":7,"./inits":8,"./special":10,"./tunnel":11,"./util":13}],6:[function(require,module,exports){
-// IE8 only supports Object.defineProperty on DOM objects.
+},{"./access":2,"./build":3,"./environment":5,"./errors":6,"./inits":7,"./special":8,"./tunnel":9,"./util":10}],5:[function(require,module,exports){
+var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};// IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
 // http://stackoverflow.com/a/4867755/740996
 var IE8 = false;
@@ -1342,10 +1068,10 @@ try {
 
 module.exports = {
     IE8: IE8,
-    window: typeof window === "object" ? window : {}
+    window: typeof window === "object" ? window : global
 };
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var DefinitionError = function( message ) {
     this.message = message;
 };
@@ -1385,7 +1111,7 @@ module.exports =
     ArgumentError: ArgumentError
 };
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 // A global flag to control execution of type initializers.
 var PUB = 1;
 var SCOPE = 2;
@@ -1408,11 +1134,559 @@ module.exports =
     }
 };
 
+},{}],8:[function(require,module,exports){
+module.exports = {
+    CTOR: "ctor"
+};
+
 },{}],9:[function(require,module,exports){
-var environment = require( "./environment" );
-var errors = require( "./errors" );
-var type = require( "./define" );
-var util = require( "./util" );
+// When we want to pry an object open, we set this to the type of the object
+// and call $scope to extract the private scope.
+var value = null;
+
+module.exports = {
+    open: function( type ) {
+        value = type;
+    },
+    close: function() {
+        value = null;
+    },
+    value: function() {
+        return value;
+    }
+};
+
+},{}],10:[function(require,module,exports){
+module.exports =
+{
+    makeArray: makeArray,
+    each: each,
+    typeOf: typeOf,
+    isFunc: isFunc,
+    isString: isString,
+    isArray: isArray,
+    trim: trim,
+    keys: keys,
+    hasOwn: hasOwn,
+    indexOf: indexOf,
+    isPlainObject: isPlainObject,
+    map: map
+};
+
+/**
+ * @private
+ * @description
+ * Determines whether an object can be iterated over like an array.
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
+ * @param {*} obj
+ * @return {boolean}
+ */
+function isArrayLike( obj )
+{
+    var length = obj.length,
+        type = typeOf( obj );
+
+    if ( typeOf( obj ) === "window" )
+        return false;
+
+    if ( obj.nodeType === 1 && length )
+        return true;
+
+    return (
+        type === "array" ||
+        type !== "function" && (
+            length === 0 ||
+            typeof length === "number" && length > 0 && ( length - 1 ) in obj
+        )
+    );
+}
+
+/**
+ * @private
+ * @description Turns an object into a true array.
+ * @param {Object|Array} obj
+ * @return {Array}
+ */
+function makeArray( obj )
+{
+    if ( isArray( obj ) )
+        return obj;
+    var result = [];
+    each( obj, function( item ) {
+        result.push( item );
+    });
+    return result;
+}
+
+/**
+ * @private
+ * @description
+ * Iterates of an array or object, passing in the item and index / key.
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
+ * @param {Object|Array} obj
+ * @param {function()} callback
+ */
+function each( obj, callback )
+{
+    var i = 0, value;
+    if ( isArrayLike( obj ) )
+    {
+        for ( ; i < obj.length; i++ )
+        {
+            if ( callback.call( undefined, obj[ i ], i ) === false )
+                break;
+        }
+    }
+    else
+    {
+        for ( i in obj )
+        {
+            if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
+                break;
+        }
+    }
+}
+
+/**
+ * @private
+ * @description
+ * Gets the internal JavaScript [[Class]] of an object.
+ * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+ * @param {*} object
+ * @return {string}
+ */
+function typeOf( object )
+{
+    // In IE8, Object.toString on null and undefined returns "object".
+    if ( object === null )
+        return "null";
+    if ( object === undefined )
+        return "undefined";
+    return Object.prototype.toString.call( object )
+        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
+}
+
+/**
+ * @private
+ * @description Determines whether an object is a function.
+ * @param {*} object
+ * @return {boolean}
+ */
+function isFunc( object ) {
+    return typeOf( object ) === "function";
+}
+
+/**
+ * @private
+ * @description Determines whether an object is an array.
+ * @param {*} object
+ * @return {boolean}
+ */
+function isArray( object ) {
+    return typeOf( object ) === "array";
+}
+
+function isString( object ) {
+    return typeOf( object ) === "string";
+}
+
+/**
+ * @private
+ * @description
+ * Removes trailing whitespace from a string.
+ * http://stackoverflow.com/a/2308157/740996
+ * @param {string} value
+ * @return {string}
+ */
+function trim( value ) {
+    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
+}
+
+/**
+ * @private
+ * @description Gets the keys of an object.
+ * @param {Object} object
+ * @return {Array}
+ */
+function keys( object )
+{
+    if ( Object.keys )
+        return Object.keys( object );
+    var ret = [];
+    for ( var key in object )
+    {
+        if ( hasOwn( object, key ) )
+            ret.push( key );
+    }
+    return ret;
+}
+
+/**
+ * @private
+ * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
+ * @param {Object} obj
+ * @param {string} prop
+ * @return {boolean}
+ */
+function hasOwn( obj, prop ) {
+    return Object.prototype.hasOwnProperty.call( obj, prop );
+}
+
+/**
+ * @private
+ * @description
+ * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
+ * @param {Array} array
+ * @param {*} item
+ * @return {number}
+ */
+function indexOf( array, item )
+{
+    if ( array.indexOf )
+        return array.indexOf( item );
+    else
+    {
+        var index = -1;
+        each( array, function( obj, i )
+        {
+            if ( obj === item )
+            {
+                index = i;
+                return false;
+            }
+        });
+        return index;
+    }
+}
+
+/**
+ * @private
+ * @description Determines whether an object was created using "{}" or "new Object".
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
+ * @param {Object} obj
+ * @return {boolean}
+ */
+function isPlainObject( obj )
+{
+    // Not plain objects:
+    // - Any object or value whose internal [[Class]] property is not "[object Object]"
+    // - DOM nodes
+    // - window
+    if ( typeOf( obj ) !== "object" || obj.nodeType || typeOf( obj ) === "window" )
+        return false;
+
+    // Support: Firefox <20
+    // The try/catch suppresses exceptions thrown when attempting to access
+    // the "constructor" property of certain host objects, ie. |window.location|
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
+    try
+    {
+        if (
+            obj.constructor &&
+            !hasOwn( obj.constructor.prototype, "isPrototypeOf" )
+        )
+            return false;
+    }
+    catch ( e ) {
+        return false;
+    }
+
+    // If the function hasn't returned already, we're confident that
+    // |obj| is a plain object, created by {} or constructed with new Object
+    return true;
+}
+
+function map( items, callback, context )
+{
+    items = makeArray( items );
+    if ( Array.prototype.map )
+        return items.map( callback, context );
+    else
+    {
+        var result = [];
+        each( items, function( item, index ) {
+            result.push( callback.call( context, item, index ) );
+        });
+    }
+}
+
+},{}],11:[function(require,module,exports){
+var process=require("__browserify_process");var errors = require( "../core/errors" );
+var type = require( "../core/define" );
+var util = require( "../core/util" );
+
+// 2.1
+var PENDING = "pending";
+var FULFILLED = "fulfilled";
+var REJECTED = "rejected";
+
+/**
+ * @description Satisfies 2.3 of the Promise/A+ spec.
+ * @param {Promise} promise
+ * @param {*} x
+ * @return {boolean}
+ */
+function resolve( promise, x )
+{
+    // 2.3.1
+    if ( x === promise._pub )
+    {
+        promise.set( REJECTED, new TypeError( "2.3.1 A promise returned from onFulfilled cannot refer to itself." ) );
+        return true;
+    }
+    // 2.3.3
+    if ( x )
+    {
+        var then, called = false;
+        try
+        {
+            // 2.3.3.1
+            if ( util.hasOwn( x, "then" ) )
+                then = x.then;
+        }
+        catch ( e )
+        {
+            // 2.3.3.2
+            promise.set( REJECTED, e );
+            return true;
+        }
+        // 2.3.3.3
+        if ( util.isFunc( then ) )
+        {
+            try
+            {
+                then.call( x,
+                    // 2.3.3.3.1
+                    function( y )
+                    {
+                        // 2.3.3.3.3
+                        if ( !called )
+                        {
+                            called = true;
+                            if ( !resolve( promise, y ) )
+                            {
+                                // 2.3.4
+                                promise.set( FULFILLED, y );
+                            }
+                        }
+                    },
+                    // 2.3.3.3.2
+                    function( r )
+                    {
+                        // 2.3.3.3.3
+                        if ( !called )
+                        {
+                            called = true;
+                            promise.set( REJECTED, r );
+                        }
+                    }
+                );
+            }
+            catch ( e )
+            {
+                // 2.3.3.3.4
+                if ( !called )
+                    promise.set( REJECTED, e );
+            }
+            return true;
+        }
+    }
+}
+
+var Promise = type().def(
+{
+    ctor: function()
+    {
+        var self = this;
+        this.queue = [];
+        this.state = PENDING;
+        this.result = null;
+    },
+
+    value: function()
+    {
+        if ( this.state === REJECTED )
+            throw this.result || new Error( "No reason specified." );
+        else if ( this.state === PENDING )
+            throw new errors.InvalidOperationError( "Promise is still in pending state." );
+        return this.result;
+    },
+
+    /**
+     * @description
+     * Satisfies 2.2 of the Promise/A+ spec.
+     * @param {function()} [onFulfilled]
+     * @param {function()} [onRejected]
+     * @param {boolean} [async]
+     * @return {Promise}
+     */
+    then: function( onFulfilled, onRejected, async )
+    {
+        var promise = this._pry( new Promise() );
+        async = async === false ? false : true;
+        this.enqueue( this.handle( promise, onFulfilled, onRejected ), async );
+        return promise._pub;
+    },
+
+    done: function( callback, async )
+    {
+        this.then( callback, null, async );
+        return this._pub;
+    },
+
+    fail: function( callback, async )
+    {
+        this.then( null, callback, async );
+        return this._pub;
+    },
+
+    always: function( callback, async )
+    {
+        this.then( callback, callback, async );
+        return this._pub;
+    },
+
+    _set: function( state, result )
+    {
+        if ( this.state === PENDING )
+        {
+            this.state = state;
+            this.result = result;
+            var i = 0, len = this.queue.length;
+            for ( ; i < len; i++ )
+                this.queue[ i ]( state, result );
+            this.queue = [];
+        }
+    },
+
+    __enqueue: function( handler, async )
+    {
+        if ( async )
+        {
+            var _handler = handler;
+            handler = function()
+            {
+                var args = arguments;
+                var run = function() {
+                    _handler.apply( undefined, args );
+                };
+                process.nextTick( run );
+            };
+        }
+        if ( this.state === PENDING )
+            this.queue.push( handler );
+        else
+            handler( this.state, this.result );
+    },
+
+    __handle: function( promise, onFulfilled, onRejected )
+    {
+        return function( state, result )
+        {
+            var callback = state === FULFILLED ? onFulfilled : onRejected, x;
+            // 2.2.7.3
+            // 2.2.7.4
+            if ( !util.isFunc( callback ) )
+            {
+                promise.set( state, result );
+                return;
+            }
+            try
+            {
+                // 2.2.5
+                x = callback.call( undefined, result );
+            }
+            catch ( e )
+            {
+                // 2.2.7.2
+                promise.set( REJECTED, e );
+                return;
+            }
+            // 2.2.7.1
+            if ( !resolve( promise, x ) )
+            {
+                // 2.3.4
+                promise.set( FULFILLED, x );
+            }
+        };
+    }
+});
+
+var Deferred = module.exports = type().extend( Promise ).def(
+{
+    ctor: function()
+    {
+        var self = this;
+        this.promise =
+        {
+            then: function() {
+                return self.then.apply( self, arguments );
+            },
+            done: function()
+            {
+                self.done.apply( self, arguments );
+                return self.promise;
+            },
+            fail: function()
+            {
+                self.fail.apply( self, arguments );
+                return self.promise;
+            },
+            always: function()
+            {
+                self.always.apply( self, arguments );
+                return self.promise;
+            },
+            value: function() {
+                return self.value();
+            }
+        };
+    },
+
+    promise: { get: null, __set: null },
+
+    resolve: function( result )
+    {
+        this.set( FULFILLED, result );
+        return this._pub;
+    },
+
+    reject: function( reason )
+    {
+        this.set( REJECTED, reason );
+        return this._pub;
+    }
+});
+
+Deferred.when = function( promises )
+{
+    var deferred = new Deferred();
+    var tasks = util.isArray( promises ) ? promises : util.makeArray( arguments );
+    var progress = 0;
+    var results = [];
+    util.each( tasks, function( task, index )
+    {
+        task
+            .then( function( value )
+            {
+                results[ index ] = value;
+                if ( ++progress === tasks.length )
+                    deferred.resolve( results );
+            }, function( reason )
+            {
+                deferred.reject( reason );
+            }, false );
+    });
+    if ( !tasks.length )
+        deferred.resolve( [] );
+    return deferred.promise;
+};
+
+},{"../core/define":4,"../core/errors":6,"../core/util":10,"__browserify_process":1}],12:[function(require,module,exports){
+var environment = require( "../core/environment" );
+var errors = require( "../core/errors" );
+var type = require( "../core/define" );
+var util = require( "../core/util" );
 
 var Deferred = require( "./deferred" );
 
@@ -2073,35 +2347,13 @@ module.exports.lazyProviderOf = function( service ) {
     return LAZY_PROVIDER + service;
 };
 
-},{"./deferred":4,"./define":5,"./environment":6,"./errors":7,"./util":13}],10:[function(require,module,exports){
-module.exports = {
-    CTOR: "ctor"
-};
-
-},{}],11:[function(require,module,exports){
-// When we want to pry an object open, we set this to the type of the object
-// and call $scope to extract the private scope.
-var value = null;
-
-module.exports = {
-    open: function( type ) {
-        value = type;
-    },
-    close: function() {
-        value = null;
-    },
-    value: function() {
-        return value;
-    }
-};
-
-},{}],12:[function(require,module,exports){
-var deferred = require( "./deferred" );
-var define = require( "./define" );
-var environment = require( "./environment" );
-var errors = require( "./errors" );
-var injector = require( "./injector" );
-var util = require( "./util" );
+},{"../core/define":4,"../core/environment":5,"../core/errors":6,"../core/util":10,"./deferred":11}],13:[function(require,module,exports){
+var deferred = require( "./di/deferred" );
+var define = require( "./core/define" );
+var environment = require( "./core/environment" );
+var errors = require( "./core/errors" );
+var injector = require( "./di/injector" );
+var util = require( "./core/util" );
 
 var type = define;
 type.of = util.typeOf;
@@ -2120,259 +2372,5 @@ type.defer = deferred;
 
 module.exports = environment.window.type = type;
 
-},{"./deferred":4,"./define":5,"./environment":6,"./errors":7,"./injector":9,"./util":13}],13:[function(require,module,exports){
-module.exports =
-{
-    makeArray: makeArray,
-    each: each,
-    typeOf: typeOf,
-    isFunc: isFunc,
-    isString: isString,
-    isArray: isArray,
-    trim: trim,
-    keys: keys,
-    hasOwn: hasOwn,
-    indexOf: indexOf,
-    isPlainObject: isPlainObject,
-    map: map
-};
-
-/**
- * @private
- * @description
- * Determines whether an object can be iterated over like an array.
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
- * @param {*} obj
- * @return {boolean}
- */
-function isArrayLike( obj )
-{
-    var length = obj.length,
-        type = typeOf( obj );
-
-    if ( typeOf( obj ) === "window" )
-        return false;
-
-    if ( obj.nodeType === 1 && length )
-        return true;
-
-    return (
-        type === "array" ||
-        type !== "function" && (
-            length === 0 ||
-            typeof length === "number" && length > 0 && ( length - 1 ) in obj
-        )
-    );
-}
-
-/**
- * @private
- * @description Turns an object into a true array.
- * @param {Object|Array} obj
- * @return {Array}
- */
-function makeArray( obj )
-{
-    if ( isArray( obj ) )
-        return obj;
-    var result = [];
-    each( obj, function( item ) {
-        result.push( item );
-    });
-    return result;
-}
-
-/**
- * @private
- * @description
- * Iterates of an array or object, passing in the item and index / key.
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
- * @param {Object|Array} obj
- * @param {function()} callback
- */
-function each( obj, callback )
-{
-    var i = 0, value;
-    if ( isArrayLike( obj ) )
-    {
-        for ( ; i < obj.length; i++ )
-        {
-            if ( callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
-    }
-    else
-    {
-        for ( i in obj )
-        {
-            if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
-    }
-}
-
-/**
- * @private
- * @description
- * Gets the internal JavaScript [[Class]] of an object.
- * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
- * @param {*} object
- * @return {string}
- */
-function typeOf( object )
-{
-    // In IE8, Object.toString on null and undefined returns "object".
-    if ( object === null )
-        return "null";
-    if ( object === undefined )
-        return "undefined";
-    return Object.prototype.toString.call( object )
-        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
-}
-
-/**
- * @private
- * @description Determines whether an object is a function.
- * @param {*} object
- * @return {boolean}
- */
-function isFunc( object ) {
-    return typeOf( object ) === "function";
-}
-
-/**
- * @private
- * @description Determines whether an object is an array.
- * @param {*} object
- * @return {boolean}
- */
-function isArray( object ) {
-    return typeOf( object ) === "array";
-}
-
-function isString( object ) {
-    return typeOf( object ) === "string";
-}
-
-/**
- * @private
- * @description
- * Removes trailing whitespace from a string.
- * http://stackoverflow.com/a/2308157/740996
- * @param {string} value
- * @return {string}
- */
-function trim( value ) {
-    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
-}
-
-/**
- * @private
- * @description Gets the keys of an object.
- * @param {Object} object
- * @return {Array}
- */
-function keys( object )
-{
-    if ( Object.keys )
-        return Object.keys( object );
-    var ret = [];
-    for ( var key in object )
-    {
-        if ( hasOwn( object, key ) )
-            ret.push( key );
-    }
-    return ret;
-}
-
-/**
- * @private
- * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
- * @param {Object} obj
- * @param {string} prop
- * @return {boolean}
- */
-function hasOwn( obj, prop ) {
-    return Object.prototype.hasOwnProperty.call( obj, prop );
-}
-
-/**
- * @private
- * @description
- * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
- * @param {Array} array
- * @param {*} item
- * @return {number}
- */
-function indexOf( array, item )
-{
-    if ( array.indexOf )
-        return array.indexOf( item );
-    else
-    {
-        var index = -1;
-        each( array, function( obj, i )
-        {
-            if ( obj === item )
-            {
-                index = i;
-                return false;
-            }
-        });
-        return index;
-    }
-}
-
-/**
- * @private
- * @description Determines whether an object was created using "{}" or "new Object".
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
- * @param {Object} obj
- * @return {boolean}
- */
-function isPlainObject( obj )
-{
-    // Not plain objects:
-    // - Any object or value whose internal [[Class]] property is not "[object Object]"
-    // - DOM nodes
-    // - window
-    if ( typeOf( obj ) !== "object" || obj.nodeType || typeOf( obj ) === "window" )
-        return false;
-
-    // Support: Firefox <20
-    // The try/catch suppresses exceptions thrown when attempting to access
-    // the "constructor" property of certain host objects, ie. |window.location|
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
-    try
-    {
-        if (
-            obj.constructor &&
-            !hasOwn( obj.constructor.prototype, "isPrototypeOf" )
-        )
-            return false;
-    }
-    catch ( e ) {
-        return false;
-    }
-
-    // If the function hasn't returned already, we're confident that
-    // |obj| is a plain object, created by {} or constructed with new Object
-    return true;
-}
-
-function map( items, callback, context )
-{
-    items = makeArray( items );
-    if ( Array.prototype.map )
-        return items.map( callback, context );
-    else
-    {
-        var result = [];
-        each( items, function( item, index ) {
-            result.push( callback.call( context, item, index ) );
-        });
-    }
-}
-
-},{}]},{},[12])
+},{"./core/define":4,"./core/environment":5,"./core/errors":6,"./core/util":10,"./di/deferred":11,"./di/injector":12}]},{},[13])
 ;

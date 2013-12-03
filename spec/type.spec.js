@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "type", function()
 {
     describe( ".def()", function()
@@ -12,7 +15,7 @@ describe( "type", function()
                 A.def({
                     bar: function() {}
                 });
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
 
         it( "should support the array syntax for specifing constructor dependencies", function()
@@ -30,7 +33,7 @@ describe( "type", function()
             var injector = type.injector();
             injector.bind( "bar" ).to( function() { return 2; } );
             var a = injector.resolve( A ).value();
-            expect( a.value() ).toBe( 2 );
+            expect( a.value() ).to.equal( 2 );
         });
 
         it( "should throw an error if the constructor is defined and no method is provided", function()
@@ -38,11 +41,11 @@ describe( "type", function()
             expect( function()
             {
                 type().def({ ctor: null });
-            }).toThrowOf( TypeError );
+            }).to.throw( TypeError );
             expect( function()
             {
                 type().def({ ctor: [ "foo", "bar" ] });
-            }).toThrowOf( TypeError );
+            }).to.throw( TypeError );
         });
 
         it( "should throw an error if a property's get accessor is not a method or null", function()
@@ -55,7 +58,7 @@ describe( "type", function()
                         set: function() {}
                     }
                 });
-            }).toThrowOf( TypeError );
+            }).to.throw( TypeError );
         });
 
         it( "should throw an error if a property's set accessor is not a method or null", function()
@@ -68,7 +71,7 @@ describe( "type", function()
                         set: "bar"
                     }
                 });
-            }).toThrowOf( TypeError );
+            }).to.throw( TypeError );
         });
 
         it( "should throw an error if a property's read/write capabilities are redefined", function()
@@ -86,7 +89,7 @@ describe( "type", function()
                         set: function() {}
                     }
                 });
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
 
         it( "should throw an error if access modifers are specified for both property accessors", function()
@@ -99,7 +102,7 @@ describe( "type", function()
                         __set: null
                     }
                 });
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
 
         it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
@@ -113,7 +116,7 @@ describe( "type", function()
                 B.def({
                     ctor: function() {}
                 });
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
     });
 
@@ -126,7 +129,7 @@ describe( "type", function()
             expect( function()
             {
                 B.extend( A );
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
 
         it( "can extend native javascript types", function()
@@ -137,7 +140,7 @@ describe( "type", function()
             };
             var B = type().extend( A );
             var b = new B();
-            expect( b.foo() ).toBe( 2 );
+            expect( b.foo() ).to.equal( 2 );
         });
 
         it( "should throw an error if a circular reference is created", function()
@@ -146,19 +149,19 @@ describe( "type", function()
             expect( function()
             {
                 A.extend( A );
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
 
             var B = type().extend( A );
             expect( function()
             {
                 A.extend( B );
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
 
             var C = type().extend( B );
             expect( function()
             {
                 A.extend( C );
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
     });
 
@@ -168,10 +171,10 @@ describe( "type", function()
         {
             var A = type().events([ "foo", "bar" ]);
             var a = new A();
-            expect( a.foo.addHandler ).toBeDefined();
-            expect( a.foo.removeHandler ).toBeDefined();
-            expect( a.bar.addHandler ).toBeDefined();
-            expect( a.bar.removeHandler ).toBeDefined();
+            expect( a.foo.addHandler ).to.be.a( "function" );
+            expect( a.foo.removeHandler ).to.be.a( "function" );
+            expect( a.bar.addHandler ).to.be.a( "function" );
+            expect( a.bar.removeHandler ).to.be.a( "function" );
         });
     });
 
@@ -204,7 +207,7 @@ describe( "type", function()
                 }
             });
             var c = new C();
-            expect( c.baz() ).toBe( "hello world!" );
+            expect( c.baz() ).to.equal( "hello world!" );
         });
 
         it( "should throw an error if a circular reference is created", function()
@@ -213,19 +216,19 @@ describe( "type", function()
             expect( function()
             {
                 A.include([ A ]);
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
 
             var B = type().include([ A ]);
             expect( function()
             {
                 A.include([ B ]);
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
 
             var C = type().include([ B ]);
             expect( function()
             {
                 A.include([ C ]);
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
 
         it( "should throw an error if mixin is not a type", function()
@@ -234,7 +237,7 @@ describe( "type", function()
             expect( function()
             {
                 A.include([ function() {} ]);
-            }).toThrowOf( TypeError );
+            }).to.throw( TypeError );
         });
 
         it( "should throw an error if the constructor has already been defined", function()
@@ -246,7 +249,7 @@ describe( "type", function()
             expect( function()
             {
                 B.include([ A ]);
-            }).toThrowOf( type.DefinitionError );
+            }).to.throw( type.DefinitionError );
         });
     });
 
@@ -256,7 +259,7 @@ describe( "type", function()
         {
             var A = type();
             var a = new A();
-            expect( a.$scope() ).toBe( undefined );
+            expect( a.$scope() ).to.be.undefined;
         });
     });
 });

@@ -371,7 +371,7 @@ function validateMember( type, info )
         type.parent.members[ info.name ].access !== info.access
     )
     {
-        throw new errors.DefinitionError( "Cannot change access modifier of member '" + name + "' from " +
+        throw new errors.DefinitionError( "Cannot change access modifier of member '" + info.name + "' from " +
             type.parent.members[ info.name ].access + " to " + info.access + "." );
     }
 }

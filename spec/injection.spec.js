@@ -1,12 +1,33 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+var window = typeof window === "object" ? window : global;
+var sandbox;
+var sinon = require( "sinon" );
+var _require = window.require;
+
 describe( "Injector", function()
 {
+    beforeEach( function()
+    {
+        sandbox = sinon.sandbox.create();
+        window.require = function() {};
+    });
+
+    afterEach( function()
+    {
+        sandbox.restore();
+        delete window.require;
+        if ( _require !== undefined )
+            window.require = _require;
+    });
+
     describe( ".bind()", function()
     {
         it( "should return a BindingSelector", function()
         {
             var injector = type.injector();
             var selector = injector.bind( "foo" );
-            expect( selector.to ).toBeDefined();
+            expect( selector.to ).to.be.a( "function" );
         });
 
         it( "should throw an error if 'service' is empty", function()
@@ -15,7 +36,7 @@ describe( "Injector", function()
             expect( function()
             {
                 injector.bind();
-            }).toThrowOf( type.ArgumentError );
+            }).to.throw( type.ArgumentError );
         });
     });
 
@@ -23,18 +44,26 @@ describe( "Injector", function()
     {
         it( "should remove the binding for a service", function()
         {
+            var e = new Error();
+            sandbox.stub( window, "require", function( modules, done, fail ) {
+                fail( e );
+            });
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 );
-            expect( injector.resolve( "foo" ).value() ).toBe( 2 );
+            expect( injector.resolve( "foo" ).value() ).to.equal( 2 );
             injector.unbind( "foo" );
             expect( function()
             {
                 injector.resolve( "foo" ).value();
-            }).toThrowOf( type.InvalidOperationError );
+            }).to.throw( e );
         });
 
         it( "can remove bindings of services with specific constraints", function()
         {
+            var e = new Error();
+            sandbox.stub( window, "require", function( modules, done, fail ) {
+                fail( e );
+            });
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 ).whenFor([ "bar", "baz" ]);
             injector.bind( "bar" ).to([ "foo", function( foo ) {} ]);
@@ -44,7 +73,7 @@ describe( "Injector", function()
             expect( function()
             {
                 injector.resolve( "bar" ).value();
-            }).toThrowOf( type.InvalidOperationError );
+            }).to.throw( e );
             injector.resolve( "baz" ).value();
         });
     });
@@ -60,7 +89,7 @@ describe( "Injector", function()
             {
                 out = x;
             }]).value();
-            expect( out ).toBe( 2 );
+            expect( out ).to.equal( 2 );
         });
 
         it( "should check the '$inject' property for an array listing dependencies", function()
@@ -77,117 +106,83 @@ describe( "Injector", function()
             };
             Bar.$inject = [ "foo" ];
             var bar = injector.resolve( Bar ).value();
-            expect( bar.foo ).toBe( 2 );
+            expect( bar.foo ).to.equal( 2 );
             bar = injector.resolve( Bar ).value();
-            expect( bar.foo ).toBe( 2 );
+            expect( bar.foo ).to.equal( 2 );
         });
 
         it( "should throw an error if any dependencies are missing", function()
         {
+            var e = new Error();
+            sandbox.stub( window, "require", function( modules, done, fail ) {
+                fail( e );
+            });
             var injector = type.injector();
-            injector.bind( "bar" ).to( [ "foo", function() {} ] );
-            var out = null;
-            try
-            {            
-                injector.resolve( [ "bar", "baz", function() {} ] ).value();
-            }
-            catch ( e )
+            injector.bind( "bar" ).to([ "foo", function() {} ]);
+            expect( function()
             {
-                expect( e instanceof type.InvalidOperationError ).toBe( true );
-                out = e.message;
-            }
-            expect( out ).toContain( "foo" );
-            expect( out ).toContain( "baz" );
+                injector.resolve([ "bar", "baz", function() {} ]).value();
+            }).to.throw( e );
         });
 
-        it( "should try to use RequireJS to load missing dependencies", function()
+        it( "should try to use RequireJS to load missing dependencies", function( done )
         {
-            var out = null;
-            window.require = window.require || function() {};
-            spyOn( window, "require" ).andCallFake( function( modules, callback )
+            sandbox.stub( window, "require", function( modules, callback )
             {
-                expect( modules ).toEqual([ "app/foo" ]);
+                expect( modules ).to.deep.equal([ "app/foo" ]);
                 setTimeout( function()
                 {
                     callback( function() { return 2; } );
                 });
             });
             var injector = type.injector();
-            runs( function()
+            injector.resolve( "app.foo" ).done( function( foo )
             {
-                injector.resolve( "app.foo" ).done( function( foo )
-                {
-                    out = foo;
-                }, false );
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out ).toBe( 2 );
+                expect( foo ).to.equal( 2 );
+                done();
             });
         });
 
-        it( "should reject the promise if the service cannot be found", function()
+        it( "should reject the promise if the service cannot be found", function( done )
         {
-            var injector = type.injector();
-            window.require = window.require || function() {};
-            var temp = window.require;
-            window.require = function( modules, callback )
+            sandbox.stub( window, "require", function( modules, callback )
             {
                 setTimeout( function()
                 {
                     callback( "" );
                 });
-            };
-            var out;
-            runs( function()
-            {
-                out = null;
-                injector.resolve( "foo" ).fail( function( e )
-                {
-                    out = e;
-                }, false );
             });
-            waits(0);
-            runs( function()
-            {
-                expect( out instanceof TypeError ).toBe( true );
-                out = null;
-                window.require = function( modules, callback )
+            var injector = type.injector();
+            injector.resolve( "foo" )
+                .then( null, function( e )
                 {
-                    setTimeout( function()
+                    expect( e ).to.be.instanceof( TypeError );
+                    
+                    window.require.restore();
+                    sandbox.stub( window, "require", function( modules, callback )
                     {
                         callback();
                     });
-                };
-                injector.resolve( "foo" ).fail( function( e )
+
+                    return injector.resolve( "foo" );
+                })
+                .then( null, function( e )
                 {
-                    out = e;
-                }, false );
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out instanceof TypeError ).toBe( true );
-                out = null;
-                window.require = function( modules, callback )
-                {
-                    setTimeout( function()
+                    expect( e ).to.be.instanceof( TypeError );
+
+                    window.require.restore();
+                    sandbox.stub( window, "require", function( modules, callback )
                     {
-                        callback( [ "bla" ] );
+                        callback([ "bla" ]);
                     });
-                };
-                injector.resolve( "foo" ).fail( function( e )
+
+                    return injector.resolve( "foo" );
+                })
+                .then( null, function( e )
                 {
-                    out = e;
-                }, false );
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out instanceof TypeError ).toBe( true );
-                window.require = temp;
-            });
+                    expect( e ).to.be.instanceof( TypeError );
+                    done();
+                });
         });
     });
 
@@ -204,7 +199,7 @@ describe( "Injector", function()
             });
             var injector = type.injector().autoBind({ app: graph });
             var foo = injector.resolve( "app.bar.Foo" ).value();
-            expect( called ).toBe( 1 );
+            expect( called ).to.equal( 1 );
         });
     });
 
@@ -218,14 +213,14 @@ describe( "Injector", function()
                 injector.bind( "foo" ).to( function() {
                     return 2;
                 });
-                expect( injector.resolve( "foo" ).value() ).toBe( 2 );
+                expect( injector.resolve( "foo" ).value() ).to.equal( 2 );
             });
 
             it( "should bind non functions as constants", function()
             {
                 var injector = type.injector();
                 injector.bind( "foo" ).to( 2 );
-                expect( injector.resolve( "foo" ).value() ).toBe( 2 );
+                expect( injector.resolve( "foo" ).value() ).to.equal( 2 );
             });
         });
     });
@@ -239,7 +234,7 @@ describe( "Injector", function()
                 var injector = type.injector();
                 injector.bind( "foo" ).to( function() { return {}; } ).asSingleton();
                 var out = injector.resolve( "foo" ).value();
-                expect( injector.resolve( "foo" ).value() ).toBe( out );
+                expect( injector.resolve( "foo" ).value() ).to.equal( out );
             });
         });
 
@@ -264,16 +259,16 @@ describe( "Injector", function()
 
                 // Bindings should be tried in reverse order.
                 injector.resolve( "bar" );
-                expect( out ).toBe( 3 );
+                expect( out ).to.equal( 3 );
 
                 injector.resolve( "baz" );
-                expect( out ).toBe( 4 );
+                expect( out ).to.equal( 4 );
 
                 // Resolving an anonymous service should use the default binding if it exists.
                 injector.resolve([ "foo", function( foo ) {
                     out = foo;
                 }]);
-                expect( out ).toBe( 1 );
+                expect( out ).to.equal( 1 );
             });
         });
     });
@@ -285,7 +280,7 @@ describe( "Injector", function()
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 );
             var provider = injector.resolve( type.providerOf( "foo" ) ).value();
-            expect( provider() ).toBe( 2 );
+            expect( provider() ).to.equal( 2 );
         });
 
         it( "should forward additional arguments to the underlying service provider", function()
@@ -293,7 +288,7 @@ describe( "Injector", function()
             var injector = type.injector();
             injector.bind( "foo" ).to( function( a ) { return a + 2; } );
             var provider = injector.resolve( type.providerOf( "foo" ) ).value();
-            expect( provider( 5 ) ).toBe( 7 );
+            expect( provider( 5 ) ).to.equal( 7 );
         });
 
         it( "should not reuse dependencies", function()
@@ -309,7 +304,7 @@ describe( "Injector", function()
             var provider = injector.resolve( type.providerOf( "bar" ) ).value();
             provider();
             provider();
-            expect( foo ).toBe( 2 );
+            expect( foo ).to.equal( 2 );
         });
 
         it( "should bind to a static dependency graph when resolved", function()
@@ -331,36 +326,25 @@ describe( "Injector", function()
                 return 2;
             });
             provider();
-            expect( calledA ).toBe( 3 );
-            expect( calledB ).toBe( 0 );
+            expect( calledA ).to.equal( 3 );
+            expect( calledB ).to.equal( 0 );
         });
 
-        it( "should get the underlying service when being fetched", function()
+        it( "should get the underlying service when being fetched", function( done )
         {
             var injector = type.injector();
-            window.require = window.require || function() {};
-            var out = null;
-            spyOn( window, "require" ).andCallFake( function( modules, callback )
+            sandbox.stub( window, "require", function( modules, callback )
             {
-                out = modules[0];
+                expect( modules[0] ).to.equal( "foo" );
                 setTimeout( function()
                 {
                     callback( function() { return 2; } );
                 });
             });
-            runs( function()
+            injector.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
             {
-                injector.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
-                {
-                    out = fooProvider();
-                }, false );
-                expect( out ).toBe( "foo" );
-                out = null;
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out ).toBe( 2 );
+                expect( fooProvider() ).to.equal( 2 );
+                done();
             });
         });
     });
@@ -372,73 +356,47 @@ describe( "Injector", function()
             var injector = type.injector();
             injector.bind( "foo" ).to( 2 );
             var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
-            expect( provider().value() ).toBe( 2 );
+            expect( provider().value() ).to.equal( 2 );
         });
 
-        it( "should resolve its dependency graph on the first call", function()
+        it( "should resolve its dependency graph on the first call", function( done )
         {
-            var injector = type.injector();
-            var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
-            var temp = window.require;
-            window.require = function( module, callback )
+            sandbox.stub( window, "require", function( module, callback )
             {
                 setTimeout( function()
                 {
                     callback( function() { return 2; } );
                 });
-            };
-            var out;
-            runs( function()
-            {
-                provider().done( function( result )
-                {
-                    out = result;
-                }, false );
             });
-            waits(0);
-            runs( function()
-            {
-                expect( out ).toBe( 2 );
-            });
-            waits(0);
-            runs( function()
-            {
-                window.require = function( module, callback )
+            var injector = type.injector();
+            var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
+            provider()
+                .then( function( result )
                 {
-                    setTimeout( function()
+                    expect( result ).to.equal( 2 );
+
+                    window.require.restore();
+                    sandbox.stub( window, "require", function( module, callback )
                     {
-                        callback( function() { return 3; } );
+                        setTimeout( function()
+                        {
+                            callback( function() { return 3; } );
+                        });
                     });
-                };
-                provider().done( function( result )
+
+                    return provider();
+                })
+                .then( function( result )
                 {
-                    out = result;
-                }, false );
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out ).toBe( 2 );
-            });
-            waits(0);
-            runs( function()
-            {
-                injector.bind( "foo" ).to( 4 );
-                provider().done( function( result )
+                    expect( result ).to.equal( 2 );
+                    injector.bind( "foo" ).to( 4 );
+                    return provider();
+                })
+                .then( function( result )
                 {
-                    out = result;
-                }, false );
-            });
-            waits(0);
-            runs( function()
-            {
-                expect( out ).toBe( 2 );
-            });
-            waits(0);
-            runs( function()
-            {
-                window.require = temp;
-            });
+                    expect( result ).to.equal( 2 );
+                    done();
+                });
         });
     });
 });

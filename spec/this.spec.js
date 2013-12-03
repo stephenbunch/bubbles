@@ -1,3 +1,6 @@
+var type = require( "../src/type" );
+var expect = require( "chai" ).expect;
+
 describe( "this", function()
 {
     describe( "._pry()", function()
@@ -16,14 +19,14 @@ describe( "this", function()
 
             var a1 = new A();
             var a2 = new A();
-            expect( a2.bar( a1 ) ).toBe( "hello" );
+            expect( a2.bar( a1 ) ).to.equal( "hello" );
         });
 
         it( "should not be accessible on the public interface", function()
         {
             var A = type();
             var a = new A();
-            expect( a._pry ).toBe( undefined );
+            expect( a._pry ).to.be.undefined;
         });
 
         it( "should return input if failed", function()
@@ -36,10 +39,10 @@ describe( "this", function()
             });
             var a = new A();
             a.foo( null );
-            expect( out ).toBe( null );
+            expect( out ).to.equal( null );
 
             a.foo( "hello" );
-            expect( out ).toBe( "hello" );
+            expect( out ).to.equal( "hello" );
         });
     });
 
@@ -54,7 +57,7 @@ describe( "this", function()
             });
 
             var a = new A();
-            expect( a.bar() ).toBe( a );
+            expect( a.bar() ).to.equal( a );
         });
 
         it( "should return the public interface of the child", function()
@@ -66,7 +69,7 @@ describe( "this", function()
             });
             var B = type().extend( A );
             var b = new B();
-            expect( b.bar() ).toBe( b );
+            expect( b.bar() ).to.equal( b );
         });
     });
 
@@ -86,7 +89,7 @@ describe( "this", function()
             });
 
             var b = new B();
-            expect( b.foo( "hello" ) ).toBe( "hello world!" );
+            expect( b.foo( "hello" ) ).to.equal( "hello world!" );
         });
     });
 
@@ -106,7 +109,7 @@ describe( "this", function()
                 }
             });
             var b = new B();
-            expect( out ).toBe( "foo" );
+            expect( out ).to.equal( "foo" );
         });
 
         it( "should not be available if no mixins are defined", function()
@@ -118,7 +121,7 @@ describe( "this", function()
                 }
             });
             var a = new A();
-            expect( out ).toBe( true );
+            expect( out ).to.be.true;
         });
     });
 
@@ -136,9 +139,9 @@ describe( "this", function()
                 }
             });
             var a = new A();
-            expect( a.get() ).toBe( undefined );
+            expect( a.get() ).to.be.undefined;
             a.set( 2 );
-            expect( a.get() ).toBe( 2 );
+            expect( a.get() ).to.equal( 2 );
         });
     });
 
@@ -157,7 +160,7 @@ describe( "this", function()
             });
             var a = new A();
             a.foo = 2;
-            expect( out ).toBe( 2 );
+            expect( out ).to.equal( 2 );
         });
     });
 });
