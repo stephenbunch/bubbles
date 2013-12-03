@@ -15,7 +15,7 @@ module.exports = function( grunt )
                         " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs\n" +
                         " * License: MIT\n" +
                         " */\n",
-                    sourceMap: "dist/map.json",
+                    sourceMap: "dist/type.map",
                     postBundleCB: function( err, src, next )
                     {
                         if ( !src )
@@ -24,21 +24,20 @@ module.exports = function( grunt )
                             return;
                         }
                         var path = require( "path" );
+                        var convert = require( "convert-source-map" );
                         var options = grunt.config( "browserify" ).dist.options;
-                        var lines = src.split( "\n" );
-
-                        var map = lines.splice( lines.length - 2, 1 )[0];
-                        map = map.substr( "//@ sourceMappingURL=data:application/json;base64,".length );
-                        map = new Buffer( map, "base64" ).toString( "binary" );
-                        map = JSON.parse( map );
+                        var map = convert.fromSource( src ).toObject();
+                        map.file = "type.js";
                         map.sources = map.sources.map( function( source ) {
-                            return source.substr( __dirname.length + 1 );
+                            return "../" + source.substr( __dirname.length + 1 );
                         });
-                        map = JSON.stringify( map );
-                        grunt.file.write( options.sourceMap, map );
-
-                        src = lines.join( "\n" );
-                        next( err, options.banner + "//@ sourceMappingURL=" + path.basename( options.sourceMap ) + "\n" + src );
+                        map.sourcesContent = [];
+                        var offset = "", i;
+                        for ( i = 0; i < options.banner.split( "\n" ).length; i++ )
+                            offset += ";";
+                        map.mappings = offset + map.mappings;
+                        grunt.file.write( options.sourceMap, JSON.stringify( map ) );
+                        next( err, options.banner + "//@ sourceMappingURL=" + path.basename( options.sourceMap ) + "\n" + convert.removeComments( src ) );
                     }
                 }
             }

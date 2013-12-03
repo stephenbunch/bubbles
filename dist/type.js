@@ -1,9 +1,9 @@
 /*!
  * typeful v0.1.0
- * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typeful
+ * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs
  * License: MIT
  */
-//@ sourceMappingURL=map.json
+//@ sourceMappingURL=type.map
 ;(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 // shim for using process in browser
 
@@ -1497,7 +1497,6 @@ var Promise = type().def(
 {
     ctor: function()
     {
-        var self = this;
         this.queue = [];
         this.state = PENDING;
         this.result = null;
@@ -2373,4 +2372,5 @@ type.defer = deferred;
 module.exports = environment.window.type = type;
 
 },{"./core/define":4,"./core/environment":5,"./core/errors":6,"./core/util":10,"./di/deferred":11,"./di/injector":12}]},{},[13])
+
 ;

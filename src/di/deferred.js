@@ -84,7 +84,6 @@ var Promise = type().def(
 {
     ctor: function()
     {
-        var self = this;
         this.queue = [];
         this.state = PENDING;
         this.result = null;
