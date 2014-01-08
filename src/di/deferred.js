@@ -114,6 +114,23 @@ var Promise = type().def(
         return promise._pub;
     },
 
+    splat: function( onFulfilled, onRejected, async )
+    {
+        return this.then( function( result ) {
+            return onFulfilled.apply( undefined, result );
+        }, onRejected, async );
+    },
+
+    bind: function( deferred )
+    {
+        this.then( function() {
+            deferred.resolve.apply( deferred, arguments );
+        }, function() {
+            deferred.reject.apply( deferred, arguments );
+        });
+        return this._pub;
+    },
+
     done: function( callback, async )
     {
         this.then( callback, null, async );

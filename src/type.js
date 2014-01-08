@@ -20,4 +20,6 @@ type.lazyProviderOf = injector.lazyProviderOf;
 
 type.defer = deferred;
 
-module.exports = environment.window.type = type;
+module.exports = type;
+if ( environment.isBrowser )
+    window.type = type;

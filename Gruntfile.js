@@ -106,7 +106,7 @@ module.exports = function( grunt )
             bail: true,
             grep: grunt.option( "grep" )
         });
-        grunt.file.expand( "test/**/*.js" ).forEach( function( file )
+        grunt.file.expand( "test/**/*.spec.js" ).forEach( function( file )
         {
             mocha.addFile( file );
         });

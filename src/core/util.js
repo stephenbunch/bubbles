@@ -11,7 +11,8 @@ module.exports =
     hasOwn: hasOwn,
     indexOf: indexOf,
     isPlainObject: isPlainObject,
-    map: map
+    map: map,
+    path: path
 };
 
 /**
@@ -237,6 +238,14 @@ function isPlainObject( obj )
     return true;
 }
 
+/**
+ * @description
+ * Executes a callback for each item in the set, producing a new array containing the return values.
+ * @param {Array|Object} items
+ * @param {function()} callback
+ * @param {*} context
+ * @return {Array}
+ */
 function map( items, callback, context )
 {
     items = makeArray( items );
@@ -249,4 +258,16 @@ function map( items, callback, context )
             result.push( callback.call( context, item, index ) );
         });
     }
+}
+
+/**
+ * @description Safely combines multiple path segments.
+ * @param {...string} paths
+ * @return {string}
+ */
+function path()
+{
+    return map( arguments, function( path, index ) {
+        return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
+    }).join( "/" );
 }

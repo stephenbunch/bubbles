@@ -3,6 +3,7 @@ var build = require( "./build" );
 var environment = require( "./environment" );
 var errors = require( "./errors" );
 var inits = require( "./inits" );
+var registry = require( "../di/registry" );
 var special = require( "./special" );
 var tunnel = require( "./tunnel" );
 var util = require( "./util" );
@@ -74,7 +75,7 @@ function create()
                 self: null,
                 mixins: []
             };
-            if ( environment.IE8 )
+            if ( environment.isIE8 )
             {
                 scope.self = getPlainDOMObject();
                 applyPrototypeMembers( Scope, scope.self );
@@ -87,7 +88,7 @@ function create()
         {
             var pub;
             run = false;
-            if ( environment.IE8 )
+            if ( environment.isIE8 )
             {
                 pub = getPlainDOMObject();
                 applyPrototypeMembers( Type, pub );
@@ -258,6 +259,7 @@ function create()
         return Type;
     };
 
+    registry.add( Type );
     return Type;
 }
 

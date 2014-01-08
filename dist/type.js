@@ -450,14 +450,14 @@ function expose( type, scope, pub )
 function addProperty( obj, name, accessors )
 {
     // IE8 apparently doesn't support this configuration option.
-    if ( !environment.IE8 )
+    if ( !environment.isIE8 )
         accessors.enumerable = true;
 
     accessors.configurable = true;
 
     // IE8 requires that we delete the property first before reconfiguring it.
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( environment.IE8 && util.hasOwn( obj, name ) )
+    if ( environment.isIE8 && util.hasOwn( obj, name ) )
         delete obj[ name ];
 
     // obj must be a DOM object in IE8
@@ -485,6 +485,7 @@ var build = require( "./build" );
 var environment = require( "./environment" );
 var errors = require( "./errors" );
 var inits = require( "./inits" );
+var registry = require( "../di/registry" );
 var special = require( "./special" );
 var tunnel = require( "./tunnel" );
 var util = require( "./util" );
@@ -556,7 +557,7 @@ function create()
                 self: null,
                 mixins: []
             };
-            if ( environment.IE8 )
+            if ( environment.isIE8 )
             {
                 scope.self = getPlainDOMObject();
                 applyPrototypeMembers( Scope, scope.self );
@@ -569,7 +570,7 @@ function create()
         {
             var pub;
             run = false;
-            if ( environment.IE8 )
+            if ( environment.isIE8 )
             {
                 pub = getPlainDOMObject();
                 applyPrototypeMembers( Type, pub );
@@ -740,6 +741,7 @@ function create()
         return Type;
     };
 
+    registry.add( Type );
     return Type;
 }
 
@@ -1055,20 +1057,20 @@ function getPlainDOMObject()
     return obj;
 }
 
-},{"./access":2,"./build":3,"./environment":5,"./errors":6,"./inits":7,"./special":8,"./tunnel":9,"./util":10}],5:[function(require,module,exports){
-var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};// IE8 only supports Object.defineProperty on DOM objects.
+},{"../di/registry":13,"./access":2,"./build":3,"./environment":5,"./errors":6,"./inits":7,"./special":8,"./tunnel":9,"./util":10}],5:[function(require,module,exports){
+// IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
 // http://stackoverflow.com/a/4867755/740996
-var IE8 = false;
+var isIE8 = false;
 try {
     Object.defineProperty( {}, "x", {} );
 } catch ( e ) {
-    IE8 = true;
+    isIE8 = true;
 }
 
 module.exports = {
-    IE8: IE8,
-    window: typeof window === "object" ? window : global
+    isIE8: isIE8,
+    isBrowser: !!( typeof window !== "undefined" && typeof navigator !== "undefined" && window.document )
 };
 
 },{}],6:[function(require,module,exports){
@@ -1170,7 +1172,8 @@ module.exports =
     hasOwn: hasOwn,
     indexOf: indexOf,
     isPlainObject: isPlainObject,
-    map: map
+    map: map,
+    path: path
 };
 
 /**
@@ -1396,6 +1399,14 @@ function isPlainObject( obj )
     return true;
 }
 
+/**
+ * @description
+ * Executes a callback for each item in the set, producing a new array containing the return values.
+ * @param {Array|Object} items
+ * @param {function()} callback
+ * @param {*} context
+ * @return {Array}
+ */
 function map( items, callback, context )
 {
     items = makeArray( items );
@@ -1408,6 +1419,18 @@ function map( items, callback, context )
             result.push( callback.call( context, item, index ) );
         });
     }
+}
+
+/**
+ * @description Safely combines multiple path segments.
+ * @param {...string} paths
+ * @return {string}
+ */
+function path()
+{
+    return map( arguments, function( path, index ) {
+        return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
+    }).join( "/" );
 }
 
 },{}],11:[function(require,module,exports){
@@ -1525,6 +1548,23 @@ var Promise = type().def(
         async = async === false ? false : true;
         this.enqueue( this.handle( promise, onFulfilled, onRejected ), async );
         return promise._pub;
+    },
+
+    splat: function( onFulfilled, onRejected, async )
+    {
+        return this.then( function( result ) {
+            return onFulfilled.apply( undefined, result );
+        }, onRejected, async );
+    },
+
+    bind: function( deferred )
+    {
+        this.then( function() {
+            deferred.resolve.apply( deferred, arguments );
+        }, function() {
+            deferred.reject.apply( deferred, arguments );
+        });
+        return this._pub;
     },
 
     done: function( callback, async )
@@ -1684,6 +1724,7 @@ Deferred.when = function( promises )
 },{"../core/define":4,"../core/errors":6,"../core/util":10,"__browserify_process":1}],12:[function(require,module,exports){
 var environment = require( "../core/environment" );
 var errors = require( "../core/errors" );
+var registry = require( "./registry" );
 var type = require( "../core/define" );
 var util = require( "../core/util" );
 
@@ -1694,8 +1735,10 @@ var LAZY_PROVIDER = "LazyProvider`";
 
 var Injector = module.exports = type().def(
 {
-    ctor: function() {
+    ctor: function()
+    {
         this.container = {};
+        this.require = null;
     },
 
     /**
@@ -1819,23 +1862,19 @@ var Injector = module.exports = type().def(
     resolve: function( target, args )
     {
         var self = this;
-        var deferred = new Deferred();
         args = util.makeArray( arguments );
         args.shift( 0 );
-        this.resolveTarget( target )
-            .then( function( recipe )
+        return this.resolveTarget( target ).then(
+            function( recipe )
             {
                 var factory = self.makeFactory( recipe );
-                if ( recipe.theory.isProvider )
-                    deferred.resolve( factory );
-                else
-                    deferred.resolve( factory.apply( undefined, args ) );
-
-            }, function( reason )
-            {
-                deferred.reject( reason );
-            }, false );
-        return deferred.promise;
+                return recipe.theory.isProvider ? factory : factory.apply( undefined, args );
+            },
+            function( reason ) {
+                throw reason;
+            },
+            false
+        );
     },
 
     /**
@@ -1860,6 +1899,48 @@ var Injector = module.exports = type().def(
     {
         this.registerGraph( "", graph );
         return this._pub;
+    },
+
+    autoLoad: function( config )
+    {
+        if ( config === false )
+            this.require = null;
+        else
+        {
+            var loader;
+            if ( util.isFunc( config ) )
+                loader = config;
+            else
+            {
+                if ( util.isString( config ) )
+                    config = { baseUrl: config };
+                config =
+                {
+                    baseUrl: config.baseUrl || "",
+                    waitSeconds: config.waitSeconds === 0 || config.waitSeconds ? config.waitSeconds : 7,
+                    urlArgs: config.urlArgs || "",
+                    scriptType: config.scriptType || "text/javascript"
+                };
+                loader = function( module )
+                {
+                    var url = util.path( config.baseUrl, module );
+                    if ( !( /\.js$/ ).test( url ) )
+                        url += ".js";
+                    var deferred = new Deferred();
+                    registry.find(
+                    {
+                        url: url,
+                        timeout: config.waitSeconds * 1000,
+                        query: config.urlArgs,
+                        scriptType: config.scriptType
+                    }, deferred );
+                    return deferred.promise;
+                };
+            }
+            this.require = function( modules ) {
+                return Deferred.when( util.map( modules, loader ) );
+            };
+        }
     },
 
     /**
@@ -1998,23 +2079,23 @@ var Injector = module.exports = type().def(
         var factory = null;
         return function()
         {
-            var deferred = new Deferred();
             var args = arguments;
             if ( !factory )
             {
-                self.resolveTarget( recipe.theory.name )
-                    .then( function( recipe )
+                return self.resolveTarget( recipe.theory.name ).then(
+                    function( recipe )
                     {
                         factory = self.makeFactory( recipe );
-                        deferred.resolve( factory.apply( undefined, args ) );
-                    }, function( reason )
-                    {
-                        deferred.reject( reason );
-                    }, false );
+                        return factory.apply( undefined, args );
+                    },
+                    function( reason ) {
+                        throw reason;
+                    },
+                    false
+                );
             }
             else
-                deferred.resolve( factory.apply( undefined, args ) );
-            return deferred.promise;
+                return new Deferred().resolve( factory.apply( undefined, args ) ).promise;
         };
     },
 
@@ -2035,20 +2116,17 @@ var Injector = module.exports = type().def(
                     service = service.substr( LAZY_PROVIDER.length );
                 return service.replace( /\./g, "/" );
             });
-            environment.window.require( modules, done, fail );
+            self.require( modules ).then( done, fail, false );
         }
 
-        function done()
+        function done( result )
         {
             var bindings = {};
-            var args = arguments;
-
             util.each( plan.missing, function( service, index )
             {
                 // Validate the returned service. If there's no way we can turn it into a binding,
-                // we'll get ourselves into a neverending loop trying to resolve it.
-                var svc = args[ index ];
-
+                // we'll get ourselves into a never-ending loop trying to resolve it.
+                var svc = result[ index ];
                 if ( !svc || !( /(string|function|array)/ ).test( util.typeOf( svc ) ) )
                 {
                     deferred.reject(
@@ -2070,8 +2148,7 @@ var Injector = module.exports = type().def(
                     );
                     return false;
                 }
-
-                bindings[ service ] = args[ index ];
+                bindings[ service ] = result[ index ];
             });
 
             if ( deferred.state === "rejected" )
@@ -2089,13 +2166,14 @@ var Injector = module.exports = type().def(
             deferred.reject( reason );
         }
 
+        var self = this;
         var deferred = new Deferred();
         var modules;
         var plan = this.getExecutionPlan( target );
 
         if ( plan.missing.length )
         {
-            if ( environment.window.require )
+            if ( this.require )
                 load();
             else
             {
@@ -2346,7 +2424,69 @@ module.exports.lazyProviderOf = function( service ) {
     return LAZY_PROVIDER + service;
 };
 
-},{"../core/define":4,"../core/environment":5,"../core/errors":6,"../core/util":10,"./deferred":11}],13:[function(require,module,exports){
+},{"../core/define":4,"../core/environment":5,"../core/errors":6,"../core/util":10,"./deferred":11,"./registry":13}],13:[function(require,module,exports){
+var environment = require( "../core/environment" );
+
+module.exports = {
+    find: find,
+    add: add
+};
+
+var pending = {};
+var cache = {};
+
+function find( payload, deferred )
+{
+    if ( environment.isBrowser )
+    {
+        var url = payload.url;
+        if ( ( /^\/\// ).test( url ) )
+            url = window.location.protocol + url;
+        else if ( ( /^\// ).test( url ) )
+            url = window.location.protocol + "//" + window.location.host + url;
+        else
+            url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
+
+        if ( cache[ url ] )
+            deferred.resolve( cache[ url ] );
+        else if ( pending[ url ] )
+            pending[ url ].bind( deferred );
+        else
+        {
+            var script = document.createElement( "script" );
+            script.src = url;
+            script.addEventListener( "error", function()
+            {
+                deferred.reject();
+            }, false );
+            document.body.appendChild( script );
+            pending[ url ] = deferred;
+        }
+    }
+    else
+        deferred.resolve( require( "../../" + payload.url ) );
+}
+
+function add( type )
+{
+    if ( !environment.isBrowser )
+        return;
+
+    var scripts = document.getElementsByTagName( "script" );
+    var url = scripts[ scripts.length - 1 ].src;
+    if ( pending[ url ] )
+    {
+        cache[ url ] = type;
+        var deferred = pending[ url ];
+        delete pending[ url ];
+        setTimeout( function()
+        {
+            deferred.resolve( type );
+        });
+    }
+}
+
+},{"../core/environment":5}],14:[function(require,module,exports){
 var deferred = require( "./di/deferred" );
 var define = require( "./core/define" );
 var environment = require( "./core/environment" );
@@ -2369,8 +2509,10 @@ type.lazyProviderOf = injector.lazyProviderOf;
 
 type.defer = deferred;
 
-module.exports = environment.window.type = type;
+module.exports = type;
+if ( environment.isBrowser )
+    window.type = type;
 
-},{"./core/define":4,"./core/environment":5,"./core/errors":6,"./core/util":10,"./di/deferred":11,"./di/injector":12}]},{},[13])
+},{"./core/define":4,"./core/environment":5,"./core/errors":6,"./core/util":10,"./di/deferred":11,"./di/injector":12}]},{},[14])
 
 ;

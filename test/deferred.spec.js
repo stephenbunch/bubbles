@@ -147,6 +147,21 @@ describe( "Deferred", function()
         });
     });
 
+    describe( ".splat()", function()
+    {
+        it( "should behave as .then(), but split the result into separate parameters", function()
+        {
+            var def = type.defer();
+            def.splat( function( a, b, c )
+            {
+                expect( a ).to.equal( 1 );
+                expect( b ).to.equal( 2 );
+                expect( c ).to.equal( 3 );
+            }, null, false );
+            def.resolve([ 1, 2, 3 ]);
+        });
+    });
+
     describe( "'done' callback", function()
     {
         it( "should fire immediately if the deferred has already been fulfilled", function()

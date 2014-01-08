@@ -382,14 +382,14 @@ function expose( type, scope, pub )
 function addProperty( obj, name, accessors )
 {
     // IE8 apparently doesn't support this configuration option.
-    if ( !environment.IE8 )
+    if ( !environment.isIE8 )
         accessors.enumerable = true;
 
     accessors.configurable = true;
 
     // IE8 requires that we delete the property first before reconfiguring it.
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( environment.IE8 && util.hasOwn( obj, name ) )
+    if ( environment.isIE8 && util.hasOwn( obj, name ) )
         delete obj[ name ];
 
     // obj must be a DOM object in IE8

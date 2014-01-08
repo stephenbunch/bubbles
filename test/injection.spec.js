@@ -1,26 +1,8 @@
 var type = require( "../src/type" );
 var expect = require( "chai" ).expect;
-var window = typeof window === "object" ? window : global;
-var sandbox;
-var sinon = require( "sinon" );
-var _require = window.require;
 
 describe( "Injector", function()
 {
-    beforeEach( function()
-    {
-        sandbox = sinon.sandbox.create();
-        window.require = function() {};
-    });
-
-    afterEach( function()
-    {
-        sandbox.restore();
-        delete window.require;
-        if ( _require !== undefined )
-            window.require = _require;
-    });
-
     describe( ".bind()", function()
     {
         it( "should return a BindingSelector", function()
@@ -45,10 +27,11 @@ describe( "Injector", function()
         it( "should remove the binding for a service", function()
         {
             var e = new Error();
-            sandbox.stub( window, "require", function( modules, done, fail ) {
-                fail( e );
-            });
             var injector = type.injector();
+            injector.autoLoad( function( module )
+            {
+                return type.defer().reject( e );
+            });
             injector.bind( "foo" ).to( 2 );
             expect( injector.resolve( "foo" ).value() ).to.equal( 2 );
             injector.unbind( "foo" );
@@ -61,10 +44,11 @@ describe( "Injector", function()
         it( "can remove bindings of services with specific constraints", function()
         {
             var e = new Error();
-            sandbox.stub( window, "require", function( modules, done, fail ) {
-                fail( e );
-            });
             var injector = type.injector();
+            injector.autoLoad( function( module )
+            {
+                return type.defer().reject( e );
+            });
             injector.bind( "foo" ).to( 2 ).whenFor([ "bar", "baz" ]);
             injector.bind( "bar" ).to([ "foo", function( foo ) {} ]);
             injector.bind( "baz" ).to([ "foo", function( foo ) {} ]);
@@ -114,10 +98,11 @@ describe( "Injector", function()
         it( "should throw an error if any dependencies are missing", function()
         {
             var e = new Error();
-            sandbox.stub( window, "require", function( modules, done, fail ) {
-                fail( e );
-            });
             var injector = type.injector();
+            injector.autoLoad( function()
+            {
+                return type.defer().reject( e );
+            });
             injector.bind( "bar" ).to([ "foo", function() {} ]);
             expect( function()
             {
@@ -125,57 +110,44 @@ describe( "Injector", function()
             }).to.throw( e );
         });
 
-        it( "should try to use RequireJS to load missing dependencies", function( done )
-        {
-            sandbox.stub( window, "require", function( modules, callback )
-            {
-                expect( modules ).to.deep.equal([ "app/foo" ]);
-                setTimeout( function()
-                {
-                    callback( function() { return 2; } );
-                });
-            });
-            var injector = type.injector();
-            injector.resolve( "app.foo" ).done( function( foo )
-            {
-                expect( foo ).to.equal( 2 );
-                done();
-            });
-        });
-
         it( "should reject the promise if the service cannot be found", function( done )
         {
-            sandbox.stub( window, "require", function( modules, callback )
+            var injector = type.injector();
+            injector.autoLoad( function()
             {
+                var token = type.defer();
                 setTimeout( function()
                 {
-                    callback( "" );
+                    token.resolve( "" );
                 });
+                return token.promise;
             });
-            var injector = type.injector();
             injector.resolve( "foo" )
                 .then( null, function( e )
                 {
                     expect( e ).to.be.instanceof( TypeError );
-                    
-                    window.require.restore();
-                    sandbox.stub( window, "require", function( modules, callback )
+                    injector.autoLoad( function()
                     {
-                        callback();
+                        var token = type.defer();
+                        setTimeout( function()
+                        {
+                            token.resolve();
+                        });
+                        return token.promise;
                     });
-
                     return injector.resolve( "foo" );
                 })
                 .then( null, function( e )
                 {
                     expect( e ).to.be.instanceof( TypeError );
-
-                    window.require.restore();
-                    sandbox.stub( window, "require", function( modules, callback )
+                    injector.autoLoad( function()
                     {
-                        callback([ "bla" ]);
+                        var token = type.defer();
+                        setTimeout( function()
+                        {
+                            token.resolve([ "bla" ]);
+                        });
                     });
-
                     return injector.resolve( "foo" );
                 })
                 .then( null, function( e )
@@ -200,6 +172,20 @@ describe( "Injector", function()
             var injector = type.injector().autoBind({ app: graph });
             var foo = injector.resolve( "app.bar.Foo" ).value();
             expect( called ).to.equal( 1 );
+        });
+    });
+
+    describe( ".autoLoad()", function()
+    {
+        it( "can specify a base path to load missing services", function( done )
+        {
+            var injector = type.injector();
+            injector.autoLoad( "test/stubs" );
+            injector.resolve( "class1" ).done( function( class1 )
+            {
+                expect( class1.foo() ).to.equal( 2 );
+                done();
+            });
         });
     });
 
@@ -333,13 +319,15 @@ describe( "Injector", function()
         it( "should get the underlying service when being fetched", function( done )
         {
             var injector = type.injector();
-            sandbox.stub( window, "require", function( modules, callback )
+            injector.autoLoad( function( module )
             {
-                expect( modules[0] ).to.equal( "foo" );
+                expect( module ).to.equal( "foo" );
+                var token = type.defer();
                 setTimeout( function()
                 {
-                    callback( function() { return 2; } );
+                    token.resolve( function() { return 2; } );
                 });
+                return token.promise;
             });
             injector.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
             {
@@ -361,29 +349,30 @@ describe( "Injector", function()
 
         it( "should resolve its dependency graph on the first call", function( done )
         {
-            sandbox.stub( window, "require", function( module, callback )
+            var injector = type.injector();
+            injector.autoLoad( function()
             {
+                var token = type.defer();
                 setTimeout( function()
                 {
-                    callback( function() { return 2; } );
+                    token.resolve( function() { return 2; } );
                 });
+                return token.promise;
             });
-            var injector = type.injector();
             var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
             provider()
                 .then( function( result )
                 {
                     expect( result ).to.equal( 2 );
-
-                    window.require.restore();
-                    sandbox.stub( window, "require", function( module, callback )
+                    injector.autoLoad( function()
                     {
+                        var token = type.defer();
                         setTimeout( function()
                         {
-                            callback( function() { return 3; } );
+                            token.resolve( function() { return 3; } );
                         });
+                        return token.promise;
                     });
-
                     return provider();
                 })
                 .then( function( result )

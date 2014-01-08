@@ -1,5 +1,6 @@
 var environment = require( "../core/environment" );
 var errors = require( "../core/errors" );
+var registry = require( "./registry" );
 var type = require( "../core/define" );
 var util = require( "../core/util" );
 
@@ -10,8 +11,10 @@ var LAZY_PROVIDER = "LazyProvider`";
 
 var Injector = module.exports = type().def(
 {
-    ctor: function() {
+    ctor: function()
+    {
         this.container = {};
+        this.require = null;
     },
 
     /**
@@ -135,23 +138,19 @@ var Injector = module.exports = type().def(
     resolve: function( target, args )
     {
         var self = this;
-        var deferred = new Deferred();
         args = util.makeArray( arguments );
         args.shift( 0 );
-        this.resolveTarget( target )
-            .then( function( recipe )
+        return this.resolveTarget( target ).then(
+            function( recipe )
             {
                 var factory = self.makeFactory( recipe );
-                if ( recipe.theory.isProvider )
-                    deferred.resolve( factory );
-                else
-                    deferred.resolve( factory.apply( undefined, args ) );
-
-            }, function( reason )
-            {
-                deferred.reject( reason );
-            }, false );
-        return deferred.promise;
+                return recipe.theory.isProvider ? factory : factory.apply( undefined, args );
+            },
+            function( reason ) {
+                throw reason;
+            },
+            false
+        );
     },
 
     /**
@@ -176,6 +175,48 @@ var Injector = module.exports = type().def(
     {
         this.registerGraph( "", graph );
         return this._pub;
+    },
+
+    autoLoad: function( config )
+    {
+        if ( config === false )
+            this.require = null;
+        else
+        {
+            var loader;
+            if ( util.isFunc( config ) )
+                loader = config;
+            else
+            {
+                if ( util.isString( config ) )
+                    config = { baseUrl: config };
+                config =
+                {
+                    baseUrl: config.baseUrl || "",
+                    waitSeconds: config.waitSeconds === 0 || config.waitSeconds ? config.waitSeconds : 7,
+                    urlArgs: config.urlArgs || "",
+                    scriptType: config.scriptType || "text/javascript"
+                };
+                loader = function( module )
+                {
+                    var url = util.path( config.baseUrl, module );
+                    if ( !( /\.js$/ ).test( url ) )
+                        url += ".js";
+                    var deferred = new Deferred();
+                    registry.find(
+                    {
+                        url: url,
+                        timeout: config.waitSeconds * 1000,
+                        query: config.urlArgs,
+                        scriptType: config.scriptType
+                    }, deferred );
+                    return deferred.promise;
+                };
+            }
+            this.require = function( modules ) {
+                return Deferred.when( util.map( modules, loader ) );
+            };
+        }
     },
 
     /**
@@ -314,23 +355,23 @@ var Injector = module.exports = type().def(
         var factory = null;
         return function()
         {
-            var deferred = new Deferred();
             var args = arguments;
             if ( !factory )
             {
-                self.resolveTarget( recipe.theory.name )
-                    .then( function( recipe )
+                return self.resolveTarget( recipe.theory.name ).then(
+                    function( recipe )
                     {
                         factory = self.makeFactory( recipe );
-                        deferred.resolve( factory.apply( undefined, args ) );
-                    }, function( reason )
-                    {
-                        deferred.reject( reason );
-                    }, false );
+                        return factory.apply( undefined, args );
+                    },
+                    function( reason ) {
+                        throw reason;
+                    },
+                    false
+                );
             }
             else
-                deferred.resolve( factory.apply( undefined, args ) );
-            return deferred.promise;
+                return new Deferred().resolve( factory.apply( undefined, args ) ).promise;
         };
     },
 
@@ -351,20 +392,17 @@ var Injector = module.exports = type().def(
                     service = service.substr( LAZY_PROVIDER.length );
                 return service.replace( /\./g, "/" );
             });
-            environment.window.require( modules, done, fail );
+            self.require( modules ).then( done, fail, false );
         }
 
-        function done()
+        function done( result )
         {
             var bindings = {};
-            var args = arguments;
-
             util.each( plan.missing, function( service, index )
             {
                 // Validate the returned service. If there's no way we can turn it into a binding,
-                // we'll get ourselves into a neverending loop trying to resolve it.
-                var svc = args[ index ];
-
+                // we'll get ourselves into a never-ending loop trying to resolve it.
+                var svc = result[ index ];
                 if ( !svc || !( /(string|function|array)/ ).test( util.typeOf( svc ) ) )
                 {
                     deferred.reject(
@@ -386,8 +424,7 @@ var Injector = module.exports = type().def(
                     );
                     return false;
                 }
-
-                bindings[ service ] = args[ index ];
+                bindings[ service ] = result[ index ];
             });
 
             if ( deferred.state === "rejected" )
@@ -405,13 +442,14 @@ var Injector = module.exports = type().def(
             deferred.reject( reason );
         }
 
+        var self = this;
         var deferred = new Deferred();
         var modules;
         var plan = this.getExecutionPlan( target );
 
         if ( plan.missing.length )
         {
-            if ( environment.window.require )
+            if ( this.require )
                 load();
             else
             {
