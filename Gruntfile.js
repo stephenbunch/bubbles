@@ -3,43 +3,27 @@ module.exports = function( grunt )
     grunt.initConfig({
         pkg: grunt.file.readJSON( "package.json" ),
 
-        browserify: {
+        concat: {
+            options: {
+                banner: "/*!\n" +
+                    " * <%= pkg.name %> v<%= pkg.version %>\n" +
+                    " * (c) <%= new Date().getFullYear() %> <%= pkg.author.name %> <%= pkg.repository.url %>\n" +
+                    " * License: <%= pkg.license %>\n" +
+                    " */\n",
+                sourceMap: true
+            },
             dist: {
-                files: {
-                    "dist/type.js": [ "src/type.js" ]
-                },
-                options: {
-                    debug: true,
-                    banner: "/*!\n" +
-                        " * <%= pkg.name %> v<%= pkg.version %>\n" +
-                        " * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs\n" +
-                        " * License: MIT\n" +
-                        " */\n",
-                    sourceMap: "dist/type.map",
-                    postBundleCB: function( err, src, next )
-                    {
-                        if ( !src )
-                        {
-                            next( err, src );
-                            return;
-                        }
-                        var path = require( "path" );
-                        var convert = require( "convert-source-map" );
-                        var options = grunt.config( "browserify" ).dist.options;
-                        var map = convert.fromSource( src ).toObject();
-                        map.file = "type.js";
-                        map.sources = map.sources.map( function( source ) {
-                            return "../" + source.substr( __dirname.length + 1 );
-                        });
-                        map.sourcesContent = [];
-                        var offset = "", i;
-                        for ( i = 0; i < options.banner.split( "\n" ).length; i++ )
-                            offset += ";";
-                        map.mappings = offset + map.mappings;
-                        grunt.file.write( options.sourceMap, JSON.stringify( map ) );
-                        next( err, options.banner + "//@ sourceMappingURL=" + path.basename( options.sourceMap ) + "\n" + convert.removeComments( src ) );
-                    }
-                }
+                src: [
+                    "src/_head.js",
+                    "src/type.js",
+                    "src/util.js",
+                    "src/promise.js",
+                    "src/deferred.js",
+                    "src/kernel.js",
+                    "src/_exports.js",
+                    "src/_tail.js"
+                ],
+                dest: "dist/type.js"
             }
         },
 
@@ -47,7 +31,13 @@ module.exports = function( grunt )
             options: {
                 loopfunc: true
             },
-            uses_defaults: [ "src/**/*.js" ],
+            uses_defaults: [
+                "src/deferred.js",
+                "src/kernel.js",
+                "src/promise.js",
+                "src/type.js",
+                "src/util.js"
+            ],
             with_overrides: {
                 options: {
                     expr: true
@@ -71,9 +61,72 @@ module.exports = function( grunt )
         watch: {
             src: {
                 files: [ "src/**/*.js" ],
-                tasks: [ "browserify" ]
+                tasks: [ "concat" ]
             }
         }
+    });
+
+    grunt.registerMultiTask( "concat", function()
+    {
+        var SourceMapGenerator = require( "source-map" ).SourceMapGenerator;
+        var path = require( "path" );
+
+        var options = this.options({
+            banner: "",
+            footer: "",
+            sourceMap: false
+        });
+        
+        var banner = grunt.template.process( options.banner );
+
+        this.files.forEach( function( target )
+        {
+            var map = new SourceMapGenerator({
+                file: path.basename( target.dest ),
+                sourceRoot: "../"
+            });
+            var mapName = path.basename( target.dest, path.extname( target.dest ) ) + ".map";
+
+            var src = banner;
+            if ( options.sourceMap )
+                src += "//@ sourceMappingURL=" + mapName + "\n";
+
+            var offset = src.split( "\n" ).length - 1;
+
+            src += target.src.map( function( path )
+            {
+                if ( grunt.file.exists( path ) )
+                {
+                    var src = grunt.file.read( path ) + "\n";
+                    var lines = src.split( "\n" ).length - 1;
+                    if ( options.sourceMap )
+                    {
+                        for ( var line = 1; line <= lines; line++ )
+                        {
+                            map.addMapping({
+                                source: path,
+                                original: {
+                                    line: line,
+                                    column: 0
+                                },
+                                generated: {
+                                    line: line + offset,
+                                    column: 0
+                                }
+                            });
+                        }
+                    }
+                    offset += lines;
+                    return src;
+                }
+                return "";
+            }).join( "" );
+
+            grunt.file.write( target.dest, src );
+
+            if ( options.sourceMap )
+                grunt.file.write( path.join( path.dirname( target.dest ), mapName ), map.toString() );
+        });
     });
 
     grunt.registerTask( "aplus", function()
@@ -81,7 +134,7 @@ module.exports = function( grunt )
         grunt.log.writeln( "Running Promise/A+ Tests" );
         var done = this.async();
         var run = require( "promises-aplus-tests" );
-        var type = require( "./src/type.js" );
+        var type = require( "./dist/type.js" );
         var adapter = {
             deferred: function() {
                 return type.defer();
@@ -110,6 +163,8 @@ module.exports = function( grunt )
         {
             mocha.addFile( file );
         });
+        GLOBAL.type = require( "./dist/type.js" );
+        GLOBAL.expect = require( "chai" ).expect;
         mocha.run( function( failures ) {
             done( failures === 0 );
         });
@@ -117,9 +172,7 @@ module.exports = function( grunt )
 
     grunt.loadNpmTasks( "grunt-contrib-jshint" );
     grunt.loadNpmTasks( "grunt-contrib-uglify" );
-    grunt.loadNpmTasks( "grunt-contrib-concat" );
     grunt.loadNpmTasks( "grunt-contrib-watch" );
-    grunt.loadNpmTasks( "grunt-browserify" );
 
-    grunt.registerTask( "default", [ "jshint", "browserify", "uglify", "mocha", "aplus" ] );
+    grunt.registerTask( "default", [ "jshint", "concat", "uglify", "mocha", "aplus" ] );
 };

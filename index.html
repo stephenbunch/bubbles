@@ -9,27 +9,14 @@
     <div id="mocha"></div>
     <script src="node_modules/mocha/mocha.js"></script>
     <script src="node_modules/chai/chai.js"></script>
-    <script src="node_modules/sinon/pkg/sinon.js"></script>
 
     <script src="dist/type.js"></script>
     <script>
         mocha.setup( "bdd" );
-        function require( path )
-        {
-            switch ( path )
-            {
-                case "../src/type":
-                case "../../src/type":
-                    return type;
-                case "chai":
-                    return chai;
-                case "sinon":
-                    return sinon;
-            }
-        }
+        window.expect = chai.expect;
      </script>
 
-    <script src="test/type.spec.js"></script>
+    <script src="test/define.spec.js"></script>
     <script src="test/access.spec.js"></script>
     <script src="test/this.spec.js"></script>
     <script src="test/constructors.spec.js"></script>
@@ -38,7 +25,7 @@
     <script src="test/mixins.spec.js"></script>
     <script src="test/misc.spec.js"></script>
     <script src="test/deferred.spec.js"></script>
-    <script src="test/injection.spec.js"></script>
+    <script src="test/kernel.spec.js"></script>
 
     <script>
         mocha.checkLeaks();

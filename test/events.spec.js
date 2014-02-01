@@ -1,13 +1,12 @@
-var type = require( "../src/type" );
-var expect = require( "chai" ).expect;
-
 describe( "event", function()
 {
     describe( ".addHandler()", function()
     {
         it( "should add an event handler", function()
         {
-            var A = type().events([ "foo" ]).def({
+            var A = type.define({
+                events: [ "foo" ]
+            }, {
                 onFoo: function() {
                     this.foo.raise();
                 }
@@ -27,7 +26,9 @@ describe( "event", function()
     {
         it( "should raise an event", function()
         {
-            var A = type().events([ "foo" ]).def({
+            var A = type.define({
+                events: [ "foo" ]
+            }, {
                 onFoo: function( x ) {
                     this.foo.raise( x );
                 }
@@ -44,14 +45,16 @@ describe( "event", function()
 
         it( "should be hidden from the outside", function()
         {
-            var A = type().events([ "foo" ]);
+            var A = type.define({ events: [ "foo" ] }, {} );
             var a = new A();
             expect( a.foo.raise ).to.be.undefined;
         });
 
         it( "should raise on the public interface", function()
         {
-            var A = type().events([ "foo" ]).def({
+            var A = type.define({
+                events: [ "foo" ]
+            }, {
                 onFoo: function() {
                     this.foo.raise();
                 }
@@ -71,7 +74,9 @@ describe( "event", function()
     {
         it( "should remove an event handler", function()
         {
-            var A = type().events([ "foo" ]).def({
+            var A = type.define({
+                events: [ "foo" ]
+            }, {
                 onFoo: function() {
                     this.foo.raise();
                 }
@@ -90,7 +95,9 @@ describe( "event", function()
 
         it( "should only remove one event handler", function()
         {
-            var A = type().events([ "foo" ]).def({
+            var A = type.define({
+                events: [ "foo" ]
+            }, {
                 onFoo: function() {
                     this.foo.raise();
                 }

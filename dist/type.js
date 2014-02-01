@@ -1,80 +1,667 @@
 /*!
- * typeful v0.1.0
- * (c) 2013 Stephen Bunch https://github.com/stephenbunch/typejs
+ * typejs v0.1.0
+ * (c) 2014 Stephen Bunch https://github.com/stephenbunch/typejs
  * License: MIT
  */
 //@ sourceMappingURL=type.map
-;(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-// shim for using process in browser
+( function( global ) {
+"use strict";
 
-var process = module.exports = {};
+// A factory for creating custom errors.
+var error = ( function()
+{
+    var cache = {
+        "Error": Error,
+        "TypeError": TypeError
+    };
+    return function( name, message )
+    {
+        if ( !cache[ name ] )
+        {
+            var Error = function( message ) {
+                this.message = message;
+            };
+            Error.prototype = new cache.Error();
+            Error.prototype.name = name;
+            cache[ name ] = Error;
+        }
+        if ( message )
+            return new cache[ name ]( message );
+        return cache[ name ];
+    };
+} () );
 
-process.nextTick = (function () {
-    var canSetImmediate = typeof window !== 'undefined'
-    && window.setImmediate;
-    var canPost = typeof window !== 'undefined'
-    && window.postMessage && window.addEventListener
-    ;
+// IE8 only supports Object.defineProperty on DOM objects.
+// http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
+// http://stackoverflow.com/a/4867755/740996
+var IE8 = ( function() {
+    try
+    {
+        Object.defineProperty( {}, "x", {} );
+        return false;
+    } catch ( e ) {
+        return true;
+    }
+} () );
 
-    if (canSetImmediate) {
-        return function (f) { return window.setImmediate(f) };
+// member access levels
+var PUBLIC = "public";
+var PRIVATE = "private";
+var PROTECTED = "protected";
+
+// special members
+var CTOR = "ctor";
+
+var RETURN_PUB = 1;
+var RETURN_SCOPE = 2;
+var CHECK_TYPE_OURS = 4;
+
+// A global flag to control execution of type initializers.
+var mode = RETURN_PUB;
+
+// When we want to pry an object open, we set this to the type of the object
+// and call $scope to extract the private scope.
+var tunnel = ( function() {
+    var value = null;
+    return {
+        open: function( type ) {
+            value = type;
+        },
+        close: function() {
+            value = null;
+        },
+        value: function() {
+            return value;
+        }
+    };
+} () );
+
+var GET_ACCESS = {
+    "__": PRIVATE,
+    "_": PROTECTED
+};
+
+var IS_VIRTUAL = {
+    "$": true,
+    "_$": true
+};
+
+var GET_PREFIX = {
+    "__": 2,
+    "_$": 2,
+    "_" : 1,
+    "$" : 1
+};
+
+var ACCESS = {};
+ACCESS[ PUBLIC ] = 1;
+ACCESS[ PROTECTED ] = 2;
+ACCESS[ PRIVATE ] = 3;
+
+// A regex for testing the use of _super inside a function.
+// http://ejohn.org/blog/simple-javascript-inheritance/
+var CALL_SUPER = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
+
+var typeCheckResult = false;
+
+var onTypeDefined = null;
+
+/**
+ * @private
+ * @description Determines whether the type was created by us.
+ * @param {function()} type
+ * @return {boolean}
+ */
+function isTypeOurs( type )
+{
+    typeCheckResult = false;
+    mode = addFlag( mode, CHECK_TYPE_OURS );
+    type();
+    mode = removeFlag( mode, CHECK_TYPE_OURS );
+    return typeCheckResult;
+}
+
+/**
+ * @description Defines a new type.
+ * @return {Type}
+ */
+function define()
+{
+    var Scope = null;
+    var run = true;
+    var Type = createType( function()
+    {
+        if ( hasFlag( mode, CHECK_TYPE_OURS ) )
+        {
+            typeCheckResult = true;
+            return;
+        }
+        if ( hasFlag( mode, RETURN_SCOPE ) )
+        {
+            if ( Scope === null )
+                Scope = defineScope( Type );
+            var scope =
+            {
+                parent: null,
+                self: null,
+                mixins: []
+            };
+            if ( IE8 )
+            {
+                scope.self = getEmptyDOMObject();
+                applyPrototypeMembers( Scope, scope.self );
+            }
+            else
+                scope.self = new Scope();
+            return scope;
+        }
+        if ( hasFlag( mode, RETURN_PUB ) && run )
+        {
+            var pub;
+            run = false;
+            if ( IE8 )
+            {
+                pub = getEmptyDOMObject();
+                applyPrototypeMembers( Type, pub );
+            }
+            else
+                pub = new Type();
+            initializeType( Type, pub, arguments, true );
+            run = true;
+            return pub;
+        }
+    });
+    var args = makeArray( arguments );
+    if ( isFunc( args[0] ) )
+    {
+        var proxy = function( func, scope )
+        {
+            return function()
+            {
+                func.apply( undefined, [ Type ].concat( makeArray( arguments ) ) );
+                return scope;
+            };
+        };
+        var scope = {
+            extend: proxy( defineParent, scope ),
+            include: proxy( defineMixins, scope ),
+            events: proxy( defineEvents, scope ),
+            members: proxy( defineMembers, scope )
+        };
+        args[0].call( scope );
+    }
+    else
+    {
+        if ( args.length === 2 )
+        {
+            if ( args[0].extend )
+                defineParent( Type, args[0].extend );
+            if ( args[0].include )
+                defineMixins( Type, args[0].include );
+            if ( args[0].events )
+                defineEvents( Type, args[0].events );
+        }
+        if ( args.length > 0 )
+            defineMembers( Type, args[1] || args[0] );
+    }
+    if ( onTypeDefined )
+        onTypeDefined( Type );
+    return Type;
+}
+
+function createType( init )
+{
+    var Type = function() {
+        return init.apply( undefined, arguments );
+    };
+    Type.members = {};
+    Type.parent = null;
+    Type.mixins = [];
+    return Type;
+}
+
+/**
+ * @description Sets the base type.
+ * @param {Type} type
+ * @param {Type|function} Base
+ */
+function defineParent( type, Base )
+{
+    // Since name collision detection happens when the type is defined, we must prevent people
+    // from changing the inheritance hierarchy after defining members.
+    if ( keys( type.members ).length > 0 )
+        throw error( "DefinitionError", "Cannot change the base type after members have been defined." );
+
+    if ( !isFunc( Base ) )
+        throw error( "TypeError", "Base type must be a function." );
+
+    // Only set the parent member if the base type was created by us.
+    if ( isTypeOurs( Base ) )
+    {
+        // Check for circular reference.
+        var t = Base;
+        while ( t )
+        {
+            if ( t === type )
+                throw error( "DefinitionError", "Cannot inherit from " + ( Base === type ? "self" : "derived type" ) + "." );
+            t = t.parent;
+        }
+        type.parent = Base;
     }
 
-    if (canPost) {
-        var queue = [];
-        window.addEventListener('message', function (ev) {
-            if (ev.source === window && ev.data === 'process-tick') {
-                ev.stopPropagation();
-                if (queue.length > 0) {
-                    var fn = queue.shift();
-                    fn();
-                }
-            }
-        }, true);
+    mode = removeFlag( mode, RETURN_PUB );
+    type.prototype = new Base();
+    mode = addFlag( mode, RETURN_PUB );
+}
 
-        return function nextTick(fn) {
-            queue.push(fn);
-            window.postMessage('process-tick', '*');
+/**
+ * @description
+ * Defines members on the type.
+ *
+ * Example: The following defines a public method `foo`, a private method `bar`, and a public
+ * virtual method `baz` on the type `MyType`.
+ *
+    <pre>
+      var MyType = type().define({
+        foo: function() { },
+        __bar: function() { },
+        $baz: function() { }
+      });
+    </pre>
+ *
+ * @param {Type} type
+ * @param {hash} members
+ */
+function defineMembers( type, members )
+{
+    forEach( members || [], function( member, name )
+    {
+        var info = parseMember( name );
+        name = info.name;
+
+        validateMember( type, info );
+
+        if ( name === CTOR )
+        {
+            if ( isArray( member ) )
+            {
+                type.$inject = member;
+                member = member.pop();
+            }
+            if ( !isFunc( member ) )
+                throw error( "TypeError", "Constructor must be a function." );
+        }
+
+        type.members[ name ] =
+        {
+            access: info.access,
+            isVirtual: info.isVirtual
+        };
+
+        if ( isFunc( member ) )
+            defineMethod( type, name, member );
+        else
+            defineProperty( type, info, member );
+
+        if ( name === CTOR )
+        {
+            if (
+                !type.members.ctor.callsuper &&
+                type.parent !== null &&
+                type.parent.members.ctor &&
+                type.parent.members.ctor.params.length > 0
+            )
+                throw error( "DefinitionError", "Constructor must call the base constructor explicitly because it contains parameters." );
+        }
+    });
+}
+
+/**
+ * @description Defines events on the type.
+ * @param {Array} events
+ */
+function defineEvents( type, events )
+{
+    forEach( events, function( name )
+    {
+        var info = parseMember( name );
+        name = info.name;
+
+        validateMember( type, info );
+
+        if ( name === CTOR )
+            throw error( "DefinitionError", "Event cannot be named 'ctor'." );
+
+        if ( info.isVirtual )
+            throw error( "DefinitionError", "Events cannot be virtual." );
+
+        type.members[ name ] = {
+            access: info.access,
+            isEvent: true
+        };
+    });
+}
+
+/**
+ * @descriptions Mixes other types in with the type.
+ * @param {Type} type
+ * @param {Array} types
+ */
+function defineMixins( type, types )
+{
+    if ( type.members.ctor )
+        throw error( "DefinitionError", "Mixins must be defined before the constructor." );
+
+    forEach( types, function( mixin )
+    {
+        if ( !isTypeOurs( mixin ) )
+            throw error( "TypeError", "Mixin must be a type." );
+
+        if ( mixin === type )
+            throw error( "DefinitionError", "Cannot include self." );
+
+        checkMixinForCircularReference( type, mixin );
+        type.mixins.push( mixin );
+    });
+}
+
+/**
+ * @private
+ * @description Checks mixin for circular references.
+ * @param {Type} type
+ * @param {Type} mixin
+ */
+function checkMixinForCircularReference( type, mixin )
+{
+    if ( type === mixin )
+        throw error( "DefinitionError", "Cannot include type that includes self." );
+    forEach( mixin.mixins, function( m ) {
+        checkMixinForCircularReference( type, m );
+    });
+}
+
+/**
+ * @private
+ * @description Creates a new private scope type.
+ * @param {Type} Type
+ * @return {Scope}
+ */
+function defineScope( Type )
+{
+    var Scope = function() {};
+    mode = removeFlag( mode, RETURN_PUB | RETURN_SCOPE );
+    Scope.prototype = new Type();
+    mode = addFlag( mode, RETURN_PUB | RETURN_SCOPE );
+
+    var fn = Scope.prototype;
+
+    /**
+     * Gets the private scope of the type instance.
+     */
+    fn._pry = function( pub )
+    {
+        tunnel.open( Type );
+        var scope = !!pub && !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
+        tunnel.close();
+        return scope || pub;
+    };
+
+    return Scope;
+}
+
+/**
+ * @description Gets the member info by parsing the member name.
+ * @param {string} name
+ * @return {Object}
+ */
+function parseMember( name )
+{        
+    var twoLetter = name.substr( 0, 2 );
+
+    // determines the member's visibility (public|private)
+    var modifier = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || PUBLIC;
+
+    // determines whether the method can be overridden
+    var isVirtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
+
+    // trim away the modifiers
+    name = name.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ name[0] ] || 0 );
+
+    // "ctor" is a special name for the constructor method
+    if ( name === CTOR )
+    {
+        modifier = PRIVATE;
+        isVirtual = false;
+    }
+
+    return {
+        access: modifier,
+        isVirtual: isVirtual,
+        name: name
+    };
+}
+
+/**
+ * @description Checks the memeber info on a type and throws an error if invalid.
+ * @param {Type} type
+ * @param {Object} info
+ */
+function validateMember( type, info )
+{
+    // check for name collision
+    if ( isMemberDefined( type, info.name ) )
+        throw error( "DefinitionError", "Member '" + info.name + "' is already defined." );
+
+    // make sure the access modifier isn't being changed
+    if (
+        info.access !== PRIVATE &&
+        type.parent !== null &&
+        type.parent.members[ info.name ] &&
+        type.parent.members[ info.name ].access !== info.access
+    )
+    {
+        throw error( "DefinitionError", "Cannot change access modifier of member '" + info.name + "' from " +
+            type.parent.members[ info.name ].access + " to " + info.access + "." );
+    }
+}
+
+/**
+ * @private
+ * @description Checks if member name collides with another member.
+ * @param {Type} type The type to check.
+ * @param {string} name The member name.
+ * @param {bool} [parent] True if the type being checked is a base type.
+ * @return {bool}
+ */
+function isMemberDefined( type, name, parent )
+{
+    if (
+        type.members[ name ] &&
+        ( !parent || type.members[ name ].access !== PRIVATE ) &&
+        ( !parent || !type.members[ name ].isVirtual )
+    )
+        return true;
+    if ( type.parent !== null )
+        return isMemberDefined( type.parent, name, true );
+    return false;
+}
+
+/**
+ * @private
+ * @description Defines a method on the type.
+ * @param {Type} type
+ * @param {string} name
+ * @param {function()} method
+ */
+function defineMethod( type, name, method )
+{
+    var params = [];
+    var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
+    if ( match !== null )
+    {
+        forEach( match[1].split( "," ), function( param, index ) {
+            params.push( trim( param ) );
+        });
+    }
+    type.members[ name ].method = method;
+    type.members[ name ].params = params;
+    type.members[ name ].callsuper = CALL_SUPER.test( method );
+}
+
+/**
+ * @private
+ * @description Defines a property on the type.
+ * @param {Type} Type
+ * @param {string} name
+ * @param {Object} property
+ */
+function defineProperty( Type, info, property )
+{
+    if ( typeOf( property ) !== "object" )
+        property = { value: property };
+
+    var different = 0;
+
+    // IE8 will actually enumerate over members added during an enumeration,
+    // so we need to write to a temp object and copy the accessors over once
+    // we're done.
+    var temp = {};
+    forEach( property, function( method, type )
+    {
+        type = type.toLowerCase();
+        var twoLetter = type.substr( 0, 2 );
+        if ( IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ type[0] ] )
+            throw error( "DefinitionError", "Property '" + info.name + "' cannot have virtual accessors." );
+
+        var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ type[0] ] || info.access;
+        if ( ACCESS[ access ] < ACCESS[ info.access ] )
+        {
+            throw error( "DefinitionError", "The " + type + " accessor of the property '" + info.name +
+                "' cannot have a lower access modifier than the property itself." );
+        }
+
+        type = type.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ type[0] ] || 0 );
+
+        if ( type !== "get" && type !== "set" )
+            return;
+
+        if ( access !== info.access )
+            different++;
+
+        if (
+            Type.parent !== null &&
+            Type.parent.members[ info.name ] &&
+            Type.parent.members[ info.name ][ type ] &&
+            Type.parent.members[ info.name ][ type ].access !== access
+        )
+        {
+            throw error( "DefinitionError", "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
+                "' from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
+        }
+
+        if ( method !== null && !isFunc( method ) )
+        {
+            throw error( "TypeError", type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
+                info.name + "' must be a function or null (uses default implementation.)" );
+        }
+        
+        temp[ type ] =
+        {
+            access: access,
+            method: method
+        };
+    });
+    property.get = temp.get;
+    property.set = temp.set;
+
+    if ( different === 2 )
+        throw error( "DefinitionError", "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
+
+    if ( !property.get && !property.set )
+    {
+        property.get = { access: info.access };
+        property.set = { access: info.access };
+    }
+
+    if ( property.get && !isFunc( property.get.method ) )
+    {
+        property.get.method = function() {
+            return this._value();
+        };
+    }
+    if ( property.set && !isFunc( property.set.method ) )
+    {
+        property.set.method = function( value ) {
+            this._value( value );
         };
     }
 
-    return function nextTick(fn) {
-        setTimeout(fn, 0);
-    };
-})();
+    forEach([ property.get, property.set ], function( accessor, index )
+    {
+        if ( !accessor ) return;
 
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
+        var type = index === 0 ? "get" : "set";
+        if (
+            Type.parent !== null &&
+            Type.parent.members[ info.name ] &&
+            Type.parent.members[ info.name ].access !== PRIVATE &&
+            Type.parent.members[ info.name ][ type ] === undefined
+        )
+            throw error( "DefinitionError", "Cannot change read/write definition of property '" + info.name + "'." );
 
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
+        Type.members[ info.name ][ type ] =
+        {
+            access: accessor.access,
+            method: accessor.method,
+            callsuper: CALL_SUPER.test( accessor.method )
+        };
+    });
+
+    Type.members[ info.name ].value = property.value ? property.value : null;
 }
 
-// TODO(shtylman)
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
+/**
+ * @private
+ * @param {function()} type
+ * @param {Object} obj
+ */
+function applyPrototypeMembers( type, obj )
+{
+    var proto = type.prototype;
+    if ( proto.constructor.prototype !== proto )
+        applyPrototypeMembers( proto.constructor, obj );
+    for ( var prop in proto )
+    {
+        if ( hasOwn( proto, prop ) )
+            obj[ prop ] = proto[ prop ];
+    }
+}
 
-},{}],2:[function(require,module,exports){
-module.exports = {
-    PUBLIC: "public",
-    PRIVATE: "private",
-    PROTECTED: "protected"
-};
+function getEmptyDOMObject()
+{
+    var obj = document.createElement(), prop;
+    for ( prop in obj )
+    {
+        if ( hasOwn( obj, prop ) )
+            resetProperty( obj, prop );
+    }
+    return obj;
+}
 
-},{}],3:[function(require,module,exports){
-var access = require( "./access" );
-var environment = require( "./environment" );
-var errors = require( "./errors" );
-var inits = require( "./inits" );
-var special = require( "./special" );
-var tunnel = require( "./tunnel" );
-var util = require( "./util" );
-
-module.exports = init;
+function resetProperty( obj, propertyName )
+{
+    var _value;
+    Object.defineProperty( obj, propertyName,
+    {
+        configurable: true,
+        get: function() {
+            return _value;
+        },
+        set: function( value ) {
+            _value = value;
+        }
+    });
+}
 
 /**
  * @private
@@ -84,16 +671,16 @@ module.exports = init;
  * @param {Array} args Arguments for the constructor.
  * @param {boolean} ctor Run the constructor.
  */
-function init( type, pub, args, ctor )
+function initializeType( type, pub, args, ctor )
 {
-    inits.on( inits.SCOPE );
+    mode = addFlag( mode, RETURN_SCOPE );
     var scope = type();
-    inits.off( inits.SCOPE );
+    mode = removeFlag( mode, RETURN_SCOPE );
 
     scope.self._pub = pub;
 
-    build( type, scope );
-    expose( type, scope, pub );
+    buildMembers( type, scope );
+    exposeMembers( type, scope, pub );
 
     pub.$type = type;
 
@@ -119,12 +706,12 @@ function init( type, pub, args, ctor )
  * @param {Type} type The instance type.
  * @param {Scope} scope The private scope of the instance.
  */
-function build( type, scope )
+function buildMembers( type, scope )
 {
     // Instantiate mixins and add proxies to their members.
-    util.each( type.mixins, function( mixin )
+    forEach( type.mixins, function( mixin )
     {
-        init( mixin, scope.self._pub, [], false );
+        initializeType( mixin, scope.self._pub, [], false );
         tunnel.open( mixin );
         var inner = scope.self._pub.$scope();
         tunnel.close();
@@ -140,13 +727,14 @@ function build( type, scope )
             type.parent.members.ctor.params.length > 0 &&
             ( !type.members.ctor || !type.members.ctor.callsuper )
         )
-            throw new errors.InitializationError( "Base constructor contains parameters and must be called explicitly." );
+            throw error( "InitializationError", "Base constructor contains parameters and must be called explicitly." );
 
-        inits.on( inits.SCOPE );
+        mode = addFlag( mode, RETURN_SCOPE );
         scope.parent = type.parent();
-        inits.off( inits.SCOPE );
+        mode = removeFlag( mode, RETURN_SCOPE );
+
         scope.parent.self._pub = scope.self._pub;
-        build( type.parent, scope.parent );
+        buildMembers( type.parent, scope.parent );
     }
 
     // Add proxies to parent members.
@@ -154,7 +742,7 @@ function build( type, scope )
         createProxy( type.parent, scope.parent.self, type, scope.self );
 
     // Add type members.
-    util.each( type.members, function( member, name )
+    forEach( type.members, function( member, name )
     {
         if ( member.method )
             buildMethod( type, scope, name, member );
@@ -167,13 +755,13 @@ function build( type, scope )
     // If a constructor isn't defined, provide a default one.
     if ( !scope.self.ctor )
     {
-        buildMethod( type, scope, special.CTOR,
+        buildMethod( type, scope, CTOR,
         {
             callsuper: false,
             params: [],
-            access: access.PRIVATE,
+            access: PRIVATE,
             isVirtual: false,
-            name: special.CTOR,
+            name: CTOR,
             method: function() {}
         });
     }
@@ -181,11 +769,11 @@ function build( type, scope )
 
 function createProxy( srcType, srcObj, dstType, dstObj )
 {
-    util.each( srcType.members, function( member, name )
+    forEach( srcType.members, function( member, name )
     {
         // If the member is private or if it's been overridden by the child, don't make a reference
         // to the parent implementation.
-        if ( member.access === access.PRIVATE || dstType.members[ name ] ) return;
+        if ( member.access === PRIVATE || dstType.members[ name ] ) return;
 
         if ( member.method || member.isEvent )
             dstObj[ name ] = srcObj[ name ];
@@ -193,10 +781,10 @@ function createProxy( srcType, srcObj, dstType, dstObj )
         {
             addProperty( dstObj, name,
             {
-                get: !member.get || member.get.access === access.PRIVATE ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access === PRIVATE ? getReadOnlyAccessor( name ) : function() {
                     return srcObj[ name ];
                 },
-                set: !member.set || member.set.access === access.PRIVATE ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access === PRIVATE ? getWriteOnlyAccessor( name ) : function( value ) {
                     srcObj[ name ] = value;
                 }
             });
@@ -228,7 +816,7 @@ function buildMethod( type, scope, name, member )
                 _super: scope.self._super
             };
 
-            util.each( type.mixins, function( mixin, i )
+            forEach( type.mixins, function( mixin, i )
             {
                 if ( mixin.members.ctor )
                 {
@@ -245,13 +833,13 @@ function buildMethod( type, scope, name, member )
                 scope.self._init = function( mixin )
                 {
                     // Make sure we're initializing a valid mixin.
-                    var i = util.indexOf( queue, mixin );
+                    var i = indexOf( queue, mixin );
                     if ( i === -1 )
-                        throw new errors.InitializationError( "Mixin is not defined for this type or has already been initialized." );
+                        throw error( "InitializationError", "Mixin is not defined for this type or has already been initialized." );
 
-                    var args = util.makeArray( arguments );
+                    var args = makeArray( arguments );
                     args.shift();
-                    mixin.members.ctor.method.apply( scope.mixins[ util.indexOf( type.mixins, mixin ) ], args );
+                    mixin.members.ctor.method.apply( scope.mixins[ indexOf( type.mixins, mixin ) ], args );
 
                     // Remove mixin from the queue.
                     queue.splice( i, 1 );
@@ -273,7 +861,7 @@ function buildMethod( type, scope, name, member )
 
             if ( queue.length > 0 )
             {
-                throw new errors.InitializationError( "Some mixins were not initialized. Please make sure the constructor " +
+                throw error( "InitializationError", "Some mixins were not initialized. Please make sure the constructor " +
                     "calls this._init() for each mixin having parameters in its constructor." );
             }
         };
@@ -350,7 +938,7 @@ function buildProperty( type, scope, name, member )
     }
     else
     {
-        accessors.get = readOnlyGet( name );
+        accessors.get = getReadOnlyAccessor( name );
     }
     if ( member.set )
     {
@@ -363,7 +951,7 @@ function buildProperty( type, scope, name, member )
     }
     else
     {
-        accessors.set = writeOnlySet( name );
+        accessors.set = getWriteOnlyAccessor( name );
     }
     addProperty( scope.self, name, accessors );
 }
@@ -380,7 +968,7 @@ function buildEvent( type, scope, name )
 
         removeHandler: function( handler )
         {
-            var i = util.indexOf( handlers, handler );
+            var i = indexOf( handlers, handler );
             if ( i > -1 )
                 handlers.splice( i, 1 );
         },
@@ -401,14 +989,14 @@ function buildEvent( type, scope, name )
  * @param {Scope} scope The type instance.
  * @param {Object} pub The public interface.
  */
-function expose( type, scope, pub )
+function exposeMembers( type, scope, pub )
 {
     if ( type.parent !== null )
-        expose( type.parent, scope.parent, pub );
+        exposeMembers( type.parent, scope.parent, pub );
 
-    util.each( type.members, function( member, name )
+    forEach( type.members, function( member, name )
     {
-        if ( member.access !== access.PUBLIC )
+        if ( member.access !== PUBLIC )
             return;
 
         if ( member.method )
@@ -427,10 +1015,10 @@ function expose( type, scope, pub )
         {
             addProperty( pub, name,
             {
-                get: !member.get || member.get.access !== access.PUBLIC ? readOnlyGet( name ) : function() {
+                get: !member.get || member.get.access !== PUBLIC ? getReadOnlyAccessor( name ) : function() {
                     return scope.self[ name ];
                 },
-                set: !member.set || member.set.access !== access.PUBLIC ? writeOnlySet( name ) : function( value ) {
+                set: !member.set || member.set.access !== PUBLIC ? getWriteOnlyAccessor( name ) : function( value ) {
                     scope.self[ name ] = value;
                 }
             });
@@ -450,731 +1038,34 @@ function expose( type, scope, pub )
 function addProperty( obj, name, accessors )
 {
     // IE8 apparently doesn't support this configuration option.
-    if ( !environment.isIE8 )
+    if ( !IE8 )
         accessors.enumerable = true;
 
     accessors.configurable = true;
 
     // IE8 requires that we delete the property first before reconfiguring it.
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( environment.isIE8 && util.hasOwn( obj, name ) )
+    if ( IE8 && hasOwn( obj, name ) )
         delete obj[ name ];
 
     // obj must be a DOM object in IE8
     if ( Object.defineProperty )
         Object.defineProperty( obj, name, accessors );
     else
-        throw new errors.InitializationError( "JavaScript properties are not supported by this browser." );
+        throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
 }
 
-function readOnlyGet( name ) {
+function getReadOnlyAccessor( name ) {
     return function() {
-        throw new errors.AccessViolationError( "Cannot read from write only property '" + name + "'." );
+        throw error( "AccessViolationError", "Cannot read from write only property '" + name + "'." );
     };
 }
 
-function writeOnlySet( name ) {
+function getWriteOnlyAccessor( name ) {
     return function() {
-        throw new errors.AccessViolationError( "Cannot assign to read only property '" + name + "'." );
+        throw error( "AccessViolationError", "Cannot assign to read only property '" + name + "'." );
     };
 }
-
-},{"./access":2,"./environment":5,"./errors":6,"./inits":7,"./special":8,"./tunnel":9,"./util":10}],4:[function(require,module,exports){
-var access = require( "./access" );
-var build = require( "./build" );
-var environment = require( "./environment" );
-var errors = require( "./errors" );
-var inits = require( "./inits" );
-var registry = require( "../di/registry" );
-var special = require( "./special" );
-var tunnel = require( "./tunnel" );
-var util = require( "./util" );
-
-module.exports = create;
-
-var GET_ACCESS = {
-    "__": access.PRIVATE,
-    "_": access.PROTECTED
-};
-
-var IS_VIRTUAL = {
-    "$": true,
-    "_$": true
-};
-
-var GET_PREFIX = {
-    "__": 2,
-    "_$": 2,
-    "_" : 1,
-    "$" : 1
-};
-
-var ACCESS = {};
-ACCESS[ access.PUBLIC ] = 1;
-ACCESS[ access.PROTECTED ] = 2;
-ACCESS[ access.PRIVATE ] = 3;
-
-/**
- * A regex for testing the use of _super inside a function.
- *
- * Simple JavaScript Inheritance
- * By John Resig http://ejohn.org/
- * MIT Licensed.
- */
-var fnTest = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
-
-var typeCheckResult = false;
-
-/**
- * @description Defines a new type.
- * @return {Type}
- *
- * Inspired by John Resig's "Simple JavaScript Inheritance" class.
- */
-function create()
-{
-    var Scope = null;
-    var run = true;
-    var ctorDefined = false;
-
-    /**
-     * @interface
-     */
-    var Type = function()
-    {
-        if ( inits.has( inits.TYPE_CHECK ) )
-        {
-            typeCheckResult = true;
-            return;
-        }
-        if ( inits.has( inits.SCOPE ) )
-        {
-            if ( Scope === null )
-                Scope = defineScope( Type );
-            var scope =
-            {
-                parent: null,
-                self: null,
-                mixins: []
-            };
-            if ( environment.isIE8 )
-            {
-                scope.self = getPlainDOMObject();
-                applyPrototypeMembers( Scope, scope.self );
-            }
-            else
-                scope.self = new Scope();
-            return scope;
-        }
-        if ( inits.has( inits.PUB ) && run )
-        {
-            var pub;
-            run = false;
-            if ( environment.isIE8 )
-            {
-                pub = getPlainDOMObject();
-                applyPrototypeMembers( Type, pub );
-            }
-            else
-                pub = new Type();
-            build( Type, pub, arguments, true );
-            run = true;
-            return pub;
-        }
-    };
-
-    Type.members = {};
-    Type.parent = null;
-    Type.mixins = [];
-    
-    /**
-     * @description Sets the base type.
-     * @param {Type|function} Base
-     * @return {Type}
-     */
-    Type.extend = function( Base )
-    {
-        // Since name collision detection happens when the type is defined, we must prevent people
-        // from changing the inheritance hierarchy after defining members.
-        if ( util.keys( Type.members ).length > 0 )
-            throw new errors.DefinitionError( "Cannot change the base type after members have been defined." );
-
-        if ( !util.isFunc( Base ) )
-            throw new TypeError( "Base type must be a function." );
-
-        // Only set the parent member if the base type was created by us.
-        if ( isTypeOurs( Base ) )
-        {
-            // Check for circular reference.
-            var t = Base;
-            while ( t )
-            {
-                if ( t === Type )
-                    throw new errors.DefinitionError( "Cannot inherit from " + ( Base === Type ? "self" : "derived type" ) + "." );
-                t = t.parent;
-            }
-
-            Type.parent = Base;
-        }
-
-        inits.off( inits.PUB );
-        Type.prototype = new Base();
-        inits.on( inits.PUB );
-
-        return Type;
-    };
-
-    /**
-     * @description
-     * Defines members on the type.
-     *
-     * Example: The following defines a public method `foo`, a private method `bar`, and a public
-     * virtual method `baz` on the type `MyType`.
-     *
-        <pre>
-          var MyType = type().def({
-            foo: function() { },
-            __bar: function() { },
-            $baz: function() { }
-          });
-        </pre>
-     *
-     * @param {hash} members
-     * @return {Type}
-     */
-    Type.def = function( members )
-    {
-        util.each( members, function( member, name )
-        {
-            var info = parseMember( name );
-            name = info.name;
-
-            validateMember( Type, info );
-
-            if ( name === special.CTOR )
-            {
-                if ( util.isArray( member ) )
-                {
-                    Type.$inject = member;
-                    member = member.pop();
-                }
-                if ( !util.isFunc( member ) )
-                    throw new TypeError( "Constructor must be a function." );
-            }
-
-            Type.members[ name ] =
-            {
-                access: info.access,
-                isVirtual: info.isVirtual
-            };
-
-            if ( util.isFunc( member ) )
-                defineMethod( Type, name, member );
-            else
-                defineProperty( Type, info, member );
-
-            if ( name === special.CTOR )
-            {
-                if (
-                    !Type.members.ctor.callsuper &&
-                    Type.parent !== null &&
-                    Type.parent.members.ctor &&
-                    Type.parent.members.ctor.params.length > 0
-                )
-                    throw new errors.DefinitionError( "Constructor must call the base constructor explicitly because it contains parameters." );
-                ctorDefined = true;
-            }
-        });
-
-        return Type;
-    };
-
-    /**
-     * @description Defines events on the type.
-     * @param {Array} events
-     * @return {Type}
-     */
-    Type.events = function( events )
-    {
-        util.each( events, function( name )
-        {
-            var info = parseMember( name );
-            name = info.name;
-
-            validateMember( Type, info );
-
-            if ( name === special.CTOR )
-                throw new errors.DefinitionError( "Event cannot be named 'ctor'." );
-
-            if ( info.isVirtual )
-                throw new errors.DefinitionError( "Events cannot be virtual." );
-
-            Type.members[ name ] = {
-                access: info.access,
-                isEvent: true
-            };
-        });
-        return Type;
-    };
-
-    /**
-     * @descriptions Mixes other types in with the type.
-     * @param {Array} types
-     * @return {Type}
-     */
-    Type.include = function( types )
-    {
-        if ( ctorDefined )
-            throw new errors.DefinitionError( "Mixins must be defined before the constructor." );
-
-        util.each( types, function( mixin )
-        {
-            if ( !isTypeOurs( mixin ) )
-                throw new TypeError( "Mixin must be a type." );
-
-            if ( mixin === Type )
-                throw new errors.DefinitionError( "Cannot include self." );
-
-            checkMixinForCircularReference( Type, mixin );
-            Type.mixins.push( mixin );
-        });
-        return Type;
-    };
-
-    registry.add( Type );
-    return Type;
-}
-
-/**
- * @private
- * @description Checks mixin for circular references.
- * @param {Type} type
- * @param {Type} mixin
- */
-function checkMixinForCircularReference( type, mixin )
-{
-    if ( type === mixin )
-        throw new errors.DefinitionError( "Cannot include type that includes self." );
-    util.each( mixin.mixins, function( m ) {
-        checkMixinForCircularReference( type, m );
-    });
-}
-
-/**
- * @private
- * @description Determines whether the type was created by us.
- * @param {function()} type
- * @return {boolean}
- */
-function isTypeOurs( type )
-{
-    inits.on( inits.TYPE_CHECK );
-    typeCheckResult = false;
-    type();
-    inits.off( inits.TYPE_CHECK );
-    return typeCheckResult;
-}
-
-/**
- * @private
- * @description Creates a new private scope type.
- * @param {Type} Type
- * @return {Scope}
- */
-function defineScope( Type )
-{
-    var Scope = function() {};
-    inits.off( inits.PUB | inits.SCOPE );
-    Scope.prototype = new Type();
-    inits.on( inits.PUB | inits.SCOPE );
-
-    var fn = Scope.prototype;
-
-    /**
-     * Gets the private scope of the type instance.
-     */
-    fn._pry = function( pub )
-    {
-        tunnel.open( Type );
-        var scope = !!pub && !!pub.$scope && util.isFunc( pub.$scope ) ? pub.$scope() : null;
-        tunnel.close();
-        return scope || pub;
-    };
-
-    return Scope;
-}
-
-/**
- * @description Gets the member info by parsing the member name.
- * @param {string} name
- * @return {Object}
- */
-function parseMember( name )
-{        
-    var twoLetter = name.substr( 0, 2 );
-
-    // determines the member's visibility (public|private)
-    var modifier = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || access.PUBLIC;
-
-    // determines whether the method can be overridden
-    var isVirtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
-
-    // trim away the modifiers
-    name = name.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ name[0] ] || 0 );
-
-    // "ctor" is a special name for the constructor method
-    if ( name === special.CTOR )
-    {
-        modifier = access.PRIVATE;
-        isVirtual = false;
-    }
-
-    return {
-        access: modifier,
-        isVirtual: isVirtual,
-        name: name
-    };
-}
-
-/**
- * @description Checks the memeber info on a type and throws an error if invalid.
- * @param {Type} type
- * @param {Object} info
- */
-function validateMember( type, info )
-{
-    // check for name collision
-    if ( isMemberDefined( type, info.name ) )
-        throw new errors.DefinitionError( "Member '" + info.name + "' is already defined." );
-
-    // make sure the access modifier isn't being changed
-    if (
-        info.access !== access.PRIVATE &&
-        type.parent !== null &&
-        type.parent.members[ info.name ] &&
-        type.parent.members[ info.name ].access !== info.access
-    )
-    {
-        throw new errors.DefinitionError( "Cannot change access modifier of member '" + info.name + "' from " +
-            type.parent.members[ info.name ].access + " to " + info.access + "." );
-    }
-}
-
-/**
- * @private
- * @description Checks if member name collides with another member.
- * @param {Type} type The type to check.
- * @param {string} name The member name.
- * @param {bool} [parent] True if the type being checked is a base type.
- * @return {bool}
- */
-function isMemberDefined( type, name, parent )
-{
-    if (
-        type.members[ name ] &&
-        ( !parent || type.members[ name ].access !== access.PRIVATE ) &&
-        ( !parent || !type.members[ name ].isVirtual )
-    )
-        return true;
-    if ( type.parent !== null )
-        return isMemberDefined( type.parent, name, true );
-    return false;
-}
-
-/**
- * @private
- * @description Defines a method on the type.
- * @param {Type} type
- * @param {string} name
- * @param {function()} method
- */
-function defineMethod( type, name, method )
-{
-    var params = [];
-    var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
-    if ( match !== null )
-    {
-        util.each( match[1].split( "," ), function( param, index ) {
-            params.push( util.trim( param ) );
-        });
-    }
-    type.members[ name ].method = method;
-    type.members[ name ].params = params;
-    type.members[ name ].callsuper = fnTest.test( method );
-}
-
-/**
- * @private
- * @description Defines a property on the type.
- * @param {Type} Type
- * @param {string} name
- * @param {Object} property
- */
-function defineProperty( Type, info, property )
-{
-    if ( util.typeOf( property ) !== "object" )
-        property = { value: property };
-
-    var different = 0;
-
-    // IE8 will actually enumerate over members added during an enumeration,
-    // so we need to write to a temp object and copy the accessors over once
-    // we're done.
-    var temp = {};
-    util.each( property, function( method, type )
-    {
-        type = type.toLowerCase();
-        var twoLetter = type.substr( 0, 2 );
-        if ( IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ type[0] ] )
-            throw new errors.DefinitionError( "Property '" + info.name + "' cannot have virtual accessors." );
-
-        var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ type[0] ] || info.access;
-        if ( ACCESS[ access ] < ACCESS[ info.access ] )
-        {
-            throw new errors.DefinitionError( "The " + type + " accessor of the property '" + info.name +
-                "' cannot have a lower access modifier than the property itself." );
-        }
-
-        type = type.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ type[0] ] || 0 );
-
-        if ( type !== "get" && type !== "set" )
-            return;
-
-        if ( access !== info.access )
-            different++;
-
-        if (
-            Type.parent !== null &&
-            Type.parent.members[ info.name ] &&
-            Type.parent.members[ info.name ][ type ] &&
-            Type.parent.members[ info.name ][ type ].access !== access
-        )
-        {
-            throw new errors.DefinitionError( "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
-                "' from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
-        }
-
-        if ( method !== null && !util.isFunc( method ) )
-        {
-            throw new TypeError( type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
-                info.name + "' must be a function or null (uses default implementation.)" );
-        }
-        
-        temp[ type ] =
-        {
-            access: access,
-            method: method
-        };
-    });
-    property.get = temp.get;
-    property.set = temp.set;
-
-    if ( different === 2 )
-        throw new errors.DefinitionError( "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
-
-    if ( !property.get && !property.set )
-    {
-        property.get = { access: info.access };
-        property.set = { access: info.access };
-    }
-
-    if ( property.get && !util.isFunc( property.get.method ) )
-    {
-        property.get.method = function() {
-            return this._value();
-        };
-    }
-    if ( property.set && !util.isFunc( property.set.method ) )
-    {
-        property.set.method = function( value ) {
-            this._value( value );
-        };
-    }
-
-    util.each([ property.get, property.set ], function( accessor, index )
-    {
-        if ( !accessor ) return;
-
-        var type = index === 0 ? "get" : "set";
-        if (
-            Type.parent !== null &&
-            Type.parent.members[ info.name ] &&
-            Type.parent.members[ info.name ].access !== access.PRIVATE &&
-            Type.parent.members[ info.name ][ type ] === undefined
-        )
-            throw new errors.DefinitionError( "Cannot change read/write definition of property '" + info.name + "'." );
-
-        Type.members[ info.name ][ type ] =
-        {
-            access: accessor.access,
-            method: accessor.method,
-            callsuper: fnTest.test( accessor.method )
-        };
-    });
-
-    Type.members[ info.name ].value = property.value ? property.value : null;
-}
-
-/**
- * @private
- * @param {Type} type
- * @param {Object} obj
- */
-function applyPrototypeMembers( type, obj )
-{
-    var proto = type.prototype;
-    if ( proto.constructor.prototype !== proto )
-        applyPrototypeMembers( proto.constructor, obj );
-    for ( var prop in proto )
-    {
-        if ( util.hasOwn( proto, prop ) )
-            obj[ prop ] = proto[ prop ];
-    }
-}
-
-function getPlainDOMObject()
-{
-    function overwrite( obj, prop )
-    {
-        var _value;
-        Object.defineProperty( obj, prop,
-        {
-            configurable: true,
-            get: function() {
-                return _value;
-            },
-            set: function( value ) {
-                _value = value;
-            }
-        });
-    }
-    var obj = document.createElement(), prop;
-    for ( prop in obj )
-    {
-        if ( util.hasOwn( obj, prop ) )
-            overwrite( obj, prop );
-    }
-    return obj;
-}
-
-},{"../di/registry":13,"./access":2,"./build":3,"./environment":5,"./errors":6,"./inits":7,"./special":8,"./tunnel":9,"./util":10}],5:[function(require,module,exports){
-// IE8 only supports Object.defineProperty on DOM objects.
-// http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
-// http://stackoverflow.com/a/4867755/740996
-var isIE8 = false;
-try {
-    Object.defineProperty( {}, "x", {} );
-} catch ( e ) {
-    isIE8 = true;
-}
-
-module.exports = {
-    isIE8: isIE8,
-    isBrowser: !!( typeof window !== "undefined" && typeof navigator !== "undefined" && window.document )
-};
-
-},{}],6:[function(require,module,exports){
-var DefinitionError = function( message ) {
-    this.message = message;
-};
-DefinitionError.prototype = new Error();
-DefinitionError.prototype.name = "type.DefinitionError";
-
-var InitializationError = function( message ) {
-    this.message = message;
-};
-InitializationError.prototype = new Error();
-InitializationError.prototype.name = "type.InitializationError";
-
-var AccessViolationError = function( message ) {
-    this.message = message;
-};
-AccessViolationError.prototype = new Error();
-AccessViolationError.prototype.name = "type.AccessViolationError";
-
-var InvalidOperationError = function( message ) {
-    this.message = message;
-};
-InvalidOperationError.prototype = new Error();
-InvalidOperationError.prototype.name = "type.InvalidOperationError";
-
-var ArgumentError = function( message ) {
-    this.message = message;
-};
-ArgumentError.prototype = new Error();
-ArgumentError.prototype.name = "type.ArgumentError";
-
-module.exports =
-{
-    DefinitionError: DefinitionError,
-    InitializationError: InitializationError,
-    AccessViolationError: AccessViolationError,
-    InvalidOperationError: InvalidOperationError,
-    ArgumentError: ArgumentError
-};
-
-},{}],7:[function(require,module,exports){
-// A global flag to control execution of type initializers.
-var PUB = 1;
-var SCOPE = 2;
-var TYPE_CHECK = 4;
-var inits = PUB;
-
-module.exports =
-{
-    PUB: PUB,
-    SCOPE: SCOPE,
-    TYPE_CHECK: TYPE_CHECK,
-    on: function( flag ) {
-        inits |= flag;
-    },
-    off: function( flag ) {
-        inits &= ~flag;
-    },
-    has: function( flag ) {
-        return ( inits & flag ) === flag;
-    }
-};
-
-},{}],8:[function(require,module,exports){
-module.exports = {
-    CTOR: "ctor"
-};
-
-},{}],9:[function(require,module,exports){
-// When we want to pry an object open, we set this to the type of the object
-// and call $scope to extract the private scope.
-var value = null;
-
-module.exports = {
-    open: function( type ) {
-        value = type;
-    },
-    close: function() {
-        value = null;
-    },
-    value: function() {
-        return value;
-    }
-};
-
-},{}],10:[function(require,module,exports){
-module.exports =
-{
-    makeArray: makeArray,
-    each: each,
-    typeOf: typeOf,
-    isFunc: isFunc,
-    isString: isString,
-    isArray: isArray,
-    trim: trim,
-    keys: keys,
-    hasOwn: hasOwn,
-    indexOf: indexOf,
-    isPlainObject: isPlainObject,
-    map: map,
-    path: path
-};
 
 /**
  * @private
@@ -1215,7 +1106,7 @@ function makeArray( obj )
     if ( isArray( obj ) )
         return obj;
     var result = [];
-    each( obj, function( item ) {
+    forEach( obj, function( item ) {
         result.push( item );
     });
     return result;
@@ -1229,7 +1120,7 @@ function makeArray( obj )
  * @param {Object|Array} obj
  * @param {function()} callback
  */
-function each( obj, callback )
+function forEach( obj, callback )
 {
     var i = 0, value;
     if ( isArrayLike( obj ) )
@@ -1350,7 +1241,7 @@ function indexOf( array, item )
     else
     {
         var index = -1;
-        each( array, function( obj, i )
+        forEach( array, function( obj, i )
         {
             if ( obj === item )
             {
@@ -1415,7 +1306,7 @@ function map( items, callback, context )
     else
     {
         var result = [];
-        each( items, function( item, index ) {
+        forEach( items, function( item, index ) {
             result.push( callback.call( context, item, index ) );
         });
     }
@@ -1433,15 +1324,24 @@ function path()
     }).join( "/" );
 }
 
-},{}],11:[function(require,module,exports){
-var process=require("__browserify_process");var errors = require( "../core/errors" );
-var type = require( "../core/define" );
-var util = require( "../core/util" );
+function addFlag( mask, flag ) {
+    return mask |= flag;
+}
+
+function removeFlag( mask, flag ) {
+    return mask &= ~flag;
+}
+
+function hasFlag( mask, flag ) {
+    return ( mask & flag ) === flag;
+}
 
 // 2.1
 var PENDING = "pending";
 var FULFILLED = "fulfilled";
 var REJECTED = "rejected";
+
+var Promise = define( function() {
 
 /**
  * @description Satisfies 2.3 of the Promise/A+ spec.
@@ -1464,7 +1364,7 @@ function resolve( promise, x )
         try
         {
             // 2.3.3.1
-            if ( util.hasOwn( x, "then" ) )
+            if ( hasOwn( x, "then" ) )
                 then = x.then;
         }
         catch ( e )
@@ -1474,7 +1374,7 @@ function resolve( promise, x )
             return true;
         }
         // 2.3.3.3
-        if ( util.isFunc( then ) )
+        if ( isFunc( then ) )
         {
             try
             {
@@ -1516,8 +1416,7 @@ function resolve( promise, x )
     }
 }
 
-var Promise = type().def(
-{
+this.members({
     ctor: function()
     {
         this.queue = [];
@@ -1530,7 +1429,7 @@ var Promise = type().def(
         if ( this.state === REJECTED )
             throw this.result || new Error( "No reason specified." );
         else if ( this.state === PENDING )
-            throw new errors.InvalidOperationError( "Promise is still in pending state." );
+            throw error( "InvalidOperationError", "Promise is still in pending state." );
         return this.result;
     },
 
@@ -1606,10 +1505,9 @@ var Promise = type().def(
             handler = function()
             {
                 var args = arguments;
-                var run = function() {
+                setTimeout( function() {
                     _handler.apply( undefined, args );
-                };
-                process.nextTick( run );
+                });
             };
         }
         if ( this.state === PENDING )
@@ -1625,7 +1523,7 @@ var Promise = type().def(
             var callback = state === FULFILLED ? onFulfilled : onRejected, x;
             // 2.2.7.3
             // 2.2.7.4
-            if ( !util.isFunc( callback ) )
+            if ( !isFunc( callback ) )
             {
                 promise.set( state, result );
                 return;
@@ -1651,8 +1549,11 @@ var Promise = type().def(
     }
 });
 
-var Deferred = module.exports = type().extend( Promise ).def(
-{
+});
+
+var Deferred = define({
+    extend: Promise
+}, {
     ctor: function()
     {
         var self = this;
@@ -1700,10 +1601,10 @@ var Deferred = module.exports = type().extend( Promise ).def(
 Deferred.when = function( promises )
 {
     var deferred = new Deferred();
-    var tasks = util.isArray( promises ) ? promises : util.makeArray( arguments );
+    var tasks = isArray( promises ) ? promises : makeArray( arguments );
     var progress = 0;
     var results = [];
-    util.each( tasks, function( task, index )
+    forEach( tasks, function( task, index )
     {
         task
             .then( function( value )
@@ -1721,20 +1622,85 @@ Deferred.when = function( promises )
     return deferred.promise;
 };
 
-},{"../core/define":4,"../core/errors":6,"../core/util":10,"__browserify_process":1}],12:[function(require,module,exports){
-var environment = require( "../core/environment" );
-var errors = require( "../core/errors" );
-var registry = require( "./registry" );
-var type = require( "../core/define" );
-var util = require( "../core/util" );
-
-var Deferred = require( "./deferred" );
-
 var PROVIDER = "Provider`";
 var LAZY_PROVIDER = "LazyProvider`";
 
-var Injector = module.exports = type().def(
+function providerOf( service ) {
+    return PROVIDER + service;
+}
+
+function lazyProviderOf( service ) {
+    return LAZY_PROVIDER + service;
+}
+
+var Kernel = define( function() {
+
+var pending = {};
+var cache = {};
+var isBrowser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
+var lastFetch = null;
+
+function fetch( payload, deferred )
 {
+    if ( isBrowser )
+    {
+        var url = payload.url;
+        if ( ( /^\/\// ).test( url ) )
+            url = window.location.protocol + url;
+        else if ( ( /^\// ).test( url ) )
+            url = window.location.protocol + "//" + window.location.host + url;
+        else
+            url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
+
+        if ( cache[ url ] )
+            deferred.resolve( cache[ url ] );
+        else if ( pending[ url ] )
+            pending[ url ].bind( deferred );
+        else
+        {
+            var script = document.createElement( "script" );
+            script.src = url;
+            script.addEventListener( "error", function()
+            {
+                deferred.reject();
+            }, false );
+            document.body.appendChild( script );
+            pending[ url ] = deferred;
+        }
+    }
+    else
+    {
+        lastFetch = deferred;
+        require( "../" + payload.url );
+    }
+}
+
+onTypeDefined = function( type )
+{
+    if ( isBrowser )
+    {
+        var scripts = document.getElementsByTagName( "script" );
+        var url = scripts[ scripts.length - 1 ].src;
+        if ( pending[ url ] )
+        {
+            cache[ url ] = type;
+            var deferred = pending[ url ];
+            delete pending[ url ];
+            setTimeout( function()
+            {
+                deferred.resolve( type );
+            });
+        }
+    }
+    else if ( lastFetch !== null )
+    {
+        var def = lastFetch;
+        lastFetch = null;
+        def.resolve( type );
+    }
+};
+
+this.members({
     ctor: function()
     {
         this.container = {};
@@ -1749,8 +1715,8 @@ var Injector = module.exports = type().def(
     bind: function( service )
     {
         var self = this;
-        if ( !service || !util.isString( service ) )
-            throw new errors.ArgumentError( "Argument 'service' must have a value." );
+        if ( !service || !isString( service ) )
+            throw error( "ArgumentError", "Argument 'service' must have a value." );
         return {
             /**
              * @description Specifies which provider to bind the service to.
@@ -1765,7 +1731,7 @@ var Injector = module.exports = type().def(
                     /**
                      * @description
                      * Causes the binding to return the same instance for all instances resolved through
-                     * the injector.
+                     * the kernel.
                      * @return {BindingConfigurator}
                      */
                     asSingleton: function()
@@ -1794,10 +1760,10 @@ var Injector = module.exports = type().def(
                      */
                     whenFor: function( services )
                     {
-                        if ( util.isArray( services ) && services.length )
+                        if ( isArray( services ) && services.length )
                             binding.filter = services.slice( 0 );
                         else
-                            throw new errors.ArgumentError( "Expected 'services' to be an array of string." );
+                            throw error( "ArgumentError", "Expected 'services' to be an array of string." );
                         return config;
                     }
                 };
@@ -1810,7 +1776,7 @@ var Injector = module.exports = type().def(
      * @description Unregisters a service.
      * @param {string} service
      * @param {string[]} [filter]
-     * @return {Injector}
+     * @return {Kernel}
      */
     unbind: function( service, filter )
     {
@@ -1829,11 +1795,11 @@ var Injector = module.exports = type().def(
                     for ( ; f < flen; f++ )
                     {
                         // Account for sloppy programming and remove all occurences of the service.
-                        i = util.indexOf( bindings[ b ].filter, filter[ f ] );
+                        i = indexOf( bindings[ b ].filter, filter[ f ] );
                         while ( i > -1 )
                         {
                             bindings[ b ].filter.splice( i, 1 );
-                            i = util.indexOf( bindings[ b ].filter, filter[ f ] );
+                            i = indexOf( bindings[ b ].filter, filter[ f ] );
                         }
                     }
                 }
@@ -1862,7 +1828,7 @@ var Injector = module.exports = type().def(
     resolve: function( target, args )
     {
         var self = this;
-        args = util.makeArray( arguments );
+        args = makeArray( arguments );
         args.shift( 0 );
         return this.resolveTarget( target ).then(
             function( recipe )
@@ -1893,7 +1859,7 @@ var Injector = module.exports = type().def(
      *     .bind( "foo.bar" ).to( 2 );
      *   </pre>
      * @param {Object} graph
-     * @return {Injector}
+     * @return {Kernel}
      */
     autoBind: function( graph )
     {
@@ -1908,11 +1874,11 @@ var Injector = module.exports = type().def(
         else
         {
             var loader;
-            if ( util.isFunc( config ) )
+            if ( isFunc( config ) )
                 loader = config;
             else
             {
-                if ( util.isString( config ) )
+                if ( isString( config ) )
                     config = { baseUrl: config };
                 config =
                 {
@@ -1923,11 +1889,11 @@ var Injector = module.exports = type().def(
                 };
                 loader = function( module )
                 {
-                    var url = util.path( config.baseUrl, module );
+                    var url = path( config.baseUrl, module );
                     if ( !( /\.js$/ ).test( url ) )
                         url += ".js";
                     var deferred = new Deferred();
-                    registry.find(
+                    fetch(
                     {
                         url: url,
                         timeout: config.waitSeconds * 1000,
@@ -1938,7 +1904,7 @@ var Injector = module.exports = type().def(
                 };
             }
             this.require = function( modules ) {
-                return Deferred.when( util.map( modules, loader ) );
+                return Deferred.when( map( modules, loader ) );
             };
         }
     },
@@ -1953,7 +1919,7 @@ var Injector = module.exports = type().def(
     __register: function( service, provider )
     {
         var binding = null;
-        if ( util.isArray( provider ) )
+        if ( isArray( provider ) )
         {
             provider = provider.slice( 0 );
             binding = {
@@ -1968,7 +1934,7 @@ var Injector = module.exports = type().def(
                 inject: ( provider.$inject || [] ).slice( 0 )
             };
         }
-        if ( !util.isFunc( binding.resolve ) )
+        if ( !isFunc( binding.resolve ) )
         {
             var value = binding.resolve;
             binding.resolve = function() {
@@ -1989,9 +1955,9 @@ var Injector = module.exports = type().def(
     {
         var self = this,
             prefix = path === "" ?  "" : path + ".";
-        util.each( graph, function( type, name )
+        forEach( graph, function( type, name )
         {
-            if ( util.isPlainObject( type ) )
+            if ( isPlainObject( type ) )
                 self.registerGraph( prefix + name, type );
             else
                 self.register( prefix + name, type );
@@ -2030,12 +1996,12 @@ var Injector = module.exports = type().def(
         while ( current.length )
         {
             next = [];
-            util.each( current, function( component )
+            forEach( current, function( component )
             {
                 if ( component.recipe.theory.isLazy )
                     return;
 
-                util.each( component.recipe.dependencies, function( recipe, position )
+                forEach( component.recipe.dependencies, function( recipe, position )
                 {
                     var dependency = toComponent( recipe );
                     dependency.parent = component;
@@ -2052,9 +2018,9 @@ var Injector = module.exports = type().def(
 
         return function()
         {
-            util.each( generations, function( generation )
+            forEach( generations, function( generation )
             {
-                util.each( generation, function( component )
+                forEach( generation, function( component )
                 {
                     component.parent.cache[ component.position ] =
                         component.recipe.theory.isProvider ?
@@ -2063,7 +2029,7 @@ var Injector = module.exports = type().def(
                     component.cache = [];
                 });
             });
-            var args = root.cache.concat( util.makeArray( arguments ) );
+            var args = root.cache.concat( makeArray( arguments ) );
             root.cache = [];
             return root.recipe.theory.resolve.apply( undefined, args );
         };
@@ -2108,7 +2074,7 @@ var Injector = module.exports = type().def(
     {
         function load()
         {
-            modules = util.map( plan.missing, function( service )
+            modules = map( plan.missing, function( service )
             {
                 if ( service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
                     service = service.substr( PROVIDER.length );
@@ -2122,28 +2088,28 @@ var Injector = module.exports = type().def(
         function done( result )
         {
             var bindings = {};
-            util.each( plan.missing, function( service, index )
+            forEach( plan.missing, function( service, index )
             {
                 // Validate the returned service. If there's no way we can turn it into a binding,
                 // we'll get ourselves into a never-ending loop trying to resolve it.
                 var svc = result[ index ];
-                if ( !svc || !( /(string|function|array)/ ).test( util.typeOf( svc ) ) )
+                if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
                 {
                     deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Expected service to be a string, array, or function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : util.typeOf( svc ) ) + "' instead."
+                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
                         )
                     );
                     return false;
                 }
-                if ( util.isArray( svc ) && !util.isFunc( svc[ svc.length - 1 ] ) )
+                if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
                 {
                     svc = svc[ svc.length - 1 ];
                     deferred.reject(
                         new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : util.typeOf( svc ) ) + "' instead."
+                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
                         )
                     );
                     return false;
@@ -2178,7 +2144,7 @@ var Injector = module.exports = type().def(
             else
             {
                 deferred.reject( new errors.InvalidOperationError( "Service(s) " +
-                    util.map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
+                    map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
             }
         }
         else
@@ -2220,7 +2186,7 @@ var Injector = module.exports = type().def(
                         missing.push( svc );
                         watchFor( svc, callback );
                     }
-                    watches.splice( util.indexOf( watches, handler ), 1 );
+                    watches.splice( indexOf( watches, handler ), 1 );
                 }
             };
             watches.push( handler );
@@ -2257,12 +2223,12 @@ var Injector = module.exports = type().def(
             while ( current.length )
             {
                 next = [];
-                util.each( current, function( recipe )
+                forEach( current, function( recipe )
                 {
                     if ( recipe.theory.isLazy )
                         return;
 
-                    util.each( recipe.theory.inject, function( service, position )
+                    forEach( recipe.theory.inject, function( service, position )
                     {
                         var dependency = self.evaluate( service, recipe.theory.name );
                         if ( dependency )
@@ -2310,7 +2276,7 @@ var Injector = module.exports = type().def(
             update: function( bindings )
             {
                 missing.splice( 0 );
-                util.each( watches.slice( 0 ), function( handler ) {
+                forEach( watches.slice( 0 ), function( handler ) {
                     handler( bindings );
                 });
             }
@@ -2329,14 +2295,14 @@ var Injector = module.exports = type().def(
         if ( !target )
             return null;
         var result = null;
-        if ( util.isFunc( target ) )
+        if ( isFunc( target ) )
         {
             result = {
                 resolve: target,
                 inject: ( target.$inject || [] ).slice( 0 )
             };
         }
-        else if ( util.isArray( target ) )
+        else if ( isArray( target ) )
         {
             target = target.slice( 0 );
             result = {
@@ -2366,7 +2332,7 @@ var Injector = module.exports = type().def(
                     if ( !bindings[ i ].filter )
                         break;
                 }
-                else if ( !bindings[ i ].filter || util.indexOf( bindings[ i ].filter, destination ) > -1 )
+                else if ( !bindings[ i ].filter || indexOf( bindings[ i ].filter, destination ) > -1 )
                     break;
             }
             return bindings[ i ] || null;
@@ -2374,7 +2340,7 @@ var Injector = module.exports = type().def(
 
         var self = this;
         var result = this.theorize( target );
-        if ( !result && util.isString( target ) )
+        if ( !result && isString( target ) )
         {
             var binding = find( target );
             if ( binding )
@@ -2416,103 +2382,38 @@ var Injector = module.exports = type().def(
     }
 });
 
-module.exports.providerOf = function( service ) {
-    return PROVIDER + service;
+});
+
+var _exports = {
+    define: define,
+
+    /**
+     * @description
+     * A factory for creating custom errors. Pass a name to get the error definition.
+     * Pass a name and a message to get a new instance of the specified error.
+     * @param {string} name
+     * @param {string} [message]
+     * @return {function()|Error}
+     */
+    error: error,
+
+    /**
+     * @description Gets the internal JavaScript [[Class]] of an object.
+     * @param {*} object
+     * @return {string}
+     */
+    of: typeOf,
+
+    defer: Deferred,
+    kernel: Kernel,
+    providerOf: providerOf,
+    lazyProviderOf: lazyProviderOf
 };
 
-module.exports.lazyProviderOf = function( service ) {
-    return LAZY_PROVIDER + service;
-};
+if ( typeof module !== "undefined" && module.exports )
+    module.exports = _exports;
+else
+    global.type = _exports;
 
-},{"../core/define":4,"../core/environment":5,"../core/errors":6,"../core/util":10,"./deferred":11,"./registry":13}],13:[function(require,module,exports){
-var environment = require( "../core/environment" );
+} ( this ) );
 
-module.exports = {
-    find: find,
-    add: add
-};
-
-var pending = {};
-var cache = {};
-
-function find( payload, deferred )
-{
-    if ( environment.isBrowser )
-    {
-        var url = payload.url;
-        if ( ( /^\/\// ).test( url ) )
-            url = window.location.protocol + url;
-        else if ( ( /^\// ).test( url ) )
-            url = window.location.protocol + "//" + window.location.host + url;
-        else
-            url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
-
-        if ( cache[ url ] )
-            deferred.resolve( cache[ url ] );
-        else if ( pending[ url ] )
-            pending[ url ].bind( deferred );
-        else
-        {
-            var script = document.createElement( "script" );
-            script.src = url;
-            script.addEventListener( "error", function()
-            {
-                deferred.reject();
-            }, false );
-            document.body.appendChild( script );
-            pending[ url ] = deferred;
-        }
-    }
-    else
-        deferred.resolve( require( "../../" + payload.url ) );
-}
-
-function add( type )
-{
-    if ( !environment.isBrowser )
-        return;
-
-    var scripts = document.getElementsByTagName( "script" );
-    var url = scripts[ scripts.length - 1 ].src;
-    if ( pending[ url ] )
-    {
-        cache[ url ] = type;
-        var deferred = pending[ url ];
-        delete pending[ url ];
-        setTimeout( function()
-        {
-            deferred.resolve( type );
-        });
-    }
-}
-
-},{"../core/environment":5}],14:[function(require,module,exports){
-var deferred = require( "./di/deferred" );
-var define = require( "./core/define" );
-var environment = require( "./core/environment" );
-var errors = require( "./core/errors" );
-var injector = require( "./di/injector" );
-var util = require( "./core/util" );
-
-var type = define;
-type.of = util.typeOf;
-
-type.DefinitionError = errors.DefinitionError;
-type.InitializationError = errors.InitializationError;
-type.AccessViolationError = errors.AccessViolationError;
-type.InvalidOperationError = errors.InvalidOperationError;
-type.ArgumentError = errors.ArgumentError;
-
-type.injector = injector;
-type.providerOf = injector.providerOf;
-type.lazyProviderOf = injector.lazyProviderOf;
-
-type.defer = deferred;
-
-module.exports = type;
-if ( environment.isBrowser )
-    window.type = type;
-
-},{"./core/define":4,"./core/environment":5,"./core/errors":6,"./core/util":10,"./di/deferred":11,"./di/injector":12}]},{},[14])
-
-;

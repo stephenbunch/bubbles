@@ -1,16 +1,13 @@
-var type = require( "../src/type" );
-var expect = require( "chai" ).expect;
-
 describe( "mixins", function()
 {
     it( "should mix protected members", function()
     {
-        var A = type().def({
+        var A = type.define({
             _foo: function() {
                 return "hello";
             }
         });
-        var B = type().include([ A ]).def({
+        var B = type.define({ include: [ A ] }, {
             bar: function() {
                 return this.foo() + " world";
             }
@@ -23,12 +20,12 @@ describe( "mixins", function()
     it( "should not mix private members", function()
     {
         var out = null;
-        var A = type().def({
+        var A = type.define({
             __foo: function() {
                 return "hello";
             }
         });
-        var B = type().include([ A ]).def({
+        var B = type.define({ include: [ A ] }, {
             bar: function() {
                 out = this.foo;
             }
@@ -40,29 +37,29 @@ describe( "mixins", function()
 
     it( "should overwrite each other in the order specified", function()
     {
-        var A = type().def({
+        var A = type.define({
             foo: function() {
                 return 1;
             }
         });
-        var B = type().def({
+        var B = type.define({
             foo: function() {
                 return 2;
             }
         });
-        var C = type().include([ A, B ]);
+        var C = type.define({ include: [ A, B ] }, {});
         var c = new C();
         expect( c.foo() ).to.equal( 2 );
     });
 
     it( "should not overwrite original or base type members", function()
     {
-        var A = type().def({
+        var A = type.define({
             foo: function() {
                 return 2;
             }
         });
-        var C = type().def({
+        var C = type.define({
             foo: function() {
                 return 1;
             },
@@ -70,7 +67,10 @@ describe( "mixins", function()
                 return 1;
             }
         });
-        var B = type().extend( A ).include([ C ]).def({
+        var B = type.define({
+            extend: A,
+            include: [ C ]
+        }, {
             bar: function() {
                 return 2;
             }

@@ -1,22 +1,17 @@
-var type = require( "../src/type" );
-var expect = require( "chai" ).expect;
-
 describe( "this", function()
 {
     describe( "._pry()", function()
     {
         it( "should return the private scope of the given instance", function()
         {
-            var A = type().
-                    def({
-                        bar: function( a ) {
-                            return this._pry( a ).foo();
-                        },
-                        __foo: function() {
-                            return "hello";
-                        }
-                    });
-
+            var A = type.define({
+                bar: function( a ) {
+                    return this._pry( a ).foo();
+                },
+                __foo: function() {
+                    return "hello";
+                }
+            });
             var a1 = new A();
             var a2 = new A();
             expect( a2.bar( a1 ) ).to.equal( "hello" );
@@ -24,7 +19,7 @@ describe( "this", function()
 
         it( "should not be accessible on the public interface", function()
         {
-            var A = type();
+            var A = type.define();
             var a = new A();
             expect( a._pry ).to.be.undefined;
         });
@@ -32,7 +27,7 @@ describe( "this", function()
         it( "should return input if failed", function()
         {
             var out = 0;
-            var A = type().def({
+            var A = type.define({
                 foo: function( test ) {
                     out = this._pry( test );
                 }
@@ -50,24 +45,23 @@ describe( "this", function()
     {
         it( "should return the public interface", function()
         {
-            var A = type().def({
+            var A = type.define({
                 bar: function() {
                     return this._pub;
                 }
             });
-
             var a = new A();
             expect( a.bar() ).to.equal( a );
         });
 
         it( "should return the public interface of the child", function()
         {
-            var A = type().def({
+            var A = type.define({
                 bar: function() {
                     return this._pub;
                 }
             });
-            var B = type().extend( A );
+            var B = type.define({ extend: A }, {});
             var b = new B();
             expect( b.bar() ).to.equal( b );
         });
@@ -77,17 +71,16 @@ describe( "this", function()
     {
         it( "should call the parent method", function()
         {
-            var A = type().def({
+            var A = type.define({
                 $foo: function( message ) {
                     return message + " world";
                 }
             });
-            var B = type().extend( A ).def({
+            var B = type.define({ extend: A }, {
                 $foo: function( message ) {
                     return this._super( message ) + "!";
                 }
             });
-
             var b = new B();
             expect( b.foo( "hello" ) ).to.equal( "hello world!" );
         });
@@ -98,12 +91,12 @@ describe( "this", function()
         it( "should call the mixin constructor", function()
         {
             var out = null;
-            var A = type().def({
+            var A = type.define({
                 ctor: function( x ) {
                     out = x;
                 }
             });
-            var B = type().include([ A ]).def({
+            var B = type.define({ include: [ A ] }, {
                 ctor: function() {
                     this._init( A, "foo" );
                 }
@@ -115,7 +108,7 @@ describe( "this", function()
         it( "should not be available if no mixins are defined", function()
         {
             var out = false;
-            var A = type().def({
+            var A = type.define({
                 ctor: function() {
                     out = this._init === undefined;
                 }
@@ -129,7 +122,7 @@ describe( "this", function()
     {
         it( "[get] and [set] should work in IE8", function()
         {
-            var A = type().def(
+            var A = type.define(
             {
                 get: function() {
                     return this.children;
@@ -150,7 +143,7 @@ describe( "this", function()
         it( "[set] should return the new value", function()
         {
             var out = null;
-            var A = type().def({
+            var A = type.define({
                 foo: {
                     get: null,
                     set: function( value ) {

@@ -1,25 +1,25 @@
 {
-  "name": "typeful",
+  "name": "typejs",
   "version": "0.1.0",
+  "author": {
+    "name": "Stephen Bunch"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stephenbunch/typeful"
+    "url": "https://github.com/stephenbunch/typejs"
   },
   "main": "src/type.js",
   "devDependencies": {
     "grunt-contrib-jshint": "~0.6.3",
     "grunt-contrib-uglify": "~0.2.2",
-    "grunt-contrib-concat": "~0.3.0",
     "grunt-contrib-watch": "~0.5.3",
     "grunt-cli": "~0.1.9",
     "promises-aplus-tests": "~2.0.2",
-    "grunt-browserify": "~1.2.11",
     "mocha": "~1.15.0",
     "chai": "~1.8.1",
-    "sinon": "~1.7.3",
-    "browserify": "~2.36.1",
-    "through": "~2.3.4",
-    "convert-source-map": "~0.3.1"
+    "source-map": "~0.1.31",
+    "sinon": "~1.7.3"
   },
   "scripts": {
     "test": "grunt"

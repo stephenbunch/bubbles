@@ -1,20 +1,3 @@
-module.exports =
-{
-    makeArray: makeArray,
-    each: each,
-    typeOf: typeOf,
-    isFunc: isFunc,
-    isString: isString,
-    isArray: isArray,
-    trim: trim,
-    keys: keys,
-    hasOwn: hasOwn,
-    indexOf: indexOf,
-    isPlainObject: isPlainObject,
-    map: map,
-    path: path
-};
-
 /**
  * @private
  * @description
@@ -54,7 +37,7 @@ function makeArray( obj )
     if ( isArray( obj ) )
         return obj;
     var result = [];
-    each( obj, function( item ) {
+    forEach( obj, function( item ) {
         result.push( item );
     });
     return result;
@@ -68,7 +51,7 @@ function makeArray( obj )
  * @param {Object|Array} obj
  * @param {function()} callback
  */
-function each( obj, callback )
+function forEach( obj, callback )
 {
     var i = 0, value;
     if ( isArrayLike( obj ) )
@@ -189,7 +172,7 @@ function indexOf( array, item )
     else
     {
         var index = -1;
-        each( array, function( obj, i )
+        forEach( array, function( obj, i )
         {
             if ( obj === item )
             {
@@ -254,7 +237,7 @@ function map( items, callback, context )
     else
     {
         var result = [];
-        each( items, function( item, index ) {
+        forEach( items, function( item, index ) {
             result.push( callback.call( context, item, index ) );
         });
     }
@@ -270,4 +253,16 @@ function path()
     return map( arguments, function( path, index ) {
         return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
     }).join( "/" );
+}
+
+function addFlag( mask, flag ) {
+    return mask |= flag;
+}
+
+function removeFlag( mask, flag ) {
+    return mask &= ~flag;
+}
+
+function hasFlag( mask, flag ) {
+    return ( mask & flag ) === flag;
 }

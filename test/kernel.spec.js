@@ -1,23 +1,20 @@
-var type = require( "../src/type" );
-var expect = require( "chai" ).expect;
-
-describe( "Injector", function()
+describe( "Kernel", function()
 {
     describe( ".bind()", function()
     {
         it( "should return a BindingSelector", function()
         {
-            var injector = type.injector();
-            var selector = injector.bind( "foo" );
+            var kernel = type.kernel();
+            var selector = kernel.bind( "foo" );
             expect( selector.to ).to.be.a( "function" );
         });
 
         it( "should throw an error if 'service' is empty", function()
         {
-            var injector = type.injector();
+            var kernel = type.kernel();
             expect( function()
             {
-                injector.bind();
+                kernel.bind();
             }).to.throw( type.ArgumentError );
         });
     });
@@ -27,38 +24,38 @@ describe( "Injector", function()
         it( "should remove the binding for a service", function()
         {
             var e = new Error();
-            var injector = type.injector();
-            injector.autoLoad( function( module )
+            var kernel = type.kernel();
+            kernel.autoLoad( function( module )
             {
                 return type.defer().reject( e );
             });
-            injector.bind( "foo" ).to( 2 );
-            expect( injector.resolve( "foo" ).value() ).to.equal( 2 );
-            injector.unbind( "foo" );
+            kernel.bind( "foo" ).to( 2 );
+            expect( kernel.resolve( "foo" ).value() ).to.equal( 2 );
+            kernel.unbind( "foo" );
             expect( function()
             {
-                injector.resolve( "foo" ).value();
+                kernel.resolve( "foo" ).value();
             }).to.throw( e );
         });
 
         it( "can remove bindings of services with specific constraints", function()
         {
             var e = new Error();
-            var injector = type.injector();
-            injector.autoLoad( function( module )
+            var kernel = type.kernel();
+            kernel.autoLoad( function( module )
             {
                 return type.defer().reject( e );
             });
-            injector.bind( "foo" ).to( 2 ).whenFor([ "bar", "baz" ]);
-            injector.bind( "bar" ).to([ "foo", function( foo ) {} ]);
-            injector.bind( "baz" ).to([ "foo", function( foo ) {} ]);
-            injector.resolve( "bar" ).value();
-            injector.unbind( "foo", [ "bar" ]);
+            kernel.bind( "foo" ).to( 2 ).whenFor([ "bar", "baz" ]);
+            kernel.bind( "bar" ).to([ "foo", function( foo ) {} ]);
+            kernel.bind( "baz" ).to([ "foo", function( foo ) {} ]);
+            kernel.resolve( "bar" ).value();
+            kernel.unbind( "foo", [ "bar" ]);
             expect( function()
             {
-                injector.resolve( "bar" ).value();
+                kernel.resolve( "bar" ).value();
             }).to.throw( e );
-            injector.resolve( "baz" ).value();
+            kernel.resolve( "baz" ).value();
         });
     });
 
@@ -66,10 +63,10 @@ describe( "Injector", function()
     {
         it( "should support the array syntax for listing dependencies", function()
         {
-            var injector = type.injector();
-            injector.bind( "foo" ).to( 2 );
+            var kernel = type.kernel();
+            kernel.bind( "foo" ).to( 2 );
             var out = 0;
-            injector.resolve( [ "foo", function( x )
+            kernel.resolve( [ "foo", function( x )
             {
                 out = x;
             }]).value();
@@ -78,8 +75,8 @@ describe( "Injector", function()
 
         it( "should check the '$inject' property for an array listing dependencies", function()
         {
-            var injector = type.injector();
-            injector.bind( "foo" ).to( function() {
+            var kernel = type.kernel();
+            kernel.bind( "foo" ).to( function() {
                 return 2;
             });
             var Bar = function( baz )
@@ -89,31 +86,31 @@ describe( "Injector", function()
                 this.foo = baz;
             };
             Bar.$inject = [ "foo" ];
-            var bar = injector.resolve( Bar ).value();
+            var bar = kernel.resolve( Bar ).value();
             expect( bar.foo ).to.equal( 2 );
-            bar = injector.resolve( Bar ).value();
+            bar = kernel.resolve( Bar ).value();
             expect( bar.foo ).to.equal( 2 );
         });
 
         it( "should throw an error if any dependencies are missing", function()
         {
             var e = new Error();
-            var injector = type.injector();
-            injector.autoLoad( function()
+            var kernel = type.kernel();
+            kernel.autoLoad( function()
             {
                 return type.defer().reject( e );
             });
-            injector.bind( "bar" ).to([ "foo", function() {} ]);
+            kernel.bind( "bar" ).to([ "foo", function() {} ]);
             expect( function()
             {
-                injector.resolve([ "bar", "baz", function() {} ]).value();
+                kernel.resolve([ "bar", "baz", function() {} ]).value();
             }).to.throw( e );
         });
 
         it( "should reject the promise if the service cannot be found", function( done )
         {
-            var injector = type.injector();
-            injector.autoLoad( function()
+            var kernel = type.kernel();
+            kernel.autoLoad( function()
             {
                 var token = type.defer();
                 setTimeout( function()
@@ -122,11 +119,11 @@ describe( "Injector", function()
                 });
                 return token.promise;
             });
-            injector.resolve( "foo" )
+            kernel.resolve( "foo" )
                 .then( null, function( e )
                 {
                     expect( e ).to.be.instanceof( TypeError );
-                    injector.autoLoad( function()
+                    kernel.autoLoad( function()
                     {
                         var token = type.defer();
                         setTimeout( function()
@@ -135,12 +132,12 @@ describe( "Injector", function()
                         });
                         return token.promise;
                     });
-                    return injector.resolve( "foo" );
+                    return kernel.resolve( "foo" );
                 })
                 .then( null, function( e )
                 {
                     expect( e ).to.be.instanceof( TypeError );
-                    injector.autoLoad( function()
+                    kernel.autoLoad( function()
                     {
                         var token = type.defer();
                         setTimeout( function()
@@ -148,7 +145,7 @@ describe( "Injector", function()
                             token.resolve([ "bla" ]);
                         });
                     });
-                    return injector.resolve( "foo" );
+                    return kernel.resolve( "foo" );
                 })
                 .then( null, function( e )
                 {
@@ -164,13 +161,13 @@ describe( "Injector", function()
         {
             var called = 0;
             var graph = { bar: {} };
-            graph.bar.Foo = type().def({
+            graph.bar.Foo = type.define({
                 ctor: function() {
                     called += 1;
                 }
             });
-            var injector = type.injector().autoBind({ app: graph });
-            var foo = injector.resolve( "app.bar.Foo" ).value();
+            var kernel = type.kernel().autoBind({ app: graph });
+            var foo = kernel.resolve( "app.bar.Foo" ).value();
             expect( called ).to.equal( 1 );
         });
     });
@@ -179,9 +176,9 @@ describe( "Injector", function()
     {
         it( "can specify a base path to load missing services", function( done )
         {
-            var injector = type.injector();
-            injector.autoLoad( "test/stubs" );
-            injector.resolve( "class1" ).done( function( class1 )
+            var kernel = type.kernel();
+            kernel.autoLoad( "test/stubs" );
+            kernel.resolve( "class1" ).done( function( class1 )
             {
                 expect( class1.foo() ).to.equal( 2 );
                 done();
@@ -195,18 +192,18 @@ describe( "Injector", function()
         {
             it( "should bind a service to a provider", function()
             {
-                var injector = type.injector();
-                injector.bind( "foo" ).to( function() {
+                var kernel = type.kernel();
+                kernel.bind( "foo" ).to( function() {
                     return 2;
                 });
-                expect( injector.resolve( "foo" ).value() ).to.equal( 2 );
+                expect( kernel.resolve( "foo" ).value() ).to.equal( 2 );
             });
 
             it( "should bind non functions as constants", function()
             {
-                var injector = type.injector();
-                injector.bind( "foo" ).to( 2 );
-                expect( injector.resolve( "foo" ).value() ).to.equal( 2 );
+                var kernel = type.kernel();
+                kernel.bind( "foo" ).to( 2 );
+                expect( kernel.resolve( "foo" ).value() ).to.equal( 2 );
             });
         });
     });
@@ -217,10 +214,10 @@ describe( "Injector", function()
         {
             it( "should cause binding to resolve to the same instance", function()
             {
-                var injector = type.injector();
-                injector.bind( "foo" ).to( function() { return {}; } ).asSingleton();
-                var out = injector.resolve( "foo" ).value();
-                expect( injector.resolve( "foo" ).value() ).to.equal( out );
+                var kernel = type.kernel();
+                kernel.bind( "foo" ).to( function() { return {}; } ).asSingleton();
+                var out = kernel.resolve( "foo" ).value();
+                expect( kernel.resolve( "foo" ).value() ).to.equal( out );
             });
         });
 
@@ -228,30 +225,30 @@ describe( "Injector", function()
         {
             it( "should cause binding to resolve only when injected into one of the specified types", function()
             {
-                var injector = type.injector();
+                var kernel = type.kernel();
                 var out = null;
-                injector.bind( "foo" ).to( 1 );
-                injector.bind( "foo" ).to( 2 ).whenFor([ "bar" ]);
-                injector.bind( "foo" ).to( 3 ).whenFor([ "bar" ]);
-                injector.bind( "foo" ).to( 4 ).whenFor([ "baz" ]);
-                injector.bind( "bar" ).to([ "foo", function( foo )
+                kernel.bind( "foo" ).to( 1 );
+                kernel.bind( "foo" ).to( 2 ).whenFor([ "bar" ]);
+                kernel.bind( "foo" ).to( 3 ).whenFor([ "bar" ]);
+                kernel.bind( "foo" ).to( 4 ).whenFor([ "baz" ]);
+                kernel.bind( "bar" ).to([ "foo", function( foo )
                 {
                     out = foo;
                 }]);
-                injector.bind( "baz" ).to([ "foo", function( foo )
+                kernel.bind( "baz" ).to([ "foo", function( foo )
                 {
                     out = foo;
                 }]);
 
                 // Bindings should be tried in reverse order.
-                injector.resolve( "bar" );
+                kernel.resolve( "bar" );
                 expect( out ).to.equal( 3 );
 
-                injector.resolve( "baz" );
+                kernel.resolve( "baz" );
                 expect( out ).to.equal( 4 );
 
                 // Resolving an anonymous service should use the default binding if it exists.
-                injector.resolve([ "foo", function( foo ) {
+                kernel.resolve([ "foo", function( foo ) {
                     out = foo;
                 }]);
                 expect( out ).to.equal( 1 );
@@ -263,17 +260,17 @@ describe( "Injector", function()
     {
         it( "can be listed as a dependency", function()
         {
-            var injector = type.injector();
-            injector.bind( "foo" ).to( 2 );
-            var provider = injector.resolve( type.providerOf( "foo" ) ).value();
+            var kernel = type.kernel();
+            kernel.bind( "foo" ).to( 2 );
+            var provider = kernel.resolve( type.providerOf( "foo" ) ).value();
             expect( provider() ).to.equal( 2 );
         });
 
         it( "should forward additional arguments to the underlying service provider", function()
         {
-            var injector = type.injector();
-            injector.bind( "foo" ).to( function( a ) { return a + 2; } );
-            var provider = injector.resolve( type.providerOf( "foo" ) ).value();
+            var kernel = type.kernel();
+            kernel.bind( "foo" ).to( function( a ) { return a + 2; } );
+            var provider = kernel.resolve( type.providerOf( "foo" ) ).value();
             expect( provider( 5 ) ).to.equal( 7 );
         });
 
@@ -282,12 +279,12 @@ describe( "Injector", function()
             var foo = 0;
             var bar = function() {};
             bar.$inject = [ "foo" ];
-            var injector = type.injector();
-            injector.bind( "foo" ).to( function() {
+            var kernel = type.kernel();
+            kernel.bind( "foo" ).to( function() {
                 return ++foo;
             });
-            injector.bind( "bar" ).to( bar );
-            var provider = injector.resolve( type.providerOf( "bar" ) ).value();
+            kernel.bind( "bar" ).to( bar );
+            var provider = kernel.resolve( type.providerOf( "bar" ) ).value();
             provider();
             provider();
             expect( foo ).to.equal( 2 );
@@ -297,16 +294,16 @@ describe( "Injector", function()
         {
             var calledA = 0;
             var calledB = 0;
-            var injector = type.injector();
-            injector.bind( "foo" ).to( function() {
+            var kernel = type.kernel();
+            kernel.bind( "foo" ).to( function() {
                 calledA++;
                 return 2;
             });
-            var provider = injector.resolve( type.providerOf( "foo" ) ).value();
+            var provider = kernel.resolve( type.providerOf( "foo" ) ).value();
             provider();
-            injector.unbind( "foo" );
+            kernel.unbind( "foo" );
             provider();
-            injector.bind( "foo" ).to( function()
+            kernel.bind( "foo" ).to( function()
             {
                 calledB++;
                 return 2;
@@ -318,8 +315,8 @@ describe( "Injector", function()
 
         it( "should get the underlying service when being fetched", function( done )
         {
-            var injector = type.injector();
-            injector.autoLoad( function( module )
+            var kernel = type.kernel();
+            kernel.autoLoad( function( module )
             {
                 expect( module ).to.equal( "foo" );
                 var token = type.defer();
@@ -329,7 +326,7 @@ describe( "Injector", function()
                 });
                 return token.promise;
             });
-            injector.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
+            kernel.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
             {
                 expect( fooProvider() ).to.equal( 2 );
                 done();
@@ -341,16 +338,16 @@ describe( "Injector", function()
     {
         it( "should behave as a Provider, but should return a Promise of an instance", function()
         {
-            var injector = type.injector();
-            injector.bind( "foo" ).to( 2 );
-            var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
+            var kernel = type.kernel();
+            kernel.bind( "foo" ).to( 2 );
+            var provider = kernel.resolve( type.lazyProviderOf( "foo" ) ).value();
             expect( provider().value() ).to.equal( 2 );
         });
 
         it( "should resolve its dependency graph on the first call", function( done )
         {
-            var injector = type.injector();
-            injector.autoLoad( function()
+            var kernel = type.kernel();
+            kernel.autoLoad( function()
             {
                 var token = type.defer();
                 setTimeout( function()
@@ -359,12 +356,12 @@ describe( "Injector", function()
                 });
                 return token.promise;
             });
-            var provider = injector.resolve( type.lazyProviderOf( "foo" ) ).value();
+            var provider = kernel.resolve( type.lazyProviderOf( "foo" ) ).value();
             provider()
                 .then( function( result )
                 {
                     expect( result ).to.equal( 2 );
-                    injector.autoLoad( function()
+                    kernel.autoLoad( function()
                     {
                         var token = type.defer();
                         setTimeout( function()
@@ -378,7 +375,7 @@ describe( "Injector", function()
                 .then( function( result )
                 {
                     expect( result ).to.equal( 2 );
-                    injector.bind( "foo" ).to( 4 );
+                    kernel.bind( "foo" ).to( 4 );
                     return provider();
                 })
                 .then( function( result )

@@ -1,6 +1,3 @@
-var type = require( "../src/type" );
-var expect = require( "chai" ).expect;
-
 describe( "Deferred", function()
 {
     describe( ".promise", function()
@@ -132,7 +129,7 @@ describe( "Deferred", function()
             expect( function()
             {
                 def.value();
-            }).to.throw( type.InvalidOperationError );
+            }).to.throw( type.error( "InvalidOperationError" ) );
         });
 
         it( "should throw the resulting error if the deferred was rejected", function()

@@ -1,11 +1,9 @@
-var errors = require( "../core/errors" );
-var type = require( "../core/define" );
-var util = require( "../core/util" );
-
 // 2.1
 var PENDING = "pending";
 var FULFILLED = "fulfilled";
 var REJECTED = "rejected";
+
+var Promise = define( function() {
 
 /**
  * @description Satisfies 2.3 of the Promise/A+ spec.
@@ -28,7 +26,7 @@ function resolve( promise, x )
         try
         {
             // 2.3.3.1
-            if ( util.hasOwn( x, "then" ) )
+            if ( hasOwn( x, "then" ) )
                 then = x.then;
         }
         catch ( e )
@@ -38,7 +36,7 @@ function resolve( promise, x )
             return true;
         }
         // 2.3.3.3
-        if ( util.isFunc( then ) )
+        if ( isFunc( then ) )
         {
             try
             {
@@ -80,8 +78,7 @@ function resolve( promise, x )
     }
 }
 
-var Promise = type().def(
-{
+this.members({
     ctor: function()
     {
         this.queue = [];
@@ -94,7 +91,7 @@ var Promise = type().def(
         if ( this.state === REJECTED )
             throw this.result || new Error( "No reason specified." );
         else if ( this.state === PENDING )
-            throw new errors.InvalidOperationError( "Promise is still in pending state." );
+            throw error( "InvalidOperationError", "Promise is still in pending state." );
         return this.result;
     },
 
@@ -170,10 +167,9 @@ var Promise = type().def(
             handler = function()
             {
                 var args = arguments;
-                var run = function() {
+                setTimeout( function() {
                     _handler.apply( undefined, args );
-                };
-                process.nextTick( run );
+                });
             };
         }
         if ( this.state === PENDING )
@@ -189,7 +185,7 @@ var Promise = type().def(
             var callback = state === FULFILLED ? onFulfilled : onRejected, x;
             // 2.2.7.3
             // 2.2.7.4
-            if ( !util.isFunc( callback ) )
+            if ( !isFunc( callback ) )
             {
                 promise.set( state, result );
                 return;
@@ -215,72 +211,4 @@ var Promise = type().def(
     }
 });
 
-var Deferred = module.exports = type().extend( Promise ).def(
-{
-    ctor: function()
-    {
-        var self = this;
-        this.promise =
-        {
-            then: function() {
-                return self.then.apply( self, arguments );
-            },
-            done: function()
-            {
-                self.done.apply( self, arguments );
-                return self.promise;
-            },
-            fail: function()
-            {
-                self.fail.apply( self, arguments );
-                return self.promise;
-            },
-            always: function()
-            {
-                self.always.apply( self, arguments );
-                return self.promise;
-            },
-            value: function() {
-                return self.value();
-            }
-        };
-    },
-
-    promise: { get: null, __set: null },
-
-    resolve: function( result )
-    {
-        this.set( FULFILLED, result );
-        return this._pub;
-    },
-
-    reject: function( reason )
-    {
-        this.set( REJECTED, reason );
-        return this._pub;
-    }
 });
-
-Deferred.when = function( promises )
-{
-    var deferred = new Deferred();
-    var tasks = util.isArray( promises ) ? promises : util.makeArray( arguments );
-    var progress = 0;
-    var results = [];
-    util.each( tasks, function( task, index )
-    {
-        task
-            .then( function( value )
-            {
-                results[ index ] = value;
-                if ( ++progress === tasks.length )
-                    deferred.resolve( results );
-            }, function( reason )
-            {
-                deferred.reject( reason );
-            }, false );
-    });
-    if ( !tasks.length )
-        deferred.resolve( [] );
-    return deferred.promise;
-};

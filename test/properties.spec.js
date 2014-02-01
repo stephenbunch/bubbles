@@ -1,13 +1,9 @@
-var type = require( "../src/type" );
-var expect = require( "chai" ).expect;
-
 describe( "properties", function()
 {
     it( "can read and write values", function() {
-        var A = type().
-                def({
-                    foo: null
-                });
+        var A = type.define({
+            foo: null
+        });
         var a = new A();
         a.foo = "hello";
         expect( a.foo ).to.equal( "hello" );
@@ -15,17 +11,16 @@ describe( "properties", function()
 
     it( "should support custom get and set accessors", function()
     {
-        var A = type().
-                def({
-                    foo: {
-                        get: function() {
-                            return this._value() * 2;
-                        },
-                        set: function( value ) {
-                            this._value( value * 2 );
-                        }
-                    }
-                });
+        var A = type.define({
+            foo: {
+                get: function() {
+                    return this._value() * 2;
+                },
+                set: function( value ) {
+                    this._value( value * 2 );
+                }
+            }
+        });
         var a = new A();
         a.foo = 2;
         expect( a.foo ).to.equal( 8 );
@@ -33,29 +28,26 @@ describe( "properties", function()
 
     it( "can be extended", function()
     {
-        var A = type().
-                def({
-                    $foo: {
-                        get: function() {
-                            return "hello " + this._value();
-                        },
-                        set: function( value ) {
-                            this._value( value );
-                        }
-                    }
-                });
-        var B = type().
-                extend( A ).
-                def({
-                    foo: {
-                        get: function() {
-                            return this._super();
-                        },
-                        set: function( value ) {
-                            this._super( value + "!" );
-                        }
-                    }
-                });
+        var A = type.define({
+            $foo: {
+                get: function() {
+                    return "hello " + this._value();
+                },
+                set: function( value ) {
+                    this._value( value );
+                }
+            }
+        });
+        var B = type.define({ extend: A }, {
+            foo: {
+                get: function() {
+                    return this._super();
+                },
+                set: function( value ) {
+                    this._super( value + "!" );
+                }
+            }
+        });
         var b = new B();
         b.foo = "world";
         expect( b.foo ).to.equal( "hello world!" );
@@ -63,10 +55,10 @@ describe( "properties", function()
 
     it( "can specify a default value", function()
     {
-        var A = type().def({
+        var A = type.define({
             foo: 2
         });
-        var B = type().def({
+        var B = type.define({
             foo: {
                 value: 3,
                 get: function() {
@@ -83,7 +75,7 @@ describe( "properties", function()
     it( "can be read immediately after being set without leaving the execution context of the set accessor", function()
     {
         var out = null;
-        var A = type().def({
+        var A = type.define({
             foo: {
                 get: null,
                 set: function( value )
@@ -102,7 +94,7 @@ describe( "properties", function()
     {
         var out1 = null;
         var out2 = null;
-        var A = type().def({
+        var A = type.define({
             foo: {
                 value: "hello",
                 get: null,
@@ -122,7 +114,7 @@ describe( "properties", function()
 
     it( "should use default accessor implementation when null is given instead of a function", function()
     {
-        var A = type().def({
+        var A = type.define({
             foo: {
                 value: 1,
                 get: null
@@ -134,7 +126,7 @@ describe( "properties", function()
 
     it( "can specify separate access modifers for 'get' and 'set'", function()
     {
-        var A = type().def({
+        var A = type.define({
             ctor: function() {
                 this.foo = 1;
             },
@@ -145,23 +137,23 @@ describe( "properties", function()
         expect( function()
         {
             a.foo = 2;
-        }).to.throw( type.AccessViolationError );
+        }).to.throw( type.error( "AccessViolationError" ) );
     });
 
     it( "should throw an error if writing to a read-only property or reading from a write-only property", function()
     {
-        var A = type().def({ foo: { get: null } });
+        var A = type.define({ foo: { get: null } });
         var a = new A();
         expect( function()
         {
             a.foo = 2;
-        }).to.throw( type.AccessViolationError );
+        }).to.throw( type.error( "AccessViolationError" ) );
     });
 
     it( "can be protected with a private setter", function()
     {
-        var A = type().def({ _foo: { get: null, __set: null, value: "hello" } });
-        var B = type().extend( A ).def({
+        var A = type.define({ _foo: { get: null, __set: null, value: "hello" } });
+        var B = type.define({ extend: A }, {
             read: function() {
                 return this.foo;
             },
@@ -175,12 +167,12 @@ describe( "properties", function()
         expect( function()
         {
             b.write( "test" );
-        }).to.throw( type.AccessViolationError );
+        }).to.throw( type.error( "AccessViolationError" ) );
     });
 
     it( "should be enumerable (except in IE8)", function()
     {
-        var A = type().def({ foo: 2 });
+        var A = type.define({ foo: 2 });
         var a = new A();
         var found = false;
         for ( var p in a )
