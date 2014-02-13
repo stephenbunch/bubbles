@@ -206,6 +206,7 @@ function define()
     }
     if ( onTypeDefined )
         onTypeDefined( Type );
+    fake( Type );
     return Type;
 }
 
@@ -281,6 +282,9 @@ function defineMembers( type, members )
 
         validateMember( type, info );
 
+        if ( fake( function() { return isMemberDefined( type, info.name ); }) )
+            return;
+
         if ( name === CTOR )
         {
             if ( isArray( member ) )
@@ -295,7 +299,7 @@ function defineMembers( type, members )
         type.members[ name ] =
         {
             access: info.access,
-            isVirtual: info.isVirtual
+            virtual: info.virtual
         };
 
         if ( isFunc( member ) )
@@ -332,7 +336,7 @@ function defineEvents( type, events )
         if ( name === CTOR )
             throw error( "DefinitionError", "Event cannot be named 'ctor'." );
 
-        if ( info.isVirtual )
+        if ( info.virtual )
             throw error( "DefinitionError", "Events cannot be virtual." );
 
         type.members[ name ] = {
@@ -422,7 +426,7 @@ function parseMember( name )
     var modifier = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || PUBLIC;
 
     // determines whether the method can be overridden
-    var isVirtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
+    var virtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
 
     // trim away the modifiers
     name = name.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ name[0] ] || 0 );
@@ -431,12 +435,12 @@ function parseMember( name )
     if ( name === CTOR )
     {
         modifier = PRIVATE;
-        isVirtual = false;
+        virtual = false;
     }
 
     return {
         access: modifier,
-        isVirtual: isVirtual,
+        virtual: virtual,
         name: name
     };
 }
@@ -478,7 +482,7 @@ function isMemberDefined( type, name, parent )
     if (
         type.members[ name ] &&
         ( !parent || type.members[ name ].access !== PRIVATE ) &&
-        ( !parent || !type.members[ name ].isVirtual )
+        ( !parent || !type.members[ name ].virtual )
     )
         return true;
     if ( type.parent !== null )
@@ -677,12 +681,14 @@ function initializeType( type, pub, args, ctor )
     var scope = type();
     mode = removeFlag( mode, RETURN_SCOPE );
 
-    scope.self._pub = pub;
+    addProperty( scope.self, "_pub", {
+        get: function() {
+            return pub;
+        }
+    });
 
     buildMembers( type, scope );
     exposeMembers( type, scope, pub );
-
-    pub.$type = type;
 
     /**
      * @internal
@@ -696,6 +702,21 @@ function initializeType( type, pub, args, ctor )
 
     if ( ctor )
         scope.self.ctor.apply( scope.self, args );
+
+    fake( function()
+    {
+        function run( type, scope )
+        {
+            if ( type.parent !== null )
+                run( type.parent, scope.parent );
+            forEach( type.members, function( member, name )
+            {
+                if ( member.method )
+                    scope.self[ name ]();
+            });
+        }
+        run( type, scope );
+    });
 
     return scope.self;
 }
@@ -760,7 +781,7 @@ function buildMembers( type, scope )
             callsuper: false,
             params: [],
             access: PRIVATE,
-            isVirtual: false,
+            virtual: false,
             name: CTOR,
             method: function() {}
         });
@@ -779,15 +800,20 @@ function createProxy( srcType, srcObj, dstType, dstObj )
             dstObj[ name ] = srcObj[ name ];
         else
         {
-            addProperty( dstObj, name,
+            var accessors = {};
+            if ( member.get && member.get.access !== PRIVATE )
             {
-                get: !member.get || member.get.access === PRIVATE ? getReadOnlyAccessor( name ) : function() {
+                accessors.get = function() {
                     return srcObj[ name ];
-                },
-                set: !member.set || member.set.access === PRIVATE ? getWriteOnlyAccessor( name ) : function( value ) {
+                };
+            }
+            if ( member.set && member.set.access !== PRIVATE )
+            {
+                accessors.set = function( value ) {
                     srcObj[ name ] = value;
-                }
-            });
+                };
+            }
+            addProperty( dstObj, name, accessors );
         }
     });
 }
@@ -856,8 +882,16 @@ function buildMethod( type, scope, name, member )
             }
 
             member.method.apply( scope.self, arguments );
-            scope.self._super = temp._super;
-            scope.self._init = temp._init;
+
+            if ( temp._super === undefined )
+                delete scope.self._super;
+            else
+                scope.self._super = temp._super;
+
+            if ( temp._init === undefined )
+                delete scope.self._init;
+            else
+                scope.self._init = temp._init;
 
             if ( queue.length > 0 )
             {
@@ -868,11 +902,7 @@ function buildMethod( type, scope, name, member )
     }
     else
     {
-        if (
-            scope.parent !== null &&
-            scope.parent.self[ name ] &&
-            member.callsuper
-        )
+        if ( scope.parent !== null && scope.parent.self[ name ] )
         {
             var _super = scope.parent.self[ name ];
             scope.self[ name ] = function()
@@ -880,7 +910,10 @@ function buildMethod( type, scope, name, member )
                 var temp = scope.self._super;
                 scope.self._super = _super;
                 var result = member.method.apply( scope.self, arguments );
-                scope.self._super = temp;
+                if ( temp === undefined )
+                    delete scope.self._super;
+                else
+                    scope.self._super = temp;
                 return result;
             };
         }
@@ -903,7 +936,7 @@ function buildMethod( type, scope, name, member )
  */
 function buildProperty( type, scope, name, member )
 {
-    function accessor( method, _super )
+    function buildAccessor( method, _super )
     {
         return function()
         {
@@ -919,8 +952,14 @@ function buildProperty( type, scope, name, member )
                 return _value;
             };
             var result = method.apply( scope.self, arguments );
-            scope.self._super = temp._super;
-            scope.self._value = temp._value;
+            if ( temp._super === undefined )
+                delete scope.self._super;
+            else
+                scope.self._super = temp._super;
+            if ( temp._value === undefined )
+                delete scope.self._value;
+            else
+                scope.self._value = temp._value;
             return result;
         };
     }
@@ -929,57 +968,70 @@ function buildProperty( type, scope, name, member )
     var accessors = {};
     if ( member.get )
     {
-        accessors.get = accessor(
+        accessors.get = buildAccessor(
             member.get.method,
-            !member.get.callsuper || scope.parent === null ? null : function( value ) {
+            scope.parent === null ? null : function( value ) {
                 return scope.parent.self[ name ];
             }
         );
     }
-    else
-    {
-        accessors.get = getReadOnlyAccessor( name );
-    }
     if ( member.set )
     {
-        accessors.set = accessor(
+        accessors.set = buildAccessor(
             member.set.method,
-            !member.set.callsuper || scope.parent === null ? null : function( value ) {
+            scope.parent === null ? null : function( value ) {
                 scope.parent.self[ name ] = value;
             }
         );
     }
-    else
-    {
-        accessors.set = getWriteOnlyAccessor( name );
-    }
     addProperty( scope.self, name, accessors );
 }
 
+/**
+ * @private
+ * @description Creates an event member.
+ * @param {Type} type
+ * @param {Scope} scope
+ * @param {string} name
+ */
 function buildEvent( type, scope, name )
 {
+    var _scope = scope;
     var handlers = [];
-    scope.self[ name ] =
+    var callbacks = [];
+    var event =
     {
-        addHandler: function( handler )
+        addHandler: function( handler, scope )
         {
+            var context = scope || _scope.self;
             handlers.push( handler );
+            var callback = function() {
+                handler.apply( context, arguments );
+            };
+            callbacks.push( callback );
+            fake( callback );
         },
-
         removeHandler: function( handler )
         {
             var i = indexOf( handlers, handler );
             if ( i > -1 )
+            {
                 handlers.splice( i, 1 );
+                callbacks.splice( i, 1 );
+            }
         },
-
         raise: function()
         {
-            var i = 0, len = handlers.length;
+            var i = 0, len = callbacks.length;
             for ( ; i < len; i++ )
-                handlers[ i ].apply( scope.self._pub, arguments );
+                callbacks[ i ].apply( undefined, arguments );
         }
     };
+    addProperty( scope.self, name, {
+        get: function() {
+            return event;
+        }
+    });
 }
 
 /**
@@ -1005,23 +1057,34 @@ function exposeMembers( type, scope, pub )
         }
         else if ( member.isEvent )
         {
-            pub[ name ] =
-            {
-                addHandler: scope.self[ name ].addHandler,
+            var event = {
+                addHandler: function( handler ) {
+                    scope.self[ name ].addHandler( handler, pub );
+                },
                 removeHandler: scope.self[ name ].removeHandler
             };
+            addProperty( pub, name, {
+                get: function() {
+                    return event;
+                }
+            });
         }
         else
         {
-            addProperty( pub, name,
+            var accessors = {};
+            if ( member.get && member.get.access === PUBLIC )
             {
-                get: !member.get || member.get.access !== PUBLIC ? getReadOnlyAccessor( name ) : function() {
+                accessors.get = function() {
                     return scope.self[ name ];
-                },
-                set: !member.set || member.set.access !== PUBLIC ? getWriteOnlyAccessor( name ) : function( value ) {
+                };
+            }
+            if ( member.set && member.set.access === PUBLIC )
+            {
+                accessors.set = function( value ) {
                     scope.self[ name ] = value;
-                }
-            });
+                };
+            }
+            addProperty( pub, name, accessors );
         }
     });
 }
@@ -1055,16 +1118,15 @@ function addProperty( obj, name, accessors )
         throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
 }
 
-function getReadOnlyAccessor( name ) {
-    return function() {
-        throw error( "AccessViolationError", "Cannot read from write only property '" + name + "'." );
-    };
-}
-
-function getWriteOnlyAccessor( name ) {
-    return function() {
-        throw error( "AccessViolationError", "Cannot assign to read only property '" + name + "'." );
-    };
+/**
+ * @private
+ * @description Fakes execution in order to provide intellisense support for Visual Studio.
+ */
+function fake( callback, run )
+{
+    /// <param name="run" value="true" />
+    if ( run )
+        return callback();
 }
 
 /**

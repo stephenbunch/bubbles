@@ -134,20 +134,16 @@ describe( "properties", function()
         });
         var a = new A();
         expect( a.foo ).to.equal( 1 );
-        expect( function()
-        {
-            a.foo = 2;
-        }).to.throw( type.error( "AccessViolationError" ) );
+        a.foo = 2;
+        expect( a.foo ).to.equal( 1 );
     });
 
     it( "should throw an error if writing to a read-only property or reading from a write-only property", function()
     {
         var A = type.define({ foo: { get: null } });
         var a = new A();
-        expect( function()
-        {
-            a.foo = 2;
-        }).to.throw( type.error( "AccessViolationError" ) );
+        a.foo = 2;
+        expect( a.foo ).to.be.null;
     });
 
     it( "can be protected with a private setter", function()
@@ -164,10 +160,8 @@ describe( "properties", function()
         var b = new B();
         expect( b.foo ).to.be.undefined;
         expect( b.read() ).to.equal( "hello" );
-        expect( function()
-        {
-            b.write( "test" );
-        }).to.throw( type.error( "AccessViolationError" ) );
+        b.write( "test" );
+        expect( b.read() ).to.equal( "hello" );
     });
 
     it( "should be enumerable (except in IE8)", function()
