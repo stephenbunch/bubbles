@@ -107,7 +107,7 @@ describe( "Kernel", function()
             }).to.throw( e );
         });
 
-        it( "should reject the promise if the service cannot be found", function( done )
+        it( "should reject the promise if the service loads as an empty string", function( done )
         {
             var kernel = type.kernel();
             kernel.autoLoad( function()
@@ -119,39 +119,49 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            kernel.resolve( "foo" )
-                .then( null, function( e )
+            kernel.resolve( "foo" ).then( null, function( e )
+            {
+                expect( e ).to.be.instanceof( TypeError );
+                done();
+            });
+        });
+
+        it( "should reject the promise if the service loads as nothing", function( done )
+        {
+            var kernel = type.kernel();
+            kernel.autoLoad( function()
+            {
+                var token = type.defer();
+                setTimeout( function()
                 {
-                    expect( e ).to.be.instanceof( TypeError );
-                    kernel.autoLoad( function()
-                    {
-                        var token = type.defer();
-                        setTimeout( function()
-                        {
-                            token.resolve();
-                        });
-                        return token.promise;
-                    });
-                    return kernel.resolve( "foo" );
-                })
-                .then( null, function( e )
-                {
-                    expect( e ).to.be.instanceof( TypeError );
-                    kernel.autoLoad( function()
-                    {
-                        var token = type.defer();
-                        setTimeout( function()
-                        {
-                            token.resolve([ "bla" ]);
-                        });
-                    });
-                    return kernel.resolve( "foo" );
-                })
-                .then( null, function( e )
-                {
-                    expect( e ).to.be.instanceof( TypeError );
-                    done();
+                    token.resolve();
                 });
+                return token.promise;
+            });
+            kernel.resolve( "foo" ).then( null, function( e )
+            {
+                expect( e ).to.be.instanceof( TypeError );
+                done();
+            });
+        });
+
+        it( "should reject the promise if the service loads as an array, but the last element is not a function", function( done )
+        {
+            var kernel = type.kernel();
+            kernel.autoLoad( function()
+            {
+                var token = type.defer();
+                setTimeout( function()
+                {
+                    token.resolve([ "bla" ]);
+                });
+                return token.promise;
+            });
+            kernel.resolve( "foo" ).then( null, function( e )
+            {
+                expect( e ).to.be.instanceof( TypeError );
+                done();
+            });
         });
     });
 
@@ -256,13 +266,13 @@ describe( "Kernel", function()
         });
     });
 
-    describe( "Provider", function()
+    describe( "Factory", function()
     {
         it( "can be listed as a dependency", function()
         {
             var kernel = type.kernel();
             kernel.bind( "foo" ).to( 2 );
-            var provider = kernel.resolve( type.providerOf( "foo" ) ).value();
+            var provider = kernel.resolve( type.factory( "foo" ) ).value();
             expect( provider() ).to.equal( 2 );
         });
 
@@ -270,7 +280,7 @@ describe( "Kernel", function()
         {
             var kernel = type.kernel();
             kernel.bind( "foo" ).to( function( a ) { return a + 2; } );
-            var provider = kernel.resolve( type.providerOf( "foo" ) ).value();
+            var provider = kernel.resolve( type.factory( "foo" ) ).value();
             expect( provider( 5 ) ).to.equal( 7 );
         });
 
@@ -284,7 +294,7 @@ describe( "Kernel", function()
                 return ++foo;
             });
             kernel.bind( "bar" ).to( bar );
-            var provider = kernel.resolve( type.providerOf( "bar" ) ).value();
+            var provider = kernel.resolve( type.factory( "bar" ) ).value();
             provider();
             provider();
             expect( foo ).to.equal( 2 );
@@ -299,7 +309,7 @@ describe( "Kernel", function()
                 calledA++;
                 return 2;
             });
-            var provider = kernel.resolve( type.providerOf( "foo" ) ).value();
+            var provider = kernel.resolve( type.factory( "foo" ) ).value();
             provider();
             kernel.unbind( "foo" );
             provider();
@@ -326,7 +336,7 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            kernel.resolve( type.providerOf( "foo" ) ).done( function( fooProvider )
+            kernel.resolve( type.factory( "foo" ) ).done( function( fooProvider )
             {
                 expect( fooProvider() ).to.equal( 2 );
                 done();
@@ -334,13 +344,13 @@ describe( "Kernel", function()
         });
     });
 
-    describe( "LazyProvider", function()
+    describe( "Lazy", function()
     {
         it( "should behave as a Provider, but should return a Promise of an instance", function()
         {
             var kernel = type.kernel();
             kernel.bind( "foo" ).to( 2 );
-            var provider = kernel.resolve( type.lazyProviderOf( "foo" ) ).value();
+            var provider = kernel.resolve( type.lazy( "foo" ) ).value();
             expect( provider().value() ).to.equal( 2 );
         });
 
@@ -356,7 +366,7 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            var provider = kernel.resolve( type.lazyProviderOf( "foo" ) ).value();
+            var provider = kernel.resolve( type.lazy( "foo" ) ).value();
             provider()
                 .then( function( result )
                 {

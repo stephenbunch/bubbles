@@ -20,8 +20,8 @@ var _exports = {
 
     defer: Deferred,
     kernel: Kernel,
-    providerOf: providerOf,
-    lazyProviderOf: lazyProviderOf
+    factory: Factory,
+    lazy: Lazy
 };
 
 if ( typeof module !== "undefined" && module.exports )

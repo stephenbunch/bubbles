@@ -1,12 +1,15 @@
-var PROVIDER = "Provider`";
-var LAZY_PROVIDER = "LazyProvider`";
-
-function providerOf( service ) {
-    return PROVIDER + service;
+function Factory( service )
+{
+    if ( !( this instanceof Factory ) )
+        return new Factory( service );
+    this.value = service;
 }
 
-function lazyProviderOf( service ) {
-    return LAZY_PROVIDER + service;
+function Lazy( service )
+{
+    if ( !( this instanceof Lazy ) )
+        return new Lazy( service );
+    this.value = service;
 }
 
 var Kernel = define( function() {
@@ -279,8 +282,15 @@ this.members({
                     return deferred.promise;
                 };
             }
-            this.require = function( modules ) {
-                return Deferred.when( map( modules, loader ) );
+            this.require = function( modules )
+            {
+                return Deferred.when( map( modules, function( module )
+                {
+                    var promise = loader( module );
+                    if ( !promise || !isFunc( promise.then ) )
+                        throw error( "TypeError", "Service loader must return a promise." );
+                    return promise;
+                }));
             };
         }
     },
@@ -331,7 +341,7 @@ this.members({
     {
         var self = this,
             prefix = path === "" ?  "" : path + ".";
-        forEach( graph, function( type, name )
+        forIn( graph, function( type, name )
         {
             if ( isPlainObject( type ) )
                 self.registerGraph( prefix + name, type );
@@ -452,10 +462,10 @@ this.members({
         {
             modules = map( plan.missing, function( service )
             {
-                if ( service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
-                    service = service.substr( PROVIDER.length );
-                else if ( service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service ) )
-                    service = service.substr( LAZY_PROVIDER.length );
+                if ( service instanceof Factory )
+                    service = service.value;
+                else if ( service instanceof Lazy )
+                    service = service.value;
                 return service.replace( /\./g, "/" );
             });
             self.require( modules ).then( done, fail, false );
@@ -466,6 +476,9 @@ this.members({
             var bindings = {};
             forEach( plan.missing, function( service, index )
             {
+                // Unbox the service value from Lazy and Factory objects.
+                service = service.value || service;
+
                 // Validate the returned service. If there's no way we can turn it into a binding,
                 // we'll get ourselves into a never-ending loop trying to resolve it.
                 var svc = result[ index ];
@@ -538,13 +551,15 @@ this.members({
     __getExecutionPlan: function( target )
     {
         /**
-         * @param {string} service
+         * @param {string|Lazy|Factory} service
          * @param {function( Recipe )} callback
          */
         function watchFor( service, callback )
         {
-            var isLazy = service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service );
-            var isProvider = isLazy || service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service );
+            var isLazy = service instanceof Lazy;
+            var isProvider = isLazy || service instanceof Factory;
+            if ( isLazy || isProvider )
+                service = service.value;
             var handler = function( bindings )
             {
                 var svc = bindings[ service ];
@@ -716,9 +731,11 @@ this.members({
 
         var self = this;
         var result = this.theorize( target );
+        var binding;
+
         if ( !result && isString( target ) )
         {
-            var binding = find( target );
+            binding = find( target );
             if ( binding )
             {
                 result = {
@@ -727,32 +744,32 @@ this.members({
                     name: target
                 };
             }
-            if ( !result && target !== PROVIDER && new RegExp( "^" + PROVIDER ).test( target ) )
+        }
+        if ( !result && target instanceof Factory )
+        {
+            binding = find( target.value );
+            if ( binding )
             {
-                binding = find( target.substr( PROVIDER.length ) );
-                if ( binding )
-                {
-                    result = {
-                        resolve: binding.resolve,
-                        inject: binding.inject.slice( 0 ),
-                        name: target.substr( PROVIDER.length ),
-                        isProvider: true
-                    };
-                }
-            }
-            if ( !result && target !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( target ) )
-            {
-                binding = find( target.substr( LAZY_PROVIDER.length ) ) || {};
                 result = {
-                    resolve: binding.resolve || null,
-                    inject: binding.inject || null,
-                    name: target.substr( LAZY_PROVIDER.length ),
-                    isProvider: true,
-                    isLazy: true
+                    resolve: binding.resolve,
+                    inject: binding.inject.slice( 0 ),
+                    name: target.value,
+                    isProvider: true
                 };
-                if ( result.inject )
-                    result.inject = result.inject.slice( 0 );
             }
+        }
+        if ( !result && target instanceof Lazy )
+        {
+            binding = find( target.value ) || {};
+            result = {
+                resolve: binding.resolve || null,
+                inject: binding.inject || null,
+                name: target.value,
+                isProvider: true,
+                isLazy: true
+            };
+            if ( result.inject )
+                result.inject = result.inject.slice( 0 );
         }
         return result;
     }

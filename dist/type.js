@@ -275,7 +275,7 @@ function defineParent( type, Base )
  */
 function defineMembers( type, members )
 {
-    forEach( members || [], function( member, name )
+    forIn( members || [], function( member, name )
     {
         var info = parseMember( name );
         name = info.name;
@@ -530,7 +530,7 @@ function defineProperty( Type, info, property )
     // so we need to write to a temp object and copy the accessors over once
     // we're done.
     var temp = {};
-    forEach( property, function( method, type )
+    forIn( property, function( method, type )
     {
         type = type.toLowerCase();
         var twoLetter = type.substr( 0, 2 );
@@ -763,7 +763,7 @@ function buildMembers( type, scope )
         createProxy( type.parent, scope.parent.self, type, scope.self );
 
     // Add type members.
-    forEach( type.members, function( member, name )
+    forIn( type.members, function( member, name )
     {
         if ( member.method )
             buildMethod( type, scope, name, member );
@@ -790,7 +790,7 @@ function buildMembers( type, scope )
 
 function createProxy( srcType, srcObj, dstType, dstObj )
 {
-    forEach( srcType.members, function( member, name )
+    forIn( srcType.members, function( member, name )
     {
         // If the member is private or if it's been overridden by the child, don't make a reference
         // to the parent implementation.
@@ -1046,7 +1046,7 @@ function exposeMembers( type, scope, pub )
     if ( type.parent !== null )
         exposeMembers( type.parent, scope.parent, pub );
 
-    forEach( type.members, function( member, name )
+    forIn( type.members, function( member, name )
     {
         if ( member.access !== PUBLIC )
             return;
@@ -1168,7 +1168,7 @@ function makeArray( obj )
     if ( isArray( obj ) )
         return obj;
     var result = [];
-    forEach( obj, function( item ) {
+    forIn( obj, function( item ) {
         result.push( item );
     });
     return result;
@@ -1177,29 +1177,32 @@ function makeArray( obj )
 /**
  * @private
  * @description
- * Iterates of an array or object, passing in the item and index / key.
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
- * @param {Object|Array} obj
+ * Iterates of an array, passing in the item and index.
+ * @param {Array} arr
  * @param {function()} callback
  */
-function forEach( obj, callback )
+function forEach( arr, callback )
 {
-    var i = 0, value;
-    if ( isArrayLike( obj ) )
+    for ( var i = 0; i < arr.length; i++ )
     {
-        for ( ; i < obj.length; i++ )
-        {
-            if ( callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
+        if ( callback.call( undefined, arr[ i ], i ) === false )
+            break;
     }
-    else
+}
+
+/**
+ * @private
+ * @description
+ * Iterates of an object, passing in the item and key.
+ * @param {Object} obj
+ * @param {function()} callback
+ */
+function forIn( obj, callback )
+{
+    for ( var i in obj )
     {
-        for ( i in obj )
-        {
-            if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
+        if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
+            break;
     }
 }
 
@@ -1684,15 +1687,18 @@ Deferred.when = function( promises )
     return deferred.promise;
 };
 
-var PROVIDER = "Provider`";
-var LAZY_PROVIDER = "LazyProvider`";
-
-function providerOf( service ) {
-    return PROVIDER + service;
+function Factory( service )
+{
+    if ( !( this instanceof Factory ) )
+        return new Factory( service );
+    this.value = service;
 }
 
-function lazyProviderOf( service ) {
-    return LAZY_PROVIDER + service;
+function Lazy( service )
+{
+    if ( !( this instanceof Lazy ) )
+        return new Lazy( service );
+    this.value = service;
 }
 
 var Kernel = define( function() {
@@ -1965,8 +1971,15 @@ this.members({
                     return deferred.promise;
                 };
             }
-            this.require = function( modules ) {
-                return Deferred.when( map( modules, loader ) );
+            this.require = function( modules )
+            {
+                return Deferred.when( map( modules, function( module )
+                {
+                    var promise = loader( module );
+                    if ( !promise || !isFunc( promise.then ) )
+                        throw error( "TypeError", "Service loader must return a promise." );
+                    return promise;
+                }));
             };
         }
     },
@@ -2017,7 +2030,7 @@ this.members({
     {
         var self = this,
             prefix = path === "" ?  "" : path + ".";
-        forEach( graph, function( type, name )
+        forIn( graph, function( type, name )
         {
             if ( isPlainObject( type ) )
                 self.registerGraph( prefix + name, type );
@@ -2138,10 +2151,10 @@ this.members({
         {
             modules = map( plan.missing, function( service )
             {
-                if ( service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service ) )
-                    service = service.substr( PROVIDER.length );
-                else if ( service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service ) )
-                    service = service.substr( LAZY_PROVIDER.length );
+                if ( service instanceof Factory )
+                    service = service.value;
+                else if ( service instanceof Lazy )
+                    service = service.value;
                 return service.replace( /\./g, "/" );
             });
             self.require( modules ).then( done, fail, false );
@@ -2152,6 +2165,9 @@ this.members({
             var bindings = {};
             forEach( plan.missing, function( service, index )
             {
+                // Unbox the service value from Lazy and Factory objects.
+                service = service.value || service;
+
                 // Validate the returned service. If there's no way we can turn it into a binding,
                 // we'll get ourselves into a never-ending loop trying to resolve it.
                 var svc = result[ index ];
@@ -2224,13 +2240,15 @@ this.members({
     __getExecutionPlan: function( target )
     {
         /**
-         * @param {string} service
+         * @param {string|Lazy|Factory} service
          * @param {function( Recipe )} callback
          */
         function watchFor( service, callback )
         {
-            var isLazy = service !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( service );
-            var isProvider = isLazy || service !== PROVIDER && new RegExp( "^" + PROVIDER ).test( service );
+            var isLazy = service instanceof Lazy;
+            var isProvider = isLazy || service instanceof Factory;
+            if ( isLazy || isProvider )
+                service = service.value;
             var handler = function( bindings )
             {
                 var svc = bindings[ service ];
@@ -2402,9 +2420,11 @@ this.members({
 
         var self = this;
         var result = this.theorize( target );
+        var binding;
+
         if ( !result && isString( target ) )
         {
-            var binding = find( target );
+            binding = find( target );
             if ( binding )
             {
                 result = {
@@ -2413,32 +2433,32 @@ this.members({
                     name: target
                 };
             }
-            if ( !result && target !== PROVIDER && new RegExp( "^" + PROVIDER ).test( target ) )
+        }
+        if ( !result && target instanceof Factory )
+        {
+            binding = find( target.value );
+            if ( binding )
             {
-                binding = find( target.substr( PROVIDER.length ) );
-                if ( binding )
-                {
-                    result = {
-                        resolve: binding.resolve,
-                        inject: binding.inject.slice( 0 ),
-                        name: target.substr( PROVIDER.length ),
-                        isProvider: true
-                    };
-                }
-            }
-            if ( !result && target !== LAZY_PROVIDER && new RegExp( "^" + LAZY_PROVIDER ).test( target ) )
-            {
-                binding = find( target.substr( LAZY_PROVIDER.length ) ) || {};
                 result = {
-                    resolve: binding.resolve || null,
-                    inject: binding.inject || null,
-                    name: target.substr( LAZY_PROVIDER.length ),
-                    isProvider: true,
-                    isLazy: true
+                    resolve: binding.resolve,
+                    inject: binding.inject.slice( 0 ),
+                    name: target.value,
+                    isProvider: true
                 };
-                if ( result.inject )
-                    result.inject = result.inject.slice( 0 );
             }
+        }
+        if ( !result && target instanceof Lazy )
+        {
+            binding = find( target.value ) || {};
+            result = {
+                resolve: binding.resolve || null,
+                inject: binding.inject || null,
+                name: target.value,
+                isProvider: true,
+                isLazy: true
+            };
+            if ( result.inject )
+                result.inject = result.inject.slice( 0 );
         }
         return result;
     }
@@ -2468,8 +2488,8 @@ var _exports = {
 
     defer: Deferred,
     kernel: Kernel,
-    providerOf: providerOf,
-    lazyProviderOf: lazyProviderOf
+    factory: Factory,
+    lazy: Lazy
 };
 
 if ( typeof module !== "undefined" && module.exports )

@@ -37,7 +37,7 @@ function makeArray( obj )
     if ( isArray( obj ) )
         return obj;
     var result = [];
-    forEach( obj, function( item ) {
+    forIn( obj, function( item ) {
         result.push( item );
     });
     return result;
@@ -46,29 +46,32 @@ function makeArray( obj )
 /**
  * @private
  * @description
- * Iterates of an array or object, passing in the item and index / key.
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L316
- * @param {Object|Array} obj
+ * Iterates of an array, passing in the item and index.
+ * @param {Array} arr
  * @param {function()} callback
  */
-function forEach( obj, callback )
+function forEach( arr, callback )
 {
-    var i = 0, value;
-    if ( isArrayLike( obj ) )
+    for ( var i = 0; i < arr.length; i++ )
     {
-        for ( ; i < obj.length; i++ )
-        {
-            if ( callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
+        if ( callback.call( undefined, arr[ i ], i ) === false )
+            break;
     }
-    else
+}
+
+/**
+ * @private
+ * @description
+ * Iterates of an object, passing in the item and key.
+ * @param {Object} obj
+ * @param {function()} callback
+ */
+function forIn( obj, callback )
+{
+    for ( var i in obj )
     {
-        for ( i in obj )
-        {
-            if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
-                break;
-        }
+        if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
+            break;
     }
 }
 

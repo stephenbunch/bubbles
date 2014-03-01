@@ -266,7 +266,7 @@ function defineParent( type, Base )
  */
 function defineMembers( type, members )
 {
-    forEach( members || [], function( member, name )
+    forIn( members || [], function( member, name )
     {
         var info = parseMember( name );
         name = info.name;
@@ -521,7 +521,7 @@ function defineProperty( Type, info, property )
     // so we need to write to a temp object and copy the accessors over once
     // we're done.
     var temp = {};
-    forEach( property, function( method, type )
+    forIn( property, function( method, type )
     {
         type = type.toLowerCase();
         var twoLetter = type.substr( 0, 2 );
@@ -754,7 +754,7 @@ function buildMembers( type, scope )
         createProxy( type.parent, scope.parent.self, type, scope.self );
 
     // Add type members.
-    forEach( type.members, function( member, name )
+    forIn( type.members, function( member, name )
     {
         if ( member.method )
             buildMethod( type, scope, name, member );
@@ -781,7 +781,7 @@ function buildMembers( type, scope )
 
 function createProxy( srcType, srcObj, dstType, dstObj )
 {
-    forEach( srcType.members, function( member, name )
+    forIn( srcType.members, function( member, name )
     {
         // If the member is private or if it's been overridden by the child, don't make a reference
         // to the parent implementation.
@@ -1037,7 +1037,7 @@ function exposeMembers( type, scope, pub )
     if ( type.parent !== null )
         exposeMembers( type.parent, scope.parent, pub );
 
-    forEach( type.members, function( member, name )
+    forIn( type.members, function( member, name )
     {
         if ( member.access !== PUBLIC )
             return;
