@@ -14,70 +14,150 @@ function Lazy( service )
 
 var Kernel = define( function() {
 
-var pending = {};
-var cache = {};
-var isBrowser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
-var lastFetch = null;
-
-function fetch( payload, deferred )
+var fetch = (function()
 {
-    if ( isBrowser )
-    {
-        var url = payload.url;
-        if ( ( /^\/\// ).test( url ) )
-            url = window.location.protocol + url;
-        else if ( ( /^\// ).test( url ) )
-            url = window.location.protocol + "//" + window.location.host + url;
-        else
-            url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
+    var pending = {};
+    var cache = {};
+    var isBrowser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
+    var lastFetch = null;
 
-        if ( cache[ url ] )
-            deferred.resolve( cache[ url ] );
-        else if ( pending[ url ] )
-            pending[ url ].bind( deferred );
+    onTypeDefined = function( type )
+    {
+        if ( isBrowser )
+        {
+            var scripts = document.getElementsByTagName( "script" );
+            var url = scripts[ scripts.length - 1 ].src;
+            if ( pending[ url ] )
+            {
+                cache[ url ] = type;
+                var deferred = pending[ url ];
+                delete pending[ url ];
+                setTimeout( function()
+                {
+                    deferred.resolve( type );
+                });
+            }
+        }
+        else if ( lastFetch !== null )
+        {
+            var def = lastFetch;
+            lastFetch = null;
+            def.resolve( type );
+        }
+    };
+
+    return function fetch( payload, deferred )
+    {
+        if ( isBrowser )
+        {
+            var url = payload.url;
+            if ( ( /^\/\// ).test( url ) )
+                url = window.location.protocol + url;
+            else if ( ( /^\// ).test( url ) )
+                url = window.location.protocol + "//" + window.location.host + url;
+            else
+                url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
+
+            if ( cache[ url ] )
+                deferred.resolve( cache[ url ] );
+            else if ( pending[ url ] )
+                pending[ url ].bind( deferred );
+            else
+            {
+                var script = document.createElement( "script" );
+                script.src = url;
+                script.addEventListener( "error", function()
+                {
+                    deferred.reject();
+                }, false );
+                document.body.appendChild( script );
+                pending[ url ] = deferred;
+            }
+        }
         else
         {
-            var script = document.createElement( "script" );
-            script.src = url;
-            script.addEventListener( "error", function()
-            {
-                deferred.reject();
-            }, false );
-            document.body.appendChild( script );
-            pending[ url ] = deferred;
+            lastFetch = deferred;
+            require( "../" + payload.url );
         }
-    }
-    else
-    {
-        lastFetch = deferred;
-        require( "../" + payload.url );
-    }
-}
+    };
+}());
 
-onTypeDefined = function( type )
-{
-    if ( isBrowser )
+var BindingSyntax = define({
+    /**
+     * @param {Kernel} kernel
+     * @param {string} service
+     */
+    ctor: function( kernel, service )
     {
-        var scripts = document.getElementsByTagName( "script" );
-        var url = scripts[ scripts.length - 1 ].src;
-        if ( pending[ url ] )
+        this.kernel = kernel;
+        this.service = service;
+    },
+
+    /**
+     * @description Specifies which provider to bind the service to.
+     * @param {Array|function()} provider
+     * @return {BindingConfiguration}
+     */
+    to: function( provider ) {
+        return new BindingConfiguration( this.kernel.register( this.service, provider ) );
+    },
+
+    toConstant: function( value )
+    {
+        return new BindingConfiguration( this.kernel.register( this.service, function() {
+            return value;
+        }));
+    }
+});
+
+var BindingConfiguration = define({
+    /**
+     * @param {Binding} binding
+     */
+    ctor: function( binding )
+    {
+        this.binding = binding;
+    },
+
+    /**
+     * @description
+     * Causes the binding to return the same instance for all instances resolved through
+     * the kernel.
+     * @return {BindingConfiguration}
+     */
+    asSingleton: function()
+    {
+        var _resolve = this.binding.resolve;
+        var resolved = false;
+        var result;
+        this.binding.resolve = function()
         {
-            cache[ url ] = type;
-            var deferred = pending[ url ];
-            delete pending[ url ];
-            setTimeout( function()
+            if ( !resolved )
             {
-                deferred.resolve( type );
-            });
-        }
-    }
-    else if ( lastFetch !== null )
+                result = _resolve.apply( undefined, arguments );
+                resolved = true;
+            }
+            return result;
+        };
+        return this._pub;
+    },
+
+    /**
+     * @description
+     * Adds a constraint to the binding so that it is only used when the bound
+     * service is injected into one of the specified services.
+     * @param {string[]} services
+     * @return {BindingConfiguration}
+     */
+    whenFor: function( services )
     {
-        var def = lastFetch;
-        lastFetch = null;
-        def.resolve( type );
+        if ( isArray( services ) && services.length )
+            this.binding.filter = services.slice( 0 );
+        else
+            throw error( "ArgumentError", "Expected 'services' to be an array of string." );
+        return this._pub;
     }
-};
+});
 
 this.members({
     ctor: function()
@@ -93,62 +173,9 @@ this.members({
      */
     bind: function( service )
     {
-        var self = this;
         if ( !service || !isString( service ) )
             throw error( "ArgumentError", "Argument 'service' must have a value." );
-        return {
-            /**
-             * @description Specifies which provider to bind the service to.
-             * @param {Array|function()} provider
-             * @return {BindingConfigurator}
-             */
-            to: function( provider )
-            {
-                var binding = self.register( service, provider );
-                var config =
-                {
-                    /**
-                     * @description
-                     * Causes the binding to return the same instance for all instances resolved through
-                     * the kernel.
-                     * @return {BindingConfigurator}
-                     */
-                    asSingleton: function()
-                    {
-                        var _resolve = binding.resolve;
-                        var resolved = false;
-                        var result;
-                        binding.resolve = function()
-                        {
-                            if ( !resolved )
-                            {
-                                result = _resolve.apply( undefined, arguments );
-                                resolved = true;
-                            }
-                            return result;
-                        };
-                        return config;
-                    },
-
-                    /**
-                     * @description
-                     * Adds a constraint to the binding so that it is only used when the bound
-                     * service is injected into one of the specified services.
-                     * @param {string[]} services
-                     * @return {BindingConfigurator}
-                     */
-                    whenFor: function( services )
-                    {
-                        if ( isArray( services ) && services.length )
-                            binding.filter = services.slice( 0 );
-                        else
-                            throw error( "ArgumentError", "Expected 'services' to be an array of string." );
-                        return config;
-                    }
-                };
-                return config;
-            }
-        };
+        return new BindingSyntax( this, service );
     },
 
     /**
@@ -312,6 +339,8 @@ this.members({
                 resolve: provider.pop(),
                 inject: provider
             };
+            if ( !isFunc( binding.resolve ) )
+                throw error( "ArgumentError", "Expected last array element to be a function." );
         }
         else
         {
@@ -319,13 +348,8 @@ this.members({
                 resolve: provider,
                 inject: ( provider.$inject || [] ).slice( 0 )
             };
-        }
-        if ( !isFunc( binding.resolve ) )
-        {
-            var value = binding.resolve;
-            binding.resolve = function() {
-                return value;
-            };
+            if ( !isFunc( binding.resolve ) )
+                throw error( "ArgumentError", "Expected provider to be a function." );
         }
         this.container[ service ] = this.container[ service ] || [];
         this.container[ service ].push( binding );

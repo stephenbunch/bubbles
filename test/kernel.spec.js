@@ -29,7 +29,7 @@ describe( "Kernel", function()
             {
                 return type.defer().reject( e );
             });
-            kernel.bind( "foo" ).to( 2 );
+            kernel.bind( "foo" ).toConstant( 2 );
             expect( kernel.resolve( "foo" ).value() ).to.equal( 2 );
             kernel.unbind( "foo" );
             expect( function()
@@ -46,7 +46,7 @@ describe( "Kernel", function()
             {
                 return type.defer().reject( e );
             });
-            kernel.bind( "foo" ).to( 2 ).whenFor([ "bar", "baz" ]);
+            kernel.bind( "foo" ).toConstant( 2 ).whenFor([ "bar", "baz" ]);
             kernel.bind( "bar" ).to([ "foo", function( foo ) {} ]);
             kernel.bind( "baz" ).to([ "foo", function( foo ) {} ]);
             kernel.resolve( "bar" ).value();
@@ -64,7 +64,7 @@ describe( "Kernel", function()
         it( "should support the array syntax for listing dependencies", function()
         {
             var kernel = type.kernel();
-            kernel.bind( "foo" ).to( 2 );
+            kernel.bind( "foo" ).toConstant( 2 );
             var out = 0;
             kernel.resolve( [ "foo", function( x )
             {
@@ -196,7 +196,7 @@ describe( "Kernel", function()
         });
     });
 
-    describe( "BindingSelector", function()
+    describe( "BindingSyntax", function()
     {
         describe( ".to()", function()
         {
@@ -208,17 +208,21 @@ describe( "Kernel", function()
                 });
                 expect( kernel.resolve( "foo" ).value() ).to.equal( 2 );
             });
+        });
 
-            it( "should bind non functions as constants", function()
+        describe( ".toConstant()", function()
+        {
+            it( "should bind values as constants", function()
             {
                 var kernel = type.kernel();
-                kernel.bind( "foo" ).to( 2 );
-                expect( kernel.resolve( "foo" ).value() ).to.equal( 2 );
+                var obj = {};
+                kernel.bind( "foo" ).toConstant( obj );
+                expect( kernel.resolve( "foo" ).value() ).to.equal( obj );
             });
         });
     });
 
-    describe( "BindingConfigurator", function()
+    describe( "BindingConfiguration", function()
     {
         describe( ".asSingleton()", function()
         {
@@ -237,10 +241,10 @@ describe( "Kernel", function()
             {
                 var kernel = type.kernel();
                 var out = null;
-                kernel.bind( "foo" ).to( 1 );
-                kernel.bind( "foo" ).to( 2 ).whenFor([ "bar" ]);
-                kernel.bind( "foo" ).to( 3 ).whenFor([ "bar" ]);
-                kernel.bind( "foo" ).to( 4 ).whenFor([ "baz" ]);
+                kernel.bind( "foo" ).toConstant( 1 );
+                kernel.bind( "foo" ).toConstant( 2 ).whenFor([ "bar" ]);
+                kernel.bind( "foo" ).toConstant( 3 ).whenFor([ "bar" ]);
+                kernel.bind( "foo" ).toConstant( 4 ).whenFor([ "baz" ]);
                 kernel.bind( "bar" ).to([ "foo", function( foo )
                 {
                     out = foo;
@@ -271,7 +275,7 @@ describe( "Kernel", function()
         it( "can be listed as a dependency", function()
         {
             var kernel = type.kernel();
-            kernel.bind( "foo" ).to( 2 );
+            kernel.bind( "foo" ).toConstant( 2 );
             var provider = kernel.resolve( type.factory( "foo" ) ).value();
             expect( provider() ).to.equal( 2 );
         });
@@ -349,7 +353,7 @@ describe( "Kernel", function()
         it( "should behave as a Provider, but should return a Promise of an instance", function()
         {
             var kernel = type.kernel();
-            kernel.bind( "foo" ).to( 2 );
+            kernel.bind( "foo" ).toConstant( 2 );
             var provider = kernel.resolve( type.lazy( "foo" ) ).value();
             expect( provider().value() ).to.equal( 2 );
         });
@@ -385,7 +389,7 @@ describe( "Kernel", function()
                 .then( function( result )
                 {
                     expect( result ).to.equal( 2 );
-                    kernel.bind( "foo" ).to( 4 );
+                    kernel.bind( "foo" ).toConstant( 4 );
                     return provider();
                 })
                 .then( function( result )
