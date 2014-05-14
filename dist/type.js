@@ -4,7 +4,7 @@
  * License: MIT
  */
 //@ sourceMappingURL=type.map
-( function( global ) {
+( function() {
 "use strict";
 
 // A factory for creating custom errors.
@@ -30,6 +30,723 @@ var error = ( function()
         return cache[ name ];
     };
 } () );
+
+/**
+ * @private
+ * @description
+ * Determines whether an object can be iterated over like an array.
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
+ * @param {*} obj
+ * @return {boolean}
+ */
+function isArrayLike( obj )
+{
+    var length = obj.length,
+        type = typeOf( obj );
+
+    if ( typeOf( obj ) === "window" )
+        return false;
+
+    if ( obj.nodeType === 1 && length )
+        return true;
+
+    return (
+        type === "array" ||
+        type !== "function" && (
+            length === 0 ||
+            typeof length === "number" && length > 0 && ( length - 1 ) in obj
+        )
+    );
+}
+
+/**
+ * @private
+ * @description Turns an object into a true array.
+ * @param {Object|Array} obj
+ * @return {Array}
+ */
+function makeArray( obj )
+{
+    if ( isArray( obj ) )
+        return obj;
+    var result = [];
+    forIn( obj, function( item ) {
+        result.push( item );
+    });
+    return result;
+}
+
+/**
+ * @private
+ * @description
+ * Iterates of an array, passing in the item and index.
+ * @param {Array} arr
+ * @param {function()} callback
+ */
+function forEach( arr, callback )
+{
+    for ( var i = 0; i < arr.length; i++ )
+    {
+        if ( callback.call( undefined, arr[ i ], i ) === false )
+            break;
+    }
+}
+
+/**
+ * @private
+ * @description
+ * Iterates of an object, passing in the item and key.
+ * @param {Object} obj
+ * @param {function()} callback
+ */
+function forIn( obj, callback )
+{
+    for ( var i in obj )
+    {
+        if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
+            break;
+    }
+}
+
+/**
+ * @private
+ * @description
+ * Gets the internal JavaScript [[Class]] of an object.
+ * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
+ * @param {*} object
+ * @return {string}
+ */
+function typeOf( object )
+{
+    // In IE8, Object.toString on null and undefined returns "object".
+    if ( object === null )
+        return "null";
+    if ( object === undefined )
+        return "undefined";
+    return Object.prototype.toString.call( object )
+        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
+}
+
+/**
+ * @private
+ * @description Determines whether an object is a function.
+ * @param {*} object
+ * @return {boolean}
+ */
+function isFunc( object ) {
+    return typeOf( object ) === "function";
+}
+
+/**
+ * @private
+ * @description Determines whether an object is an array.
+ * @param {*} object
+ * @return {boolean}
+ */
+function isArray( object ) {
+    return typeOf( object ) === "array";
+}
+
+function isString( object ) {
+    return typeOf( object ) === "string";
+}
+
+/**
+ * @private
+ * @description
+ * Removes trailing whitespace from a string.
+ * http://stackoverflow.com/a/2308157/740996
+ * @param {string} value
+ * @return {string}
+ */
+function trim( value ) {
+    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
+}
+
+/**
+ * @private
+ * @description Gets the keys of an object.
+ * @param {Object} object
+ * @return {Array}
+ */
+function keys( object )
+{
+    if ( Object.keys )
+        return Object.keys( object );
+    var ret = [];
+    for ( var key in object )
+    {
+        if ( hasOwn( object, key ) )
+            ret.push( key );
+    }
+    return ret;
+}
+
+/**
+ * @private
+ * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
+ * @param {Object} obj
+ * @param {string} prop
+ * @return {boolean}
+ */
+function hasOwn( obj, prop ) {
+    return Object.prototype.hasOwnProperty.call( obj, prop );
+}
+
+/**
+ * @private
+ * @description
+ * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
+ * @param {Array} array
+ * @param {*} item
+ * @return {number}
+ */
+function indexOf( array, item )
+{
+    if ( array.indexOf )
+        return array.indexOf( item );
+    else
+    {
+        var index = -1;
+        forEach( array, function( obj, i )
+        {
+            if ( obj === item )
+            {
+                index = i;
+                return false;
+            }
+        });
+        return index;
+    }
+}
+
+/**
+ * @private
+ * @description Determines whether an object was created using "{}" or "new Object".
+ * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
+ * @param {Object} obj
+ * @return {boolean}
+ */
+function isPlainObject( obj )
+{
+    // Not plain objects:
+    // - Any object or value whose internal [[Class]] property is not "[object Object]"
+    // - DOM nodes
+    // - window
+    if ( typeOf( obj ) !== "object" || obj.nodeType || typeOf( obj ) === "window" )
+        return false;
+
+    // Support: Firefox <20
+    // The try/catch suppresses exceptions thrown when attempting to access
+    // the "constructor" property of certain host objects, ie. |window.location|
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
+    try
+    {
+        if (
+            obj.constructor &&
+            !hasOwn( obj.constructor.prototype, "isPrototypeOf" )
+        )
+            return false;
+    }
+    catch ( e ) {
+        return false;
+    }
+
+    // If the function hasn't returned already, we're confident that
+    // |obj| is a plain object, created by {} or constructed with new Object
+    return true;
+}
+
+/**
+ * @description
+ * Executes a callback for each item in the set, producing a new array containing the return values.
+ * @param {Array|Object} items
+ * @param {function()} callback
+ * @param {*} context
+ * @return {Array}
+ */
+function map( items, callback, context )
+{
+    items = makeArray( items );
+    if ( Array.prototype.map )
+        return items.map( callback, context );
+    else
+    {
+        var result = [];
+        forEach( items, function( item, index ) {
+            result.push( callback.call( context, item, index ) );
+        });
+    }
+}
+
+/**
+ * @description Safely combines multiple path segments.
+ * @param {...string} paths
+ * @return {string}
+ */
+function path()
+{
+    return map( arguments, function( path, index ) {
+        return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
+    }).join( "/" );
+}
+
+function addFlag( mask, flag ) {
+    return mask |= flag;
+}
+
+function removeFlag( mask, flag ) {
+    return mask &= ~flag;
+}
+
+function hasFlag( mask, flag ) {
+    return ( mask & flag ) === flag;
+}
+
+function proxy( method, scope )
+{
+    return function() {
+        return method.apply( scope, arguments );
+    };
+}
+
+var setImmediate = ( function()
+{
+    if ( global.setImmediate )
+        return global.setImmediate;
+    else
+    {
+        // Taken from David Baron's Blog:
+        // http://dbaron.org/log/20100309-faster-timeouts
+
+        var timeouts = [];
+        var messageName = "zero-timeout-message";
+
+        // Like setTimeout, but only takes a function argument.  There's
+        // no time argument (always zero) and no arguments (you have to
+        // use a closure).
+        var setImmediate = function( fn )
+        {
+            timeouts.push( fn );
+            window.postMessage( messageName, "*" );
+        };
+
+        var handleMessage = function( e )
+        {
+            if ( e.source === window && e.data === messageName )
+            {
+                e.stopPropagation();
+                if ( timeouts.length > 0 )
+                    timeouts.shift()();
+            }
+        };
+
+        window.addEventListener( "message", handleMessage, true );
+        return setImmediate;
+    }
+} () );
+
+function Class( methods )
+{
+    if ( isFunc( methods ) )
+        methods = methods();
+    var mode = "default";
+    var Class = function()
+    {
+        if ( mode === "new" )
+        {
+            mode = "void";
+            return new Class();
+        }
+        if ( mode === "void" )
+            return;
+        mode = "new";
+        var instance = Class();
+        mode = "default";
+        instance.ctor.apply( instance, arguments );
+        return instance;
+    };
+    if ( !methods.ctor )
+        methods.ctor = function() { };
+    Class.prototype = methods;
+    return Class;
+}
+
+var Struct = ( function()
+{
+    return function ( members )
+    {
+        var mode = "default";
+        var Struct = function( values )
+        {
+            if ( mode === "new" )
+            {
+                mode = "void";
+                return new Struct();
+            }
+            if ( mode === "void" )
+                return;
+            mode = "new";
+            var instance = Struct();
+            mode = "default";
+            extend( instance, members, values );
+            return instance;
+        };
+        return Struct;
+    };
+
+    function extend( instance, members, values )
+    {
+        var pending = [{
+            src: values,
+            tmpl: members,
+            dest: instance
+        }];
+        while ( pending.length )
+        {
+            var task = pending.shift();
+            if ( task.array )
+            {
+                for ( var i = 0; i < task.array.length; i++ )
+                {
+                    switch ( typeOf( task.array[ i ] ) )
+                    {
+                        case "object":
+                            var template = task.array[ i ];
+                            task.array[ i ] = {};
+                            pending.push({
+                                tmpl: template,
+                                dest: task.array[ i ]
+                            });
+                            break;
+
+                        case "array":
+                            task.array[ i ] = task.array[ i ].slice( 0 );
+                            pending.push({
+                                array: task.array[ i ]
+                            });
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                for ( var prop in task.tmpl )
+                {
+                    if ( task.src[ prop ] !== undefined )
+                        task.dest[ prop ] = task.src[ prop ];
+                    else
+                    {
+                        switch ( typeOf( task.tmpl[ prop ] ) )
+                        {
+                            case "object":
+                                task.dest[ prop ] = {};
+                                pending.push({
+                                    tmpl: task.tmpl[ prop ],
+                                    dest: task.dest[ prop ]
+                                });
+                                break;
+
+                            case "array":
+                                task.dest[ prop ] = task.tmpl[ prop ].slice( 0 );
+                                pending.push({
+                                    array: task.dest[ prop ]
+                                });
+                                break;
+
+                            default:
+                                task.dest[ prop ] = task.tmpl[ prop ]
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+} () );
+
+var Store = new Class({
+    ctor: function()
+    {
+        this._pending = {};
+        this._cache = {};
+        this._browser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
+        this._last = null;
+
+        onTypeDefined = proxy( this._onTypeDefined, this );
+    },
+
+    fetch: function( options )
+    {
+        var task = new Task();
+        if ( this._browser )
+        {
+            var url = options.url;
+            if ( ( /^\/\// ).test( url ) )
+                url = window.location.protocol + url;
+            else if ( ( /^\// ).test( url ) )
+                url = window.location.protocol + "//" + window.location.host + url;
+            else
+                url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
+
+            if ( this._cache[ url ] )
+                task.resolve( this._cache[ url ] );
+            else if ( this._pending[ url ] )
+                this._pending[ url ].bind( task );
+            else
+            {
+                var script = document.createElement( "script" );
+                script.src = url;
+                script.addEventListener( "error", function()
+                {
+                    task.reject();
+                }, false );
+                document.body.appendChild( script );
+                this._pending[ url ] = task;
+            }
+        }
+        else
+        {
+            this._last = task;
+            require( "../" + options.url );
+        }
+        return task.promise;
+    },
+
+    _onTypeDefined: function( type )
+    {
+        if ( this._browser )
+        {
+            var scripts = document.getElementsByTagName( "script" );
+            var url = scripts[ scripts.length - 1 ].src;
+            if ( this._pending[ url ] )
+            {
+                this._cache[ url ] = type;
+                var task = this._pending[ url ];
+                delete this._pending[ url ];
+                setTimeout( function() {
+                    task.resolve( type );
+                });
+            }
+        }
+        else if ( this._last !== null )
+        {
+            var task = this._last;
+            this._last = null;
+            task.resolve( type );
+        }
+    }
+});
+
+var Task = new Class( function()
+{
+    // 2.1
+    var PENDING = "pending";
+    var FULFILLED = "fulfilled";
+    var REJECTED = "rejected";
+
+    /**
+     * @description Satisfies 2.3 of the Promise/A+ spec.
+     * @param {Task} promise
+     * @param {*} x
+     * @return {boolean}
+     */
+    function resolve( promise, x )
+    {
+        // 2.3.1
+        if ( x === promise )
+        {
+            promise.reject( new TypeError( "2.3.1 A promise returned from onFulfilled cannot refer to itself." ) );
+            return true;
+        }
+        // 2.3.3
+        if ( x )
+        {
+            var then, called = false;
+            try
+            {
+                // 2.3.3.1
+                if ( hasOwn( x, "then" ) )
+                    then = x.then;
+            }
+            catch ( e )
+            {
+                // 2.3.3.2
+                promise.reject( e );
+                return true;
+            }
+            // 2.3.3.3
+            if ( isFunc( then ) )
+            {
+                try
+                {
+                    then.call( x,
+                        // 2.3.3.3.1
+                        function( y )
+                        {
+                            // 2.3.3.3.3
+                            if ( !called )
+                            {
+                                called = true;
+                                if ( !resolve( promise, y ) )
+                                {
+                                    // 2.3.4
+                                    promise.resolve( y );
+                                }
+                            }
+                        },
+                        // 2.3.3.3.2
+                        function( r )
+                        {
+                            // 2.3.3.3.3
+                            if ( !called )
+                            {
+                                called = true;
+                                promise.reject( r );
+                            }
+                        }
+                    );
+                }
+                catch ( e )
+                {
+                    // 2.3.3.3.4
+                    if ( !called )
+                        promise.reject( e );
+                }
+                return true;
+            }
+        }
+    }
+
+    function bind( promise, onFulfilled, onRejected )
+    {
+        var handler = function( state, value )
+        {
+            var callback = state === FULFILLED ? onFulfilled : onRejected, x;
+            // 2.2.7.3
+            // 2.2.7.4
+            if ( !isFunc( callback ) )
+            {
+                if ( state === FULFILLED )
+                    promise.resolve( value );
+                else
+                    promise.reject( value );
+                return;
+            }
+            try
+            {
+                // 2.2.5
+                x = callback.call( undefined, value );
+            }
+            catch ( e )
+            {
+                // 2.2.7.2
+                promise.reject( e );
+                return;
+            }
+            // 2.2.7.1
+            if ( !resolve( promise, x ) )
+            {
+                // 2.3.4
+                promise.resolve( x );
+            }
+        };
+        return function()
+        {
+            var args = arguments;
+            setImmediate( function() {
+                handler.apply( undefined, args );
+            });
+        };
+    }
+
+    return {
+        ctor: function( action )
+        {
+            var self = this;
+            var state = PENDING;
+            var queue = [];
+            var value = null;
+
+            function done( status, response )
+            {
+                if ( state !== PENDING )
+                    return;
+
+                state = status;
+                value = response;
+
+                for ( var i = 0; i < queue.length; i++ )
+                    queue[ i ]( state, value );
+                queue = [];
+            }
+
+            this.then = function( onFulfilled, onRejected )
+            {
+                var task = new Task();
+                var pipe = bind( task, onFulfilled, onRejected );
+                if ( state === PENDING )
+                    queue.push( pipe );
+                else
+                    pipe( state, value );
+                return task;
+            };
+
+            this.resolve = function( result )
+            {
+                done( FULFILLED, result );
+                return this;
+            };
+
+            this.reject = function( reason )
+            {
+                done( REJECTED, reason );
+                return this;
+            };
+
+            this.promise = {
+                then: this.then
+            };
+
+            if ( action )
+            {
+                setImmediate( function() {
+                    action.call( undefined, self.resolve, self.reject );
+                });
+            }
+        },
+
+        splat: function( onFulfilled, onRejected )
+        {
+            return this.then( function( result ) {
+                return onFulfilled.apply( undefined, result );
+            }, onRejected );
+        }
+    };
+});
+
+Task.when = function( promises )
+{
+    promises = isArray( promises ) ? promises : makeArray( arguments );
+    var task = new Task();
+    var progress = 0;
+    var results = [];
+    forEach( promises, function( promise, index )
+    {
+        promise
+            .then( function( value )
+            {
+                results[ index ] = value;
+                if ( ++progress === promises.length )
+                    task.resolve( results );
+            }, function( reason ) {
+                task.reject( reason );
+            });
+    });
+    if ( !promises.length )
+        task.resolve( [] );
+    return task.promise;
+};
 
 // IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
@@ -148,7 +865,7 @@ function define()
             };
             if ( IE8 )
             {
-                scope.self = getEmptyDOMObject();
+                scope.self = createElement();
                 applyPrototypeMembers( Scope, scope.self );
             }
             else
@@ -161,7 +878,7 @@ function define()
             run = false;
             if ( IE8 )
             {
-                pub = getEmptyDOMObject();
+                pub = createElement();
                 applyPrototypeMembers( Type, pub );
             }
             else
@@ -641,7 +1358,7 @@ function applyPrototypeMembers( type, obj )
     }
 }
 
-function getEmptyDOMObject()
+function createElement()
 {
     var obj = document.createElement(), prop;
     for ( prop in obj )
@@ -1129,563 +1846,538 @@ function fake( callback, run )
         return callback();
 }
 
-/**
- * @private
- * @description
- * Determines whether an object can be iterated over like an array.
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
- * @param {*} obj
- * @return {boolean}
- */
-function isArrayLike( obj )
-{
-    var length = obj.length,
-        type = typeOf( obj );
+var Binding = new Struct({
+    create: function() {},
+    inject: [],
+    filter: []
+});
 
-    if ( typeOf( obj ) === "window" )
-        return false;
-
-    if ( obj.nodeType === 1 && length )
-        return true;
-
-    return (
-        type === "array" ||
-        type !== "function" && (
-            length === 0 ||
-            typeof length === "number" && length > 0 && ( length - 1 ) in obj
-        )
-    );
-}
-
-/**
- * @private
- * @description Turns an object into a true array.
- * @param {Object|Array} obj
- * @return {Array}
- */
-function makeArray( obj )
-{
-    if ( isArray( obj ) )
-        return obj;
-    var result = [];
-    forIn( obj, function( item ) {
-        result.push( item );
-    });
-    return result;
-}
-
-/**
- * @private
- * @description
- * Iterates of an array, passing in the item and index.
- * @param {Array} arr
- * @param {function()} callback
- */
-function forEach( arr, callback )
-{
-    for ( var i = 0; i < arr.length; i++ )
+var BindingConfiguration = define({
+    /**
+     * @constructor
+     * @param {Binding} binding
+     */
+    ctor: function( binding )
     {
-        if ( callback.call( undefined, arr[ i ], i ) === false )
-            break;
-    }
-}
-
-/**
- * @private
- * @description
- * Iterates of an object, passing in the item and key.
- * @param {Object} obj
- * @param {function()} callback
- */
-function forIn( obj, callback )
-{
-    for ( var i in obj )
-    {
-        if ( hasOwn( obj, i ) && callback.call( undefined, obj[ i ], i ) === false )
-            break;
-    }
-}
-
-/**
- * @private
- * @description
- * Gets the internal JavaScript [[Class]] of an object.
- * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
- * @param {*} object
- * @return {string}
- */
-function typeOf( object )
-{
-    // In IE8, Object.toString on null and undefined returns "object".
-    if ( object === null )
-        return "null";
-    if ( object === undefined )
-        return "undefined";
-    return Object.prototype.toString.call( object )
-        .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
-}
-
-/**
- * @private
- * @description Determines whether an object is a function.
- * @param {*} object
- * @return {boolean}
- */
-function isFunc( object ) {
-    return typeOf( object ) === "function";
-}
-
-/**
- * @private
- * @description Determines whether an object is an array.
- * @param {*} object
- * @return {boolean}
- */
-function isArray( object ) {
-    return typeOf( object ) === "array";
-}
-
-function isString( object ) {
-    return typeOf( object ) === "string";
-}
-
-/**
- * @private
- * @description
- * Removes trailing whitespace from a string.
- * http://stackoverflow.com/a/2308157/740996
- * @param {string} value
- * @return {string}
- */
-function trim( value ) {
-    return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
-}
-
-/**
- * @private
- * @description Gets the keys of an object.
- * @param {Object} object
- * @return {Array}
- */
-function keys( object )
-{
-    if ( Object.keys )
-        return Object.keys( object );
-    var ret = [];
-    for ( var key in object )
-    {
-        if ( hasOwn( object, key ) )
-            ret.push( key );
-    }
-    return ret;
-}
-
-/**
- * @private
- * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
- * @param {Object} obj
- * @param {string} prop
- * @return {boolean}
- */
-function hasOwn( obj, prop ) {
-    return Object.prototype.hasOwnProperty.call( obj, prop );
-}
-
-/**
- * @private
- * @description
- * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
- * @param {Array} array
- * @param {*} item
- * @return {number}
- */
-function indexOf( array, item )
-{
-    if ( array.indexOf )
-        return array.indexOf( item );
-    else
-    {
-        var index = -1;
-        forEach( array, function( obj, i )
-        {
-            if ( obj === item )
-            {
-                index = i;
-                return false;
-            }
-        });
-        return index;
-    }
-}
-
-/**
- * @private
- * @description Determines whether an object was created using "{}" or "new Object".
- * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
- * @param {Object} obj
- * @return {boolean}
- */
-function isPlainObject( obj )
-{
-    // Not plain objects:
-    // - Any object or value whose internal [[Class]] property is not "[object Object]"
-    // - DOM nodes
-    // - window
-    if ( typeOf( obj ) !== "object" || obj.nodeType || typeOf( obj ) === "window" )
-        return false;
-
-    // Support: Firefox <20
-    // The try/catch suppresses exceptions thrown when attempting to access
-    // the "constructor" property of certain host objects, ie. |window.location|
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
-    try
-    {
-        if (
-            obj.constructor &&
-            !hasOwn( obj.constructor.prototype, "isPrototypeOf" )
-        )
-            return false;
-    }
-    catch ( e ) {
-        return false;
-    }
-
-    // If the function hasn't returned already, we're confident that
-    // |obj| is a plain object, created by {} or constructed with new Object
-    return true;
-}
-
-/**
- * @description
- * Executes a callback for each item in the set, producing a new array containing the return values.
- * @param {Array|Object} items
- * @param {function()} callback
- * @param {*} context
- * @return {Array}
- */
-function map( items, callback, context )
-{
-    items = makeArray( items );
-    if ( Array.prototype.map )
-        return items.map( callback, context );
-    else
-    {
-        var result = [];
-        forEach( items, function( item, index ) {
-            result.push( callback.call( context, item, index ) );
-        });
-    }
-}
-
-/**
- * @description Safely combines multiple path segments.
- * @param {...string} paths
- * @return {string}
- */
-function path()
-{
-    return map( arguments, function( path, index ) {
-        return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
-    }).join( "/" );
-}
-
-function addFlag( mask, flag ) {
-    return mask |= flag;
-}
-
-function removeFlag( mask, flag ) {
-    return mask &= ~flag;
-}
-
-function hasFlag( mask, flag ) {
-    return ( mask & flag ) === flag;
-}
-
-// 2.1
-var PENDING = "pending";
-var FULFILLED = "fulfilled";
-var REJECTED = "rejected";
-
-var Promise = define( function() {
-
-/**
- * @description Satisfies 2.3 of the Promise/A+ spec.
- * @param {Promise} promise
- * @param {*} x
- * @return {boolean}
- */
-function resolve( promise, x )
-{
-    // 2.3.1
-    if ( x === promise._pub )
-    {
-        promise.set( REJECTED, new TypeError( "2.3.1 A promise returned from onFulfilled cannot refer to itself." ) );
-        return true;
-    }
-    // 2.3.3
-    if ( x )
-    {
-        var then, called = false;
-        try
-        {
-            // 2.3.3.1
-            if ( hasOwn( x, "then" ) )
-                then = x.then;
-        }
-        catch ( e )
-        {
-            // 2.3.3.2
-            promise.set( REJECTED, e );
-            return true;
-        }
-        // 2.3.3.3
-        if ( isFunc( then ) )
-        {
-            try
-            {
-                then.call( x,
-                    // 2.3.3.3.1
-                    function( y )
-                    {
-                        // 2.3.3.3.3
-                        if ( !called )
-                        {
-                            called = true;
-                            if ( !resolve( promise, y ) )
-                            {
-                                // 2.3.4
-                                promise.set( FULFILLED, y );
-                            }
-                        }
-                    },
-                    // 2.3.3.3.2
-                    function( r )
-                    {
-                        // 2.3.3.3.3
-                        if ( !called )
-                        {
-                            called = true;
-                            promise.set( REJECTED, r );
-                        }
-                    }
-                );
-            }
-            catch ( e )
-            {
-                // 2.3.3.3.4
-                if ( !called )
-                    promise.set( REJECTED, e );
-            }
-            return true;
-        }
-    }
-}
-
-this.members({
-    ctor: function()
-    {
-        this.queue = [];
-        this.state = PENDING;
-        this.result = null;
-    },
-
-    value: function()
-    {
-        if ( this.state === REJECTED )
-            throw this.result || new Error( "No reason specified." );
-        else if ( this.state === PENDING )
-            throw error( "InvalidOperationError", "Promise is still in pending state." );
-        return this.result;
+        this.binding = binding;
     },
 
     /**
      * @description
-     * Satisfies 2.2 of the Promise/A+ spec.
-     * @param {function()} [onFulfilled]
-     * @param {function()} [onRejected]
-     * @param {boolean} [async]
-     * @return {Promise}
+     * Causes the binding to return the same instance for all instances resolved through
+     * the kernel.
+     * @return {BindingConfiguration}
      */
-    then: function( onFulfilled, onRejected, async )
+    asSingleton: function()
     {
-        var promise = this._pry( new Promise() );
-        async = async === false ? false : true;
-        this.enqueue( this.handle( promise, onFulfilled, onRejected ), async );
-        return promise._pub;
-    },
-
-    splat: function( onFulfilled, onRejected, async )
-    {
-        return this.then( function( result ) {
-            return onFulfilled.apply( undefined, result );
-        }, onRejected, async );
-    },
-
-    bind: function( deferred )
-    {
-        this.then( function() {
-            deferred.resolve.apply( deferred, arguments );
-        }, function() {
-            deferred.reject.apply( deferred, arguments );
-        });
-        return this._pub;
-    },
-
-    done: function( callback, async )
-    {
-        this.then( callback, null, async );
-        return this._pub;
-    },
-
-    fail: function( callback, async )
-    {
-        this.then( null, callback, async );
-        return this._pub;
-    },
-
-    always: function( callback, async )
-    {
-        this.then( callback, callback, async );
-        return this._pub;
-    },
-
-    _set: function( state, result )
-    {
-        if ( this.state === PENDING )
+        var _create = this.binding.create;
+        var created = false;
+        var result;
+        this.binding.create = function()
         {
-            this.state = state;
-            this.result = result;
-            var i = 0, len = this.queue.length;
-            for ( ; i < len; i++ )
-                this.queue[ i ]( state, result );
-            this.queue = [];
-        }
-    },
-
-    __enqueue: function( handler, async )
-    {
-        if ( async )
-        {
-            var _handler = handler;
-            handler = function()
+            if ( !created )
             {
-                var args = arguments;
-                setTimeout( function() {
-                    _handler.apply( undefined, args );
-                });
-            };
-        }
-        if ( this.state === PENDING )
-            this.queue.push( handler );
-        else
-            handler( this.state, this.result );
-    },
-
-    __handle: function( promise, onFulfilled, onRejected )
-    {
-        return function( state, result )
-        {
-            var callback = state === FULFILLED ? onFulfilled : onRejected, x;
-            // 2.2.7.3
-            // 2.2.7.4
-            if ( !isFunc( callback ) )
-            {
-                promise.set( state, result );
-                return;
+                result = _create.apply( undefined, arguments );
+                created = true;
             }
-            try
-            {
-                // 2.2.5
-                x = callback.call( undefined, result );
-            }
-            catch ( e )
-            {
-                // 2.2.7.2
-                promise.set( REJECTED, e );
-                return;
-            }
-            // 2.2.7.1
-            if ( !resolve( promise, x ) )
-            {
-                // 2.3.4
-                promise.set( FULFILLED, x );
-            }
+            return result;
         };
+        return this._pub;
+    },
+
+    /**
+     * @description
+     * Adds a constraint to the binding so that it is only used when the bound
+     * service is injected into one of the specified services.
+     * @param {string[]} services
+     * @return {BindingConfiguration}
+     */
+    whenFor: function( services )
+    {
+        if ( isArray( services ) && services.length )
+            this.binding.filter = services.slice( 0 );
+        else
+            throw error( "ArgumentError", "Expected 'services' to be an array of string." );
+        return this._pub;
     }
 });
 
-});
+var Box = new Class({
+    /**
+     * @constructor
+     * @param {Cookbook} cookbook
+     * @param {*} idea The idea to make.
+     */
+    ctor: function( cookbook, idea )
+    {
+        /**
+         * @type {Chef}
+         * @private
+         */
+        this._cookbook = cookbook;
 
-var Deferred = define({
-    extend: Promise
-}, {
-    ctor: function()
+        /**
+         * @type {Array.<function(Object.<string, *>)>}
+         * @private
+         */
+        this._handlers = [];
+
+        /**
+         * @type {Array.<string>}
+         */
+        this.missing = [];
+
+        /**
+         * @type {Component}
+         */
+        this.component = null;
+
+        var recipe = idea instanceof Recipe ? idea : this._cookbook.search( idea );
+        if ( recipe !== null )
+            this.component = this._prepare( recipe );
+        else
+        {
+            // The only time Chef#search would return null is if the idea
+            // was a name (string) pointing to a recipe that hasn't been loaded yet.
+            this.missing.push( idea );
+
+            var self = this;
+            this._onUpdate( idea, function( component ) {
+                self.component = component;
+            });
+        }
+    },
+
+    /**
+     * @param {Object.<string, *>} services
+     */
+    update: function( services )
+    {
+        // Reset the list of missing services.
+        this.missing.splice( 0 );
+
+        var handlers = this._handlers.slice( 0 );
+        for ( var i = 0; i < handlers.length; i++ )
+            handlers[ i ]( services );
+    },
+
+    /**
+     * @private
+     * @param {Recipe} recipe
+     * @return {Component}
+     */
+    _prepare: function( recipe )
+    {
+        var result = new Component( recipe );
+        var pending = [ result ];
+        while ( pending.length )
+        {
+            var component = pending.shift();
+            if ( component.recipe.lazy )
+                continue;
+
+            for ( var i = 0; i < component.recipe.ingredients.length; i++ )
+            {
+                var service = component.recipe.ingredients[ i ];
+                var recipe = this._cookbook.search( service, component.recipe.name );
+                if ( recipe )
+                {
+                    var child = new Component( recipe );
+                    child.parent = component;
+                    child.order = i;
+                    component.children[ i ] = child;
+                    pending.push( child );
+                }
+                else
+                {
+                    this.missing.push( service );
+                    this._onUpdate(
+                        service,
+                        ( function( component, order ) {
+                            return function( child )
+                            {
+                                child.parent = component;
+                                child.order = order;
+                                component.children[ i ] = child;
+                            };
+                        }( component, i ))
+                    );
+                }
+            }
+        }
+        return result;
+    },
+
+    /**
+     * @private
+     * @param {string|Lazy|Factory} service
+     * @param {function( Component )} callback
+     */
+    _onUpdate: function ( service, callback )
     {
         var self = this;
-        this.promise =
+        var lazy = service instanceof Lazy;
+        var factory = lazy || service instanceof Factory;
+        if ( lazy || factory )
+            service = service.value;
+
+        /**
+         * @param {Object.<string, *>} services
+         */
+        var handler = function( services )
         {
-            then: function() {
-                return self.then.apply( self, arguments );
-            },
-            done: function()
+            var svc = services[ service ];
+            if ( svc )
             {
-                self.done.apply( self, arguments );
-                return self.promise;
-            },
-            fail: function()
-            {
-                self.fail.apply( self, arguments );
-                return self.promise;
-            },
-            always: function()
-            {
-                self.always.apply( self, arguments );
-                return self.promise;
-            },
-            value: function() {
-                return self.value();
+                var recipe = self._cookbook.search( svc );
+                if ( recipe )
+                {
+                    recipe.factory = factory;
+                    recipe.lazy = lazy;
+                    callback( self._prepare( recipe ) );
+                }
+                else
+                {
+                    self.missing.push( svc );
+                    self._onUpdate( svc, callback );
+                }
+                self._handlers.splice( indexOf( self._handlers, handler ), 1 );
             }
         };
-    },
-
-    promise: { get: null, __set: null },
-
-    resolve: function( result )
-    {
-        this.set( FULFILLED, result );
-        return this._pub;
-    },
-
-    reject: function( reason )
-    {
-        this.set( REJECTED, reason );
-        return this._pub;
+        this._handlers.push( handler );
     }
 });
 
-Deferred.when = function( promises )
-{
-    var deferred = new Deferred();
-    var tasks = isArray( promises ) ? promises : makeArray( arguments );
-    var progress = 0;
-    var results = [];
-    forEach( tasks, function( task, index )
+var Chef = new Class({
+    /**
+     * @param {Cookbook} cookbook
+     * @param {function(): function(Array.<string>): Promise} loader
+     */
+    ctor: function( cookbook, loader )
     {
-        task
-            .then( function( value )
+        this._cookbook = cookbook;
+        this._loader = loader;
+    },
+
+    /**
+     * @description Turns an idea into a component.
+     * @param {*} idea
+     * @return {Promise.<Component>}
+     */
+    create: function( idea )
+    {
+        var self = this;
+        var task = new Task();
+        var modules;
+        var box = new Box( this._cookbook, idea );
+
+        if ( box.missing.length )
+        {
+            if ( this._loader() )
+                load();
+            else
             {
-                results[ index ] = value;
-                if ( ++progress === tasks.length )
-                    deferred.resolve( results );
-            }, function( reason )
+                task.reject( new error(
+                    "InvalidOperationError",
+                    "Service(s) " + map( box.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered."
+                ));
+            }
+        }
+        else
+            task.resolve( box.component );
+
+        return task.promise;
+
+        function load()
+        {
+            modules = self._getRelativePaths( box.missing );
+            self._loader()( modules ).then( done, fail, false );
+        }
+
+        function done( result )
+        {
+            var bindings = {};
+            for ( var i = 0; i < box.missing.length; i++ )
             {
-                deferred.reject( reason );
-            }, false );
-    });
-    if ( !tasks.length )
-        deferred.resolve( [] );
-    return deferred.promise;
-};
+                // Unbox the service value from Lazy and Factory objects.
+                var service = box.missing[ i ].value || box.missing[ i ];
+
+                // Validate the returned service. If there's no way we can turn it into a binding,
+                // we'll get ourselves into a never-ending loop trying to resolve it.
+                var svc = result[ i ];
+                if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
+                {
+                    task.reject(
+                        new TypeError( "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                            service + "'. Expected service to be a string, array, or function. Found '" +
+                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
+                        )
+                    );
+                    return false;
+                }
+                if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
+                {
+                    svc = svc[ svc.length - 1 ];
+                    task.reject(
+                        new TypeError( "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                            service + "'. Found array. Expected last element to be a function. Found '" +
+                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
+                        )
+                    );
+                    return false;
+                }
+                bindings[ service ] = result[ i ];
+            }
+
+            if ( task.state === "rejected" )
+                return;
+
+            box.update( bindings );
+
+            if ( box.missing.length )
+                load();
+            else
+                task.resolve( box.component );
+        }
+
+        function fail( reason ) {
+            task.reject( reason );
+        }
+    },
+
+    /**
+     * @param {Component} component
+     * @return {function()}
+     */
+    createFactory: function( component )
+    {
+        if ( component.recipe.lazy )
+            return this._createLazy( component );
+
+        var self = this;
+        var components = [];
+        var root = component;
+        var pending = [ root ];
+
+        while ( pending.length )
+        {
+            var cmp = pending.shift();
+            components.push( cmp );
+
+            if ( cmp.recipe.lazy )
+                continue;
+
+            for ( var i = 0; i < cmp.children.length; i++ )
+                pending.push( cmp.children[ i ] );
+        }
+
+        components.reverse();
+        components.pop();
+
+        return function()
+        {
+            for ( var i = 0; i < components.length; i++ )
+            {
+                var cmp = components[ i ];
+
+                cmp.parent.prep[ cmp.order ] =
+                    cmp.recipe.factory ?
+                    self.createFactory( cmp ) :
+                    cmp.recipe.create.apply( undefined, cmp.prep );
+
+                cmp.prep = [];
+            }
+            var args = root.prep.concat( makeArray( arguments ) );
+            root.prep = [];
+            return root.recipe.create.apply( undefined, args );
+        };
+    },
+
+    /**
+     * @param {Component} component
+     * @return {function()}
+     */
+    _createLazy: function( component )
+    {
+        var self = this;
+        var factory = null;
+
+        /**
+         * @return {Promise}
+         */
+        return function()
+        {
+            var args = arguments;
+            if ( !factory )
+            {
+                return self.create( component.recipe.name ).then(
+                    function( component )
+                    {
+                        factory = self.createFactory( component );
+                        return factory.apply( undefined, args );
+                    },
+                    function( reason ) {
+                        throw reason;
+                    },
+                    false
+                );
+            }
+            else
+                return new Task().resolve( factory.apply( undefined, args ) ).promise;
+        };
+    },
+
+    /**
+     * @param {Array.<string|Factory|Lazy>} services
+     * @return {Array.<string>}
+     */
+    _getRelativePaths: function( services )
+    {
+        return map( services, function( service )
+        {
+            if ( service instanceof Factory )
+                service = service.value;
+            else if ( service instanceof Lazy )
+                service = service.value;
+            return service.replace( /\./g, "/" );
+        });
+    }
+});
+
+var Component = new Class({
+    /**
+     * @constructor
+     * @param {Recipe} recipe
+     */
+    ctor: function( recipe )
+    {
+        /**
+         * @type {Component}
+         */
+        this.parent = null;
+
+        /**
+         * @type {number}
+         */
+        this.order = null;
+
+        /**
+         * @type {Array}
+         */
+        this.prep = [];
+
+        /**
+         * @type {Recipe}
+         */
+        this.recipe = recipe;
+
+        /**
+         * @type {Array.<Component>}
+         */
+        this.children = [];
+    }
+});
+
+var Cookbook = new Class(
+{
+    /**
+     * {Object.<string, Array.<Binding>>} container
+     */
+    ctor: function( container )
+    {
+        this._container = container;
+    },
+
+    /**
+     * @description Analyzes an idea (named or anonymous) and returns a recipe on how to make it.
+     * @param {*} idea
+     * @param {*} [destination] The host that the recipe is being created for.
+     * @return {Recipe}
+     */
+    search: function( idea, destination )
+    {
+        var binding;
+        if ( isFunc( idea ) )
+        {
+            return new Recipe({
+                create: idea,
+                ingredients: ( idea.$inject || [] ).slice( 0 )
+            });
+        }
+        if ( isArray( idea ) )
+        {
+            idea = idea.slice( 0 );
+            return new Recipe({
+                create: idea.pop(),
+                ingredients: idea
+            });
+        }
+        if ( isString( idea ) )
+        {
+            binding = this._lookup( idea, destination );
+            if ( binding )
+            {
+                return new Recipe(
+                {
+                    create: binding.create,
+                    ingredients: binding.inject.slice( 0 ),
+                    name: idea
+                });
+            }
+        }
+        if ( idea instanceof Factory )
+        {
+            binding = this._lookup( idea.value, destination );
+            if ( binding )
+            {
+                return new Recipe(
+                {
+                    create: binding.create,
+                    ingredients: binding.inject.slice( 0 ),
+                    name: idea.value,
+                    factory: true
+                });
+            }
+        }
+        if ( idea instanceof Lazy )
+        {
+            binding = this._lookup( idea.value, destination ) || {};
+            return new Recipe(
+            {
+                create: binding.create || null,
+                ingredients: binding.inject ? binding.inject.slice( 0 ) : null,
+                name: idea.value,
+                factory: true,
+                lazy: true
+            });
+        }
+        return null;
+    },
+
+    /**
+     * @private
+     * @description Gets the first binding that has a matching destination (if provided).
+     * @param {string} service
+     * @param {*} [destination] The injection target.
+     * @return {Binding}
+     */
+    _lookup: function( service, destination )
+    {
+        var bindings = this._container[ service ] || [];
+        var i = bindings.length - 1;
+        for ( ; i >= 0; i-- )
+        {
+            if ( !destination )
+            {
+                if ( !bindings[ i ].filter.length )
+                    break;
+            }
+            else if ( !bindings[ i ].filter.length || indexOf( bindings[ i ].filter, destination ) > -1 )
+                break;
+        }
+        return bindings[ i ] || null;
+    }
+});
 
 function Factory( service )
 {
@@ -1694,85 +2386,11 @@ function Factory( service )
     this.value = service;
 }
 
-function Lazy( service )
-{
-    if ( !( this instanceof Lazy ) )
-        return new Lazy( service );
-    this.value = service;
-}
-
 var Kernel = define( function() {
-
-var fetch = (function()
-{
-    var pending = {};
-    var cache = {};
-    var isBrowser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
-    var lastFetch = null;
-
-    onTypeDefined = function( type )
-    {
-        if ( isBrowser )
-        {
-            var scripts = document.getElementsByTagName( "script" );
-            var url = scripts[ scripts.length - 1 ].src;
-            if ( pending[ url ] )
-            {
-                cache[ url ] = type;
-                var deferred = pending[ url ];
-                delete pending[ url ];
-                setTimeout( function()
-                {
-                    deferred.resolve( type );
-                });
-            }
-        }
-        else if ( lastFetch !== null )
-        {
-            var def = lastFetch;
-            lastFetch = null;
-            def.resolve( type );
-        }
-    };
-
-    return function fetch( payload, deferred )
-    {
-        if ( isBrowser )
-        {
-            var url = payload.url;
-            if ( ( /^\/\// ).test( url ) )
-                url = window.location.protocol + url;
-            else if ( ( /^\// ).test( url ) )
-                url = window.location.protocol + "//" + window.location.host + url;
-            else
-                url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
-
-            if ( cache[ url ] )
-                deferred.resolve( cache[ url ] );
-            else if ( pending[ url ] )
-                pending[ url ].bind( deferred );
-            else
-            {
-                var script = document.createElement( "script" );
-                script.src = url;
-                script.addEventListener( "error", function()
-                {
-                    deferred.reject();
-                }, false );
-                document.body.appendChild( script );
-                pending[ url ] = deferred;
-            }
-        }
-        else
-        {
-            lastFetch = deferred;
-            require( "../" + payload.url );
-        }
-    };
-}());
 
 var BindingSyntax = define({
     /**
+     * @constructor
      * @param {Kernel} kernel
      * @param {string} service
      */
@@ -1799,60 +2417,19 @@ var BindingSyntax = define({
     }
 });
 
-var BindingConfiguration = define({
-    /**
-     * @param {Binding} binding
-     */
-    ctor: function( binding )
-    {
-        this.binding = binding;
-    },
-
-    /**
-     * @description
-     * Causes the binding to return the same instance for all instances resolved through
-     * the kernel.
-     * @return {BindingConfiguration}
-     */
-    asSingleton: function()
-    {
-        var _resolve = this.binding.resolve;
-        var resolved = false;
-        var result;
-        this.binding.resolve = function()
-        {
-            if ( !resolved )
-            {
-                result = _resolve.apply( undefined, arguments );
-                resolved = true;
-            }
-            return result;
-        };
-        return this._pub;
-    },
-
-    /**
-     * @description
-     * Adds a constraint to the binding so that it is only used when the bound
-     * service is injected into one of the specified services.
-     * @param {string[]} services
-     * @return {BindingConfiguration}
-     */
-    whenFor: function( services )
-    {
-        if ( isArray( services ) && services.length )
-            this.binding.filter = services.slice( 0 );
-        else
-            throw error( "ArgumentError", "Expected 'services' to be an array of string." );
-        return this._pub;
-    }
-});
+var store = new Store();
 
 this.members({
     ctor: function()
     {
         this.container = {};
         this.require = null;
+
+        var self = this;
+        var cookbook = new Cookbook( this.container );
+        this.chef = new Chef( cookbook, function() {
+            return self.require;
+        });
     },
 
     /**
@@ -1918,23 +2495,22 @@ this.members({
      * @description Resolves a target and its dependencies.
      * @param {string|function()|Array} target
      * @param {...Object} [args]
-     * @return {Deferred.<TService>}
+     * @return {Promise.<TService>}
      */
     resolve: function( target, args )
     {
         var self = this;
         args = makeArray( arguments );
         args.shift( 0 );
-        return this.resolveTarget( target ).then(
-            function( recipe )
+        return this.chef.create( target ).then(
+            function( box )
             {
-                var factory = self.makeFactory( recipe );
-                return recipe.theory.isProvider ? factory : factory.apply( undefined, args );
+                var factory = self.chef.createFactory( box );
+                return box.recipe.factory ? factory : factory.apply( undefined, args );
             },
             function( reason ) {
                 throw reason;
-            },
-            false
+            }
         );
     },
 
@@ -1987,20 +2563,18 @@ this.members({
                     var url = path( config.baseUrl, module );
                     if ( !( /\.js$/ ).test( url ) )
                         url += ".js";
-                    var deferred = new Deferred();
-                    fetch(
+                    return store.fetch(
                     {
                         url: url,
                         timeout: config.waitSeconds * 1000,
                         query: config.urlArgs,
                         scriptType: config.scriptType
-                    }, deferred );
-                    return deferred.promise;
+                    });
                 };
             }
             this.require = function( modules )
             {
-                return Deferred.when( map( modules, function( module )
+                return Task.when( map( modules, function( module )
                 {
                     var promise = loader( module );
                     if ( !promise || !isFunc( promise.then ) )
@@ -2024,20 +2598,20 @@ this.members({
         if ( isArray( provider ) )
         {
             provider = provider.slice( 0 );
-            binding = {
-                resolve: provider.pop(),
+            binding = new Binding({
+                create: provider.pop(),
                 inject: provider
-            };
-            if ( !isFunc( binding.resolve ) )
+            });
+            if ( !isFunc( binding.create ) )
                 throw error( "ArgumentError", "Expected last array element to be a function." );
         }
         else
         {
-            binding = {
-                resolve: provider,
+            binding = new Binding({
+                create: provider,
                 inject: ( provider.$inject || [] ).slice( 0 )
-            };
-            if ( !isFunc( binding.resolve ) )
+            });
+            if ( !isFunc( binding.create ) )
                 throw error( "ArgumentError", "Expected provider to be a function." );
         }
         this.container[ service ] = this.container[ service ] || [];
@@ -2061,437 +2635,32 @@ this.members({
             else
                 self.register( prefix + name, type );
         });
-    },
-
-    /**
-     * @param {Recipe} recipe
-     * @return {function()}
-     */
-    __makeFactory: function( recipe )
-    {
-        if ( recipe.theory.isLazy )
-            return this.makeLazyFactory( recipe );
-
-        /**
-         * @param {Recipe} recipe
-         * @return {Component}
-         */
-        function toComponent( recipe )
-        {
-            return {
-                parent: null,
-                position: null,
-                cache: [],
-                recipe: recipe
-            };
-        }
-
-        var self = this;
-        var generations = [];
-        var root = toComponent( recipe );
-        var current = [ root ];
-        var next;
-
-        while ( current.length )
-        {
-            next = [];
-            forEach( current, function( component )
-            {
-                if ( component.recipe.theory.isLazy )
-                    return;
-
-                forEach( component.recipe.dependencies, function( recipe, position )
-                {
-                    var dependency = toComponent( recipe );
-                    dependency.parent = component;
-                    dependency.position = position;
-                    next.push( dependency );
-                });
-            });
-            generations.push( current );
-            current = next;
-        }
-
-        generations.reverse();
-        generations.pop();
-
-        return function()
-        {
-            forEach( generations, function( generation )
-            {
-                forEach( generation, function( component )
-                {
-                    component.parent.cache[ component.position ] =
-                        component.recipe.theory.isProvider ?
-                        self.makeFactory( component.recipe ) :
-                        component.recipe.theory.resolve.apply( undefined, component.cache );
-                    component.cache = [];
-                });
-            });
-            var args = root.cache.concat( makeArray( arguments ) );
-            root.cache = [];
-            return root.recipe.theory.resolve.apply( undefined, args );
-        };
-    },
-
-    /**
-     * @param {Recipe} recipe
-     * @return {function()}
-     */
-    __makeLazyFactory: function( recipe )
-    {
-        var self = this;
-        var factory = null;
-        return function()
-        {
-            var args = arguments;
-            if ( !factory )
-            {
-                return self.resolveTarget( recipe.theory.name ).then(
-                    function( recipe )
-                    {
-                        factory = self.makeFactory( recipe );
-                        return factory.apply( undefined, args );
-                    },
-                    function( reason ) {
-                        throw reason;
-                    },
-                    false
-                );
-            }
-            else
-                return new Deferred().resolve( factory.apply( undefined, args ) ).promise;
-        };
-    },
-
-    /**
-     * @description Attempts to resolve a target.
-     * @param {string|Array|function()} target
-     * @return {Deferred.<Recipe>}
-     */
-    __resolveTarget: function( target )
-    {
-        function load()
-        {
-            modules = map( plan.missing, function( service )
-            {
-                if ( service instanceof Factory )
-                    service = service.value;
-                else if ( service instanceof Lazy )
-                    service = service.value;
-                return service.replace( /\./g, "/" );
-            });
-            self.require( modules ).then( done, fail, false );
-        }
-
-        function done( result )
-        {
-            var bindings = {};
-            forEach( plan.missing, function( service, index )
-            {
-                // Unbox the service value from Lazy and Factory objects.
-                service = service.value || service;
-
-                // Validate the returned service. If there's no way we can turn it into a binding,
-                // we'll get ourselves into a never-ending loop trying to resolve it.
-                var svc = result[ index ];
-                if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
-                {
-                    deferred.reject(
-                        new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
-                            service + "'. Expected service to be a string, array, or function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
-                        )
-                    );
-                    return false;
-                }
-                if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
-                {
-                    svc = svc[ svc.length - 1 ];
-                    deferred.reject(
-                        new TypeError( "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
-                            service + "'. Found array. Expected last element to be a function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
-                        )
-                    );
-                    return false;
-                }
-                bindings[ service ] = result[ index ];
-            });
-
-            if ( deferred.state === "rejected" )
-                return;
-
-            plan.update( bindings );
-
-            if ( plan.missing.length )
-                load();
-            else
-                deferred.resolve( plan.recipe );
-        }
-
-        function fail( reason ) {
-            deferred.reject( reason );
-        }
-
-        var self = this;
-        var deferred = new Deferred();
-        var modules;
-        var plan = this.getExecutionPlan( target );
-
-        if ( plan.missing.length )
-        {
-            if ( this.require )
-                load();
-            else
-            {
-                deferred.reject( new errors.InvalidOperationError( "Service(s) " +
-                    map( plan.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered." ) );
-            }
-        }
-        else
-            deferred.resolve( plan.recipe );
-
-        return deferred.promise;
-    },
-
-    /**
-     * @private
-     * @description Creates an execution plan for resolving a target.
-     * @param {string|Array|function()} target
-     * @return {Plan}
-     */
-    __getExecutionPlan: function( target )
-    {
-        /**
-         * @param {string|Lazy|Factory} service
-         * @param {function( Recipe )} callback
-         */
-        function watchFor( service, callback )
-        {
-            var isLazy = service instanceof Lazy;
-            var isProvider = isLazy || service instanceof Factory;
-            if ( isLazy || isProvider )
-                service = service.value;
-            var handler = function( bindings )
-            {
-                var svc = bindings[ service ];
-                if ( svc )
-                {
-                    var theory = self.theorize( svc );
-                    if ( theory )
-                    {
-                        theory.isProvider = isProvider;
-                        theory.isLazy = isLazy;
-                        callback( resolve( theory ) );
-                    }
-                    else
-                    {
-                        missing.push( svc );
-                        watchFor( svc, callback );
-                    }
-                    watches.splice( indexOf( watches, handler ), 1 );
-                }
-            };
-            watches.push( handler );
-        }
-
-        /**
-         * @param {Theory} theory
-         * @return {Recipe}
-         */
-        function toRecipe( theory )
-        {
-            return {
-                theory: theory,
-                dependencies: []
-            };
-        }
-
-        /**
-         * @description
-         * Turns a theory into something that can be resolved. A theory cannot be resolved unless
-         * all of its dependencies can also be resolved.
-         * @param {Theory} theory
-         * @return {Recipe}
-         */
-        function resolve( theory )
-        {
-            var recipe = toRecipe( theory );
-
-            // Optimization: short-circuits an extra function call.
-            if ( recipe.theory.isLazy )
-                return recipe;
-
-            var current = [ recipe ], next;
-            while ( current.length )
-            {
-                next = [];
-                forEach( current, function( recipe )
-                {
-                    if ( recipe.theory.isLazy )
-                        return;
-
-                    forEach( recipe.theory.inject, function( service, position )
-                    {
-                        var dependency = self.evaluate( service, recipe.theory.name );
-                        if ( dependency )
-                        {
-                            dependency = toRecipe( dependency );
-                            recipe.dependencies[ position ] = dependency;
-                            next.push( dependency );
-                        }
-                        else
-                        {
-                            missing.push( service );
-                            watchFor( service, function( dependency ) {
-                                recipe.dependencies[ position ] = dependency;
-                            });
-                        }
-                    });
-                });
-                current = next;
-            }
-            return recipe;
-        }
-
-        var self = this;
-        var missing = [];
-        var watches = [];
-        var theory = this.evaluate( target );
-        var recipe = null;
-
-        if ( theory )
-            recipe = resolve( theory );
-        else
-        {
-            // The only time .evaluate() would return null is if the target was a name (string)
-            // pointing to a service that hasn't been bound yet.
-            missing.push( target );
-            watchFor( target, function( recipe ) {
-                plan.recipe = recipe;
-            });
-        }
-
-        var plan =
-        {
-            recipe: recipe,
-            missing: missing,
-            update: function( bindings )
-            {
-                missing.splice( 0 );
-                forEach( watches.slice( 0 ), function( handler ) {
-                    handler( bindings );
-                });
-            }
-        };
-        return plan;
-    },
-
-    /**
-     * @private
-     * @description Converts an anonymous target to a theory.
-     * @param {Array|function()} target
-     * @return {Theory}
-     */
-    __theorize: function( target )
-    {
-        if ( !target )
-            return null;
-        var result = null;
-        if ( isFunc( target ) )
-        {
-            result = {
-                resolve: target,
-                inject: ( target.$inject || [] ).slice( 0 )
-            };
-        }
-        else if ( isArray( target ) )
-        {
-            target = target.slice( 0 );
-            result = {
-                resolve: target.pop(),
-                inject: target
-            };
-        }
-        return result;
-    },
-
-    /**
-     * @private
-     * @description Analyzes a target (named or anonymous) and returns a theory on how to resolve it.
-     * @param {string|Array|function()} target
-     * @return {Theory}
-     */
-    __evaluate: function( target, destination )
-    {
-        function find( service )
-        {
-            var bindings = self.container[ service ] || [];
-            var i = bindings.length - 1;
-            for ( ; i >= 0; i-- )
-            {
-                if ( !destination )
-                {
-                    if ( !bindings[ i ].filter )
-                        break;
-                }
-                else if ( !bindings[ i ].filter || indexOf( bindings[ i ].filter, destination ) > -1 )
-                    break;
-            }
-            return bindings[ i ] || null;
-        }
-
-        var self = this;
-        var result = this.theorize( target );
-        var binding;
-
-        if ( !result && isString( target ) )
-        {
-            binding = find( target );
-            if ( binding )
-            {
-                result = {
-                    resolve: binding.resolve,
-                    inject: binding.inject.slice( 0 ),
-                    name: target
-                };
-            }
-        }
-        if ( !result && target instanceof Factory )
-        {
-            binding = find( target.value );
-            if ( binding )
-            {
-                result = {
-                    resolve: binding.resolve,
-                    inject: binding.inject.slice( 0 ),
-                    name: target.value,
-                    isProvider: true
-                };
-            }
-        }
-        if ( !result && target instanceof Lazy )
-        {
-            binding = find( target.value ) || {};
-            result = {
-                resolve: binding.resolve || null,
-                inject: binding.inject || null,
-                name: target.value,
-                isProvider: true,
-                isLazy: true
-            };
-            if ( result.inject )
-                result.inject = result.inject.slice( 0 );
-        }
-        return result;
     }
 });
 
 });
 
+function Lazy( service )
+{
+    if ( !( this instanceof Lazy ) )
+        return new Lazy( service );
+    this.value = service;
+}
+
+var Recipe = new Struct(
+{
+    create: function() {},
+    ingredients: [],
+    name: null,
+    factory: false,
+    lazy: false
+});
+
 var _exports = {
     define: define,
+
+    simple: Class,
+    struct: Struct,
 
     /**
      * @description
@@ -2510,7 +2679,7 @@ var _exports = {
      */
     of: typeOf,
 
-    defer: Deferred,
+    defer: Task,
     kernel: Kernel,
     factory: Factory,
     lazy: Lazy
@@ -2519,7 +2688,7 @@ var _exports = {
 if ( typeof module !== "undefined" && module.exports )
     module.exports = _exports;
 else
-    global.type = _exports;
+    window.type = _exports;
 
-} ( this ) );
+} () );
 

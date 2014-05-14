@@ -1,6 +1,9 @@
 var _exports = {
     define: define,
 
+    simple: Class,
+    struct: Struct,
+
     /**
      * @description
      * A factory for creating custom errors. Pass a name to get the error definition.
@@ -18,7 +21,7 @@ var _exports = {
      */
     of: typeOf,
 
-    defer: Deferred,
+    defer: Task,
     kernel: Kernel,
     factory: Factory,
     lazy: Lazy
@@ -27,4 +30,4 @@ var _exports = {
 if ( typeof module !== "undefined" && module.exports )
     module.exports = _exports;
 else
-    global.type = _exports;
+    window.type = _exports;

@@ -269,3 +269,46 @@ function removeFlag( mask, flag ) {
 function hasFlag( mask, flag ) {
     return ( mask & flag ) === flag;
 }
+
+function proxy( method, scope )
+{
+    return function() {
+        return method.apply( scope, arguments );
+    };
+}
+
+var setImmediate = ( function()
+{
+    if ( global.setImmediate )
+        return global.setImmediate;
+    else
+    {
+        // Taken from David Baron's Blog:
+        // http://dbaron.org/log/20100309-faster-timeouts
+
+        var timeouts = [];
+        var messageName = "zero-timeout-message";
+
+        // Like setTimeout, but only takes a function argument.  There's
+        // no time argument (always zero) and no arguments (you have to
+        // use a closure).
+        var setImmediate = function( fn )
+        {
+            timeouts.push( fn );
+            window.postMessage( messageName, "*" );
+        };
+
+        var handleMessage = function( e )
+        {
+            if ( e.source === window && e.data === messageName )
+            {
+                e.stopPropagation();
+                if ( timeouts.length > 0 )
+                    timeouts.shift()();
+            }
+        };
+
+        window.addEventListener( "message", handleMessage, true );
+        return setImmediate;
+    }
+} () );

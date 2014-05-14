@@ -1,27 +1,3 @@
-// A factory for creating custom errors.
-var error = ( function()
-{
-    var cache = {
-        "Error": Error,
-        "TypeError": TypeError
-    };
-    return function( name, message )
-    {
-        if ( !cache[ name ] )
-        {
-            var Error = function( message ) {
-                this.message = message;
-            };
-            Error.prototype = new cache.Error();
-            Error.prototype.name = name;
-            cache[ name ] = Error;
-        }
-        if ( message )
-            return new cache[ name ]( message );
-        return cache[ name ];
-    };
-} () );
-
 // IE8 only supports Object.defineProperty on DOM objects.
 // http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
 // http://stackoverflow.com/a/4867755/740996
@@ -139,7 +115,7 @@ function define()
             };
             if ( IE8 )
             {
-                scope.self = getEmptyDOMObject();
+                scope.self = createElement();
                 applyPrototypeMembers( Scope, scope.self );
             }
             else
@@ -152,7 +128,7 @@ function define()
             run = false;
             if ( IE8 )
             {
-                pub = getEmptyDOMObject();
+                pub = createElement();
                 applyPrototypeMembers( Type, pub );
             }
             else
@@ -632,7 +608,7 @@ function applyPrototypeMembers( type, obj )
     }
 }
 
-function getEmptyDOMObject()
+function createElement()
 {
     var obj = document.createElement(), prop;
     for ( prop in obj )

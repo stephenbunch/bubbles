@@ -15,11 +15,14 @@ module.exports = function( grunt )
             dist: {
                 src: [
                     "src/_head.js",
-                    "src/type.js",
+                    "src/error.js",
                     "src/util.js",
-                    "src/promise.js",
-                    "src/deferred.js",
-                    "src/kernel.js",
+                    "src/Class.js",
+                    "src/Struct.js",
+                    "src/Store.js",
+                    "src/Task.js",
+                    "src/type.js",
+                    "src/composition/**/*.js",
                     "src/_exports.js",
                     "src/_tail.js"
                 ],
@@ -163,8 +166,8 @@ module.exports = function( grunt )
         {
             mocha.addFile( file );
         });
-        GLOBAL.type = require( "./dist/type.js" );
-        GLOBAL.expect = require( "chai" ).expect;
+        global.type = require( "./dist/type.js" );
+        global.expect = require( "chai" ).expect;
         mocha.run( function( failures ) {
             done( failures === 0 );
         });

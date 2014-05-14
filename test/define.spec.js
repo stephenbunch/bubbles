@@ -13,22 +13,23 @@ describe( "type.define()", function()
         }).to.throw( type.error( "DefinitionError" ) );
     });
 
-    it( "should support the array syntax for specifing constructor dependencies", function()
+    it( "should support the array syntax for specifing constructor dependencies", function( done )
     {
         var A = type.define({
-            ctor: [ "bar", function( foo )
-            {
+            ctor: [ "bar", function( foo ) {
                 this.foo = foo;
             }],
-            value: function()
-            {
+            value: function() {
                 return this.foo;
             }
         });
         var kernel = type.kernel();
         kernel.bind( "bar" ).to( function() { return 2; } );
-        var a = kernel.resolve( A ).value();
-        expect( a.value() ).to.equal( 2 );
+        kernel.resolve( A ).then( function( a )
+        {
+            expect( a.value() ).to.equal( 2 );
+            done();
+        });
     });
 
     it( "should throw an error if the constructor is defined and no method is provided", function()
