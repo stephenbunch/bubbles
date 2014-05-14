@@ -41,7 +41,7 @@ var Store = new Class({
         else
         {
             this._last = task;
-            require( "../" + options.url );
+            require( options.url );
         }
         return task.promise;
     },

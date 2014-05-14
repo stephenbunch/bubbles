@@ -202,10 +202,11 @@ describe( "Kernel", function()
 
     describe( ".autoLoad()", function()
     {
+        var browser = typeof window !== "undefined";
         it( "can specify a base path to load missing services", function( done )
         {
             var kernel = type.kernel();
-            kernel.autoLoad( "test/stubs" );
+            kernel.autoLoad( browser ? "test/stubs" : "../test/stubs" );
             kernel.resolve( "class1" ).then( function( class1 )
             {
                 expect( class1.foo() ).to.equal( 2 );
@@ -216,8 +217,8 @@ describe( "Kernel", function()
         it( "should treat namespaces as path segments", function( done )
         {
             var kernel = type.kernel();
-            kernel.autoLoad( "test/stubs" );
-            kernel.resolve( "ns1.ns2.Class2" ).then( function( class2 )
+            kernel.autoLoad( browser ? "test/stubs" : "../test/stubs" );
+            kernel.resolve( "ns1.ns2.class2" ).then( function( class2 )
             {
                 expect( class2.bar() ).to.equal( 2 );
                 done();
