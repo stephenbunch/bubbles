@@ -1,7 +1,9 @@
-function Class( methods )
+var Class = function( methods )
 {
+    methods = methods || {};
     if ( isFunc( methods ) )
         methods = methods();
+
     var mode = "default";
     var Class = function()
     {
@@ -12,14 +14,21 @@ function Class( methods )
         }
         if ( mode === "void" )
             return;
+
         mode = "new";
         var instance = Class();
         mode = "default";
-        instance.ctor.apply( instance, arguments );
-        return instance;
+
+        var result = instance.ctor.apply( instance, arguments );
+        if ( isFunc( result ) || isArray( result ) || typeOf( result ) === "object" )
+            return result;
+        else
+            return instance;
     };
+
     if ( !methods.ctor )
         methods.ctor = function() { };
+
     Class.prototype = methods;
     return Class;
-}
+};

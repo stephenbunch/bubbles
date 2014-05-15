@@ -31,6 +31,27 @@ var error = ( function()
     };
 } () );
 
+// IE8 only supports Object.defineProperty on DOM objects.
+// http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
+// http://stackoverflow.com/a/4867755/740996
+var IE8 = ( function() {
+    try
+    {
+        Object.defineProperty( {}, "x", {} );
+        return false;
+    } catch ( e ) {
+        return true;
+    }
+} () );
+
+// member access levels
+var PUBLIC = "public";
+var PRIVATE = "private";
+var PROTECTED = "protected";
+
+// special members
+var CTOR = "ctor";
+
 /**
  * @private
  * @description
@@ -346,10 +367,60 @@ var setImmediate = ( function()
     }
 } () );
 
-function Class( methods )
+/**
+ * @private
+ * @description Fakes execution in order to provide intellisense support for Visual Studio.
+ */
+function fake( callback, run )
 {
+    /// <param name="run" value="true" />
+    if ( run )
+        return callback();
+}
+
+/**
+ * @private
+ * @description
+ * Adds a property to an object.
+ * http://johndyer.name/native-browser-get-set-properties-in-javascript/
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+ *
+ * @param {Object} obj The object on which to define the property.
+ * @param {string} prop The name of the property to be defined or modified.
+ * @param {Object} descriptor The descriptor for the property being defined or modified.
+ */
+function defineProperty( obj, prop, descriptor )
+{
+    if ( descriptor.enumerable === undefined )
+        descriptor.enumerable = true;
+
+    // IE8 apparently doesn't support this configuration option.
+    if ( IE8 )
+        delete descriptor.enumerable;
+
+    if ( descriptor.configurable === undefined )
+        descriptor.configurable = true;
+
+    // IE8 requires that we delete the property first before reconfiguring it.
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+    if ( IE8 && hasOwn( obj, prop ) )
+        delete obj[ prop ];
+
+    if ( Object.defineProperty )
+    {
+        // obj must be a DOM object in IE8
+        Object.defineProperty( obj, prop, descriptor );
+    }
+    else
+        throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
+}
+
+var Class = function( methods )
+{
+    methods = methods || {};
     if ( isFunc( methods ) )
         methods = methods();
+
     var mode = "default";
     var Class = function()
     {
@@ -360,17 +431,24 @@ function Class( methods )
         }
         if ( mode === "void" )
             return;
+
         mode = "new";
         var instance = Class();
         mode = "default";
-        instance.ctor.apply( instance, arguments );
-        return instance;
+
+        var result = instance.ctor.apply( instance, arguments );
+        if ( isFunc( result ) || isArray( result ) || typeOf( result ) === "object" )
+            return result;
+        else
+            return instance;
     };
+
     if ( !methods.ctor )
         methods.ctor = function() { };
+
     Class.prototype = methods;
     return Class;
-}
+};
 
 var Struct = ( function()
 {
@@ -389,7 +467,7 @@ var Struct = ( function()
             mode = "new";
             var instance = Struct();
             mode = "default";
-            extend( instance, members, values );
+            extend( instance, members, values || {} );
             return instance;
         };
         return Struct;
@@ -464,6 +542,90 @@ var Struct = ( function()
         }
     }
 } () );
+
+/**
+ * @template TKey, TValue
+ */
+var Dictionary = new Class(
+{
+    /**
+     * @constructor
+     */
+    ctor: function()
+    {
+        this.keys = [];
+        this.values = [];
+    },
+
+    /**
+     * @param {TKey} key
+     * @param {TValue} value
+     */
+    add: function( key, value )
+    {
+        if ( indexOf( this.keys, key ) > -1 )
+            return;
+
+        this.keys.push( key );
+        this.values.push( value );
+    },
+
+    /**
+     * @param {TKey} key
+     */
+    remove: function( key )
+    {
+        var index = indexOf( this.keys, key );
+        if ( index > -1 )
+        {
+            this.keys.splice( index, 1 );
+            this.values.splice( index, 1 );
+        }
+    },
+
+    /**
+     * @param {TKey} key
+     * @return {TValue}
+     */
+    get: function( key )
+    {
+        var index = indexOf( this.keys, key );
+        if ( index > -1 )
+            return this.values[ index ];
+        else
+            return null;
+    },
+
+    /**
+     * @param {TKey} key
+     * @param {TValue} value
+     */
+    set: function( key, value )
+    {
+        var index = indexOf( this.keys, key );
+        if ( index > -1 )
+            this.values[ index ] = value;
+    },
+
+    /**
+     * @param {TKey} key
+     * @return {boolean}
+     */
+    contains: function( key ) {
+        return indexOf( this.keys, key ) > -1;
+    }
+});
+
+var Delegate = function( method )
+{
+    method.valueOf = function()
+    {
+        Delegate.operands.push( this );
+        return 3;
+    }
+    return method;
+};
+Delegate.operands = [];
 
 var Store = new Class({
     ctor: function()
@@ -748,857 +910,1064 @@ Task.when = function( promises )
     return task.promise;
 };
 
-// IE8 only supports Object.defineProperty on DOM objects.
-// http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
-// http://stackoverflow.com/a/4867755/740996
-var IE8 = ( function() {
-    try
+var Accessor = new Struct({
+    access: null,
+    method: null,
+    callsuper: false
+});
+
+var Builder = new Class(
+{
+    ctor: function()
     {
-        Object.defineProperty( {}, "x", {} );
-        return false;
-    } catch ( e ) {
-        return true;
-    }
-} () );
-
-// member access levels
-var PUBLIC = "public";
-var PRIVATE = "private";
-var PROTECTED = "protected";
-
-// special members
-var CTOR = "ctor";
-
-var RETURN_PUB = 1;
-var RETURN_SCOPE = 2;
-var CHECK_TYPE_OURS = 4;
-
-// A global flag to control execution of type initializers.
-var mode = RETURN_PUB;
-
-// When we want to pry an object open, we set this to the type of the object
-// and call $scope to extract the private scope.
-var tunnel = ( function() {
-    var value = null;
-    return {
-        open: function( type ) {
-            value = type;
-        },
-        close: function() {
-            value = null;
-        },
-        value: function() {
-            return value;
-        }
-    };
-} () );
-
-var GET_ACCESS = {
-    "__": PRIVATE,
-    "_": PROTECTED
-};
-
-var IS_VIRTUAL = {
-    "$": true,
-    "_$": true
-};
-
-var GET_PREFIX = {
-    "__": 2,
-    "_$": 2,
-    "_" : 1,
-    "$" : 1
-};
-
-var ACCESS = {};
-ACCESS[ PUBLIC ] = 1;
-ACCESS[ PROTECTED ] = 2;
-ACCESS[ PRIVATE ] = 3;
-
-// A regex for testing the use of _super inside a function.
-// http://ejohn.org/blog/simple-javascript-inheritance/
-var CALL_SUPER = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
-
-var typeCheckResult = false;
-
-var onTypeDefined = null;
-
-/**
- * @private
- * @description Determines whether the type was created by us.
- * @param {function()} type
- * @return {boolean}
- */
-function isTypeOurs( type )
-{
-    typeCheckResult = false;
-    mode = addFlag( mode, CHECK_TYPE_OURS );
-    type();
-    mode = removeFlag( mode, CHECK_TYPE_OURS );
-    return typeCheckResult;
-}
-
-/**
- * @description Defines a new type.
- * @return {Type}
- */
-function define()
-{
-    var Scope = null;
-    var run = true;
-    var Type = createType( function()
-    {
-        if ( hasFlag( mode, CHECK_TYPE_OURS ) )
-        {
-            typeCheckResult = true;
-            return;
-        }
-        if ( hasFlag( mode, RETURN_SCOPE ) )
-        {
-            if ( Scope === null )
-                Scope = defineScope( Type );
-            var scope =
-            {
-                parent: null,
-                self: null,
-                mixins: []
-            };
-            if ( IE8 )
-            {
-                scope.self = createElement();
-                applyPrototypeMembers( Scope, scope.self );
-            }
-            else
-                scope.self = new Scope();
-            return scope;
-        }
-        if ( hasFlag( mode, RETURN_PUB ) && run )
-        {
-            var pub;
-            run = false;
-            if ( IE8 )
-            {
-                pub = createElement();
-                applyPrototypeMembers( Type, pub );
-            }
-            else
-                pub = new Type();
-            initializeType( Type, pub, arguments, true );
-            run = true;
-            return pub;
-        }
-    });
-    var args = makeArray( arguments );
-    if ( isFunc( args[0] ) )
-    {
-        var proxy = function( func, scope )
-        {
-            return function()
-            {
-                func.apply( undefined, [ Type ].concat( makeArray( arguments ) ) );
-                return scope;
-            };
-        };
-        var scope = {
-            extend: proxy( defineParent, scope ),
-            include: proxy( defineMixins, scope ),
-            events: proxy( defineEvents, scope ),
-            members: proxy( defineMembers, scope )
-        };
-        args[0].call( scope );
-    }
-    else
-    {
-        if ( args.length === 2 )
-        {
-            if ( args[0].extend )
-                defineParent( Type, args[0].extend );
-            if ( args[0].include )
-                defineMixins( Type, args[0].include );
-            if ( args[0].events )
-                defineEvents( Type, args[0].events );
-        }
-        if ( args.length > 0 )
-            defineMembers( Type, args[1] || args[0] );
-    }
-    if ( onTypeDefined )
-        onTypeDefined( Type );
-    fake( Type );
-    return Type;
-}
-
-function createType( init )
-{
-    var Type = function() {
-        return init.apply( undefined, arguments );
-    };
-    Type.members = {};
-    Type.parent = null;
-    Type.mixins = [];
-    return Type;
-}
-
-/**
- * @description Sets the base type.
- * @param {Type} type
- * @param {Type|function} Base
- */
-function defineParent( type, Base )
-{
-    // Since name collision detection happens when the type is defined, we must prevent people
-    // from changing the inheritance hierarchy after defining members.
-    if ( keys( type.members ).length > 0 )
-        throw error( "DefinitionError", "Cannot change the base type after members have been defined." );
-
-    if ( !isFunc( Base ) )
-        throw error( "TypeError", "Base type must be a function." );
-
-    // Only set the parent member if the base type was created by us.
-    if ( isTypeOurs( Base ) )
-    {
-        // Check for circular reference.
-        var t = Base;
-        while ( t )
-        {
-            if ( t === type )
-                throw error( "DefinitionError", "Cannot inherit from " + ( Base === type ? "self" : "derived type" ) + "." );
-            t = t.parent;
-        }
-        type.parent = Base;
-    }
-
-    mode = removeFlag( mode, RETURN_PUB );
-    type.prototype = new Base();
-    mode = addFlag( mode, RETURN_PUB );
-}
-
-/**
- * @description
- * Defines members on the type.
- *
- * Example: The following defines a public method `foo`, a private method `bar`, and a public
- * virtual method `baz` on the type `MyType`.
- *
-    <pre>
-      var MyType = type().define({
-        foo: function() { },
-        __bar: function() { },
-        $baz: function() { }
-      });
-    </pre>
- *
- * @param {Type} type
- * @param {hash} members
- */
-function defineMembers( type, members )
-{
-    forIn( members || [], function( member, name )
-    {
-        var info = parseMember( name );
-        name = info.name;
-
-        validateMember( type, info );
-
-        if ( fake( function() { return isMemberDefined( type, info.name ); }) )
-            return;
-
-        if ( name === CTOR )
-        {
-            if ( isArray( member ) )
-            {
-                type.$inject = member;
-                member = member.pop();
-            }
-            if ( !isFunc( member ) )
-                throw error( "TypeError", "Constructor must be a function." );
-        }
-
-        type.members[ name ] =
-        {
-            access: info.access,
-            virtual: info.virtual
-        };
-
-        if ( isFunc( member ) )
-            defineMethod( type, name, member );
-        else
-            defineProperty( type, info, member );
-
-        if ( name === CTOR )
-        {
-            if (
-                !type.members.ctor.callsuper &&
-                type.parent !== null &&
-                type.parent.members.ctor &&
-                type.parent.members.ctor.params.length > 0
-            )
-                throw error( "DefinitionError", "Constructor must call the base constructor explicitly because it contains parameters." );
-        }
-    });
-}
-
-/**
- * @description Defines events on the type.
- * @param {Array} events
- */
-function defineEvents( type, events )
-{
-    forEach( events, function( name )
-    {
-        var info = parseMember( name );
-        name = info.name;
-
-        validateMember( type, info );
-
-        if ( name === CTOR )
-            throw error( "DefinitionError", "Event cannot be named 'ctor'." );
-
-        if ( info.virtual )
-            throw error( "DefinitionError", "Events cannot be virtual." );
-
-        type.members[ name ] = {
-            access: info.access,
-            isEvent: true
-        };
-    });
-}
-
-/**
- * @descriptions Mixes other types in with the type.
- * @param {Type} type
- * @param {Array} types
- */
-function defineMixins( type, types )
-{
-    if ( type.members.ctor )
-        throw error( "DefinitionError", "Mixins must be defined before the constructor." );
-
-    forEach( types, function( mixin )
-    {
-        if ( !isTypeOurs( mixin ) )
-            throw error( "TypeError", "Mixin must be a type." );
-
-        if ( mixin === type )
-            throw error( "DefinitionError", "Cannot include self." );
-
-        checkMixinForCircularReference( type, mixin );
-        type.mixins.push( mixin );
-    });
-}
-
-/**
- * @private
- * @description Checks mixin for circular references.
- * @param {Type} type
- * @param {Type} mixin
- */
-function checkMixinForCircularReference( type, mixin )
-{
-    if ( type === mixin )
-        throw error( "DefinitionError", "Cannot include type that includes self." );
-    forEach( mixin.mixins, function( m ) {
-        checkMixinForCircularReference( type, m );
-    });
-}
-
-/**
- * @private
- * @description Creates a new private scope type.
- * @param {Type} Type
- * @return {Scope}
- */
-function defineScope( Type )
-{
-    var Scope = function() {};
-    mode = removeFlag( mode, RETURN_PUB | RETURN_SCOPE );
-    Scope.prototype = new Type();
-    mode = addFlag( mode, RETURN_PUB | RETURN_SCOPE );
-
-    var fn = Scope.prototype;
+        this.controller = null;
+        this.tunnel = null;
+    },
 
     /**
-     * Gets the private scope of the type instance.
+     * @description Initializes a type.
+     * @param {Function} type The type to initialize.
+     * @param {Object} pub The public interface to initialize on.
+     * @param {Array} args Arguments for the constructor.
+     * @param {boolean} ctor Run the constructor.
      */
-    fn._pry = function( pub )
+    init: function( template, pub, args, ctor )
     {
-        tunnel.open( Type );
-        var scope = !!pub && !!pub.$scope && isFunc( pub.$scope ) ? pub.$scope() : null;
-        tunnel.close();
-        return scope || pub;
+        var self = this;
+        var scope = this.controller.createScope( template );
+
+        defineProperty( scope.self, "_pub",
+        {
+            get: function() {
+                return pub;
+            }
+        });
+
+        this._build( scope );
+        this._expose( scope, pub );
+
+        /**
+         * @internal
+         * @description Used in conjunction with _pry to expose the private scope.
+         */
+        defineProperty( pub, "__scope__",
+        {
+            enumerable: false,
+            get: function()
+            {
+                if ( self.tunnel.value() === template.ctor )
+                    return scope.self;
+            }
+        });
+
+        if ( ctor )
+            scope.self.ctor.apply( scope.self, args );
+
+        // Fake execution of all the methods so that Visual Studio's Intellisense knows how
+        // to resolve the `this` context inside the methods.
+        fake( function()
+        {
+            function run( scope )
+            {
+                if ( scope.template.parent !== null )
+                    run( scope.parent );
+
+                for ( var i = 0; i < scope.template.members.values.length; i++ )
+                {
+                    if ( scope.template.members.values[ i ] instanceof Method )
+                        scope.self[ template.members.keys[ i ] ]();
+                }
+            }
+            run( scope );
+        });
+
+        return scope;
+    },
+
+    /**
+     * @private
+     * @description Creates the type members on the instance.
+     * @param {Scope} scope The private scope of the instance.
+     */
+    _build: function( scope )
+    {
+        // Instantiate mixins and add proxies to their members.
+        for ( var i = 0; i < scope.template.mixins.length; i++ )
+        {
+            var mixin = this.init( scope.template.mixins[ i ], scope.self._pub, [], false );
+            this._proxy( mixin, scope );
+            scope.mixins.push( mixin );
+        }
+
+        // Instantiate the parent.
+        if ( scope.template.parent !== null )
+        {
+            var base = scope.template.parent.members.get( CTOR );
+            if ( base !== null && base.params.length > 0 )
+            {
+                var ctor = scope.template.members.get( CTOR );
+                if ( ctor === null || ctor.callsuper === false )
+                    throw error( "InitializationError", "Base constructor contains parameters and must be called explicitly." );
+            }
+
+            scope.parent = this.controller.createScope( scope.template.parent );
+            scope.parent.self._pub = scope.self._pub;
+            this._build( scope.parent );
+        }
+
+        // Add proxies to parent members.
+        if ( scope.template.parent !== null )
+            this._proxy( scope.parent, scope );
+
+        // Add our own members.
+        for ( var j = 0; j < scope.template.members.values.length; j++ )
+            scope.template.members.values[ j ].build( scope );
+
+        // If a constructor isn't defined, create a default one.
+        if ( !scope.self.ctor )
+        {
+            var temp = new Method();
+            temp.name = CTOR;
+            temp.access = PRIVATE;
+            temp.method = function() {};
+            temp.build( scope );
+        }
+    },
+
+    /**
+     * @param {Scope} source
+     * @param {Scope} target
+     */
+    _proxy: function( source, target )
+    {
+        for ( var i = 0; i < source.template.members.values.length; i++ )
+        {
+            var member = source.template.members.values[ i ];
+
+            // If the member is private or if it's been overridden by the child, don't make
+            // a reference to the parent implementation.
+            if ( member.access === PRIVATE || target.template.members.get( member.name ) )
+                continue;
+
+            if ( member instanceof Method || member instanceof Event )
+            {
+                target.self[ member.name ] = source.self[ member.name ];
+            }
+            else if ( member instanceof Property )
+            {
+                var accessors = {};
+                if ( member.get && member.get.access !== PRIVATE )
+                {
+                    accessors.get = function() {
+                        return source.self[ member.name ];
+                    };
+                }
+                if ( member.set && member.set.access !== PRIVATE )
+                {
+                    accessors.set = function( value ) {
+                        source.self[ member.name ] = value;
+                    };
+                }
+                defineProperty( target.self, member.name, accessors );
+            }
+        }
+    },
+
+    /**
+     * @private
+     * @description Creates references to the public members of the type on the public interface.
+     * @param {Scope} scope The type instance.
+     * @param {Object} pub The public interface.
+     */
+    _expose: function( scope, pub )
+    {
+        if ( scope.template.parent !== null )
+            this._expose( scope.parent, pub );
+
+        for ( var i = 0; i < scope.template.members.values.length; i++ )
+        {
+            var member = scope.template.members.values[ i ];
+            if ( member.access !== PUBLIC )
+                continue;
+
+            if ( member instanceof Method )
+            {
+                pub[ member.name ] = scope.self[ member.name ];
+            }
+            else if ( member instanceof Event )
+            {
+                defineProperty( pub, member.name,
+                {
+                    get: function() {
+                        return scope.self[ member.name ];
+                    },
+                    set: function( value ) {
+                        scope.self[ member.name ] = value;
+                    }
+                });
+            }
+            else if ( member instanceof Property )
+            {
+                var accessors = {};
+                if ( member.get && member.get.access === PUBLIC )
+                {
+                    accessors.get = function() {
+                        return scope.self[ member.name ];
+                    };
+                }
+                if ( member.set && member.set.access === PUBLIC )
+                {
+                    accessors.set = function( value ) {
+                        scope.self[ member.name ] = value;
+                    };
+                }
+                defineProperty( pub, member.name, accessors );
+            }
+        }
+    }
+});
+
+var Controller = new Class(
+{
+    ctor: function()
+    {
+        this.tunnel = null;
+        this.builder = null;
+
+        this._checkTypeOurs = false;
+        this._typeCheckResult = false;
+        this._returnScope = false;
+        this._returnBase = false;
+        this._returnTemplate = false;
+    },
+
+    /**
+     * @param {Function} ctor
+     * @return {boolean}
+     */
+    isTypeOurs: function( ctor )
+    {
+        this._checkTypeOurs = true;
+        ctor();
+        var result = this._typeCheckResult;
+        this._typeCheckResult = false;
+        this._checkTypeOurs = false;
+        return result;
+    },
+
+    /**
+     * @param {Template} ctor
+     * @return {Scope}
+     */
+    createScope: function( template )
+    {
+        this._returnScope = true;
+        var scope = template.ctor();
+        this._returnScope = false;
+        return scope;
+    },
+
+    /**
+     * @param {Template} template
+     * @return {Object}
+     */
+    createEmpty: function( template )
+    {
+        this._returnBase = true;
+        var instance = new template.ctor();
+        this._returnBase = false;
+        return instance;
+    },
+
+    /**
+     * @param {Function} ctor
+     * @return {Template}
+     */
+    getTemplate: function( ctor )
+    {
+        this._returnTemplate = true;
+        var template = ctor();
+        this._returnTemplate = false;
+        return template;
+    },
+
+    /**
+     * @return {Template}
+     */
+    createTemplate: function()
+    {
+        var me = this;
+        var Self = null;
+        var template = new Template();
+        var run = true;
+
+        var Type = function()
+        {
+            if ( me._returnBase )
+                return;
+
+            if ( me._checkTypeOurs )
+            {
+                me._typeCheckResult = true;
+                return;
+            }
+
+            if ( me._returnScope )
+            {
+                if ( Self === null )
+                    Self = me._createSelf( template );
+
+                var scope = new Scope();
+                scope.template = template;
+
+                if ( IE8 )
+                {
+                    scope.self = me._createElement();
+                    me._applyPrototype( Self, scope.self );
+                }
+                else
+                    scope.self = new Self();
+
+                return scope;
+            }
+
+            if ( me._returnTemplate )
+                return template;
+
+            if ( run )
+            {
+                var pub;
+                run = false;
+
+                if ( IE8 )
+                {
+                    pub = me._createElement();
+                    me._applyPrototype( template.ctor, pub );
+                }
+                else
+                    pub = new Type();
+
+                me.builder.init( template, pub, arguments, true );
+                run = true;
+                return pub;
+            }
+        };
+
+        template.ctor = Type;
+        template.members = new Dictionary();
+        return template;
+    },
+
+    /**
+     * @private
+     * @param {Function} ctor
+     * @param {Object} obj
+     */
+    _applyPrototype: function( ctor, obj )
+    {
+        var proto = ctor.prototype;
+        if ( proto.constructor.prototype !== proto )
+            this._applyPrototype( proto.constructor, obj );
+        for ( var prop in proto )
+        {
+            if ( hasOwn( proto, prop ) )
+                obj[ prop ] = proto[ prop ];
+        }
+    },
+
+    /**
+     * @private
+     * @return {HTMLElement}
+     */
+    _createElement: function()
+    {
+        var obj = document.createElement(), prop;
+        for ( prop in obj )
+        {
+            if ( hasOwn( obj, prop ) )
+                this._resetProperty( obj, prop );
+        }
+        return obj;
+    },
+
+    /**
+     * @private
+     * @param {Object|Function|Array} obj
+     * @param {string} propertyName
+     */
+    _resetProperty: function( obj, propertyName )
+    {
+        var _value;
+        Object.defineProperty( obj, propertyName,
+        {
+            configurable: true,
+            get: function() {
+                return _value;
+            },
+            set: function( value ) {
+                _value = value;
+            }
+        });
+    },
+
+    /**
+     * @private
+     * @description Creates a new private scope type.
+     * @param {Template} template
+     * @return {Function}
+     */
+    _createSelf: function( template )
+    {
+        var self = this;
+        var Self = function() {};
+        Self.prototype = this.createEmpty( template );
+
+        /**
+         * Gets the private scope of the type instance.
+         * @return {?}
+         */
+        Self.prototype._pry = function( pub )
+        {
+            self.tunnel.open( template.ctor );
+            var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
+            self.tunnel.close();
+            return scope || pub;
+        };
+
+        return Self;
+    }
+});
+
+var Descriptor = new Class( function()
+{
+    var GET_ACCESS = {
+        "__": PRIVATE,
+        "_": PROTECTED
     };
 
-    return Scope;
-}
+    var IS_VIRTUAL = {
+        "$": true,
+        "_$": true
+    };
 
-/**
- * @description Gets the member info by parsing the member name.
- * @param {string} name
- * @return {Object}
- */
-function parseMember( name )
-{        
-    var twoLetter = name.substr( 0, 2 );
+    var GET_PREFIX = {
+        "__": 2,
+        "_$": 2,
+        "_" : 1,
+        "$" : 1
+    };
 
-    // determines the member's visibility (public|private)
-    var modifier = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || PUBLIC;
+    var ACCESS = {};
+    ACCESS[ PUBLIC ] = 1;
+    ACCESS[ PROTECTED ] = 2;
+    ACCESS[ PRIVATE ] = 3;
 
-    // determines whether the method can be overridden
-    var virtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
-
-    // trim away the modifiers
-    name = name.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ name[0] ] || 0 );
-
-    // "ctor" is a special name for the constructor method
-    if ( name === CTOR )
-    {
-        modifier = PRIVATE;
-        virtual = false;
-    }
+    // A regex for testing the use of _super inside a function.
+    // http://ejohn.org/blog/simple-javascript-inheritance/
+    var CALL_SUPER = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
 
     return {
-        access: modifier,
-        virtual: virtual,
-        name: name
+        /**
+         * @constructor
+         */
+        ctor: function() {
+            this.controller = null;
+        },
+
+        /**
+         * @description Sets the parent type.
+         * @param {Template} template
+         * @param {Function} Parent
+         */
+        defineParent: function( template, Parent )
+        {
+            // Since name collision detection happens when the type is defined, we must prevent people
+            // from changing the inheritance hierarchy after defining members.
+            if ( template.members.keys.length > 0 )
+                throw error( "DefinitionError", "Cannot change the parent type after members have been defined." );
+
+            if ( !isFunc( Parent ) )
+                throw error( "TypeError", "Parent type must be a function." );
+
+            // Only set the parent member if the parent type was created by us.
+            if ( this.controller.isTypeOurs( Parent ) )
+            {
+                var baseTemplate = this.controller.getTemplate( Parent );
+
+                // Check for circular reference.
+                var t = baseTemplate;
+                while ( t )
+                {
+                    if ( t === template )
+                        throw error( "DefinitionError", "Cannot inherit from " + ( baseTemplate === template ? "self" : "derived type" ) + "." );
+                    t = t.parent;
+                }
+                template.parent = baseTemplate;
+                template.ctor.prototype = this.controller.createEmpty( baseTemplate );
+            }
+            else
+                template.ctor.prototype = new Parent();
+        },
+
+        defineMembers: function( template, members )
+        {
+            var names = keys( members || {} );
+            var i = 0, len = names.length;
+            for ( ; i < len; i++ )
+            {
+                var info = parse( names[ i ] );
+                var descriptor = members[ names[ i ] ];
+
+                validate( template, info );
+
+                // Fake exit. At runtime, there would be an error.
+                if ( fake( function() { return alreadyDefined( template, info.name ); }) )
+                    return;
+
+                if ( info.name === CTOR )
+                {
+                    if ( isArray( descriptor ) )
+                    {
+                        template.ctor.$inject = descriptor;
+                        descriptor = descriptor.pop();
+                    }
+                    if ( !isFunc( descriptor ) )
+                        throw error( "TypeError", "Member '" + CTOR + "' must be a function." );
+                }
+
+                var member = isFunc( descriptor ) ? createMethod( descriptor ) : createProperty( template, info, descriptor );
+
+                if ( info.name === CTOR )
+                {
+                    if ( !member.callsuper && template.parent !== null )
+                    {
+                        var base = template.parent.members.get( CTOR );
+                        if ( base !== null && base.params.length > 0 )
+                            throw error( "DefinitionError", "Constructor must call the parent constructor explicitly because it contains parameters." );    
+                    }
+                }
+
+                member.name = info.name;
+                member.access = info.access;
+                member.virtual = info.virtual;
+                template.members.add( info.name, member );
+            }
+        },
+
+        /**
+         * @description Defines events on the type.
+         * @param {Template} template
+         * @param {Array.<string>} events
+         */
+        defineEvents: function( template, events )
+        {
+            var i = 0, len = events.length;
+            for ( ; i < len; i++ )
+            {
+                var info = parse( events[ i ] );
+                validate( template, info );
+
+                if ( info.name === CTOR )
+                    throw error( "DefinitionError", "Event cannot be named 'ctor'." );
+
+                if ( info.virtual )
+                    throw error( "DefinitionError", "Events cannot be virtual." );
+
+                var member = new Event();
+                member.name = info.name;
+                member.access = info.access;
+                template.members.add( info.name, member );
+            }
+        },
+
+        /**
+         * @descriptions Mixes other types in with the type.
+         * @param {Template} template
+         * @param {Array.<Function>} types
+         */
+        defineMixins: function( template, types )
+        {
+            if ( template.members.contains( CTOR ) )
+                throw error( "DefinitionError", "Mixins must be defined before the constructor." );
+
+            var i = 0, len = types.length;
+            for ( ; i < len; i++ )
+            {
+                if ( !this.controller.isTypeOurs( types[ i ] ) )
+                    throw error( "TypeError", "Mixin must be a type." );
+
+                var mixin = this.controller.getTemplate( types[ i ] );
+                if ( mixin === template )
+                    throw error( "DefinitionError", "Cannot include self." );
+
+                checkMixinForCircularReference( template, mixin );
+                template.mixins.push( mixin );
+            }
+        }
     };
-}
 
-/**
- * @description Checks the memeber info on a type and throws an error if invalid.
- * @param {Type} type
- * @param {Object} info
- */
-function validateMember( type, info )
-{
-    // check for name collision
-    if ( isMemberDefined( type, info.name ) )
-        throw error( "DefinitionError", "Member '" + info.name + "' is already defined." );
+    /**
+     * @private
+     * @description Gets the member info by parsing the member name.
+     * @param {string} name
+     * @return {MemberInfo}
+     */
+    function parse( name )
+    {        
+        var twoLetter = name.substr( 0, 2 );
 
-    // make sure the access modifier isn't being changed
-    if (
-        info.access !== PRIVATE &&
-        type.parent !== null &&
-        type.parent.members[ info.name ] &&
-        type.parent.members[ info.name ].access !== info.access
-    )
-    {
-        throw error( "DefinitionError", "Cannot change access modifier of member '" + info.name + "' from " +
-            type.parent.members[ info.name ].access + " to " + info.access + "." );
-    }
-}
+        // Determines the member's visibility (public|private).
+        var modifier = GET_ACCESS[ twoLetter ] || GET_ACCESS[ name[0] ] || PUBLIC;
 
-/**
- * @private
- * @description Checks if member name collides with another member.
- * @param {Type} type The type to check.
- * @param {string} name The member name.
- * @param {bool} [parent] True if the type being checked is a base type.
- * @return {bool}
- */
-function isMemberDefined( type, name, parent )
-{
-    if (
-        type.members[ name ] &&
-        ( !parent || type.members[ name ].access !== PRIVATE ) &&
-        ( !parent || !type.members[ name ].virtual )
-    )
-        return true;
-    if ( type.parent !== null )
-        return isMemberDefined( type.parent, name, true );
-    return false;
-}
+        // Determines whether the method can be overridden.
+        var virtual = IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ name[0] ] || false;
 
-/**
- * @private
- * @description Defines a method on the type.
- * @param {Type} type
- * @param {string} name
- * @param {function()} method
- */
-function defineMethod( type, name, method )
-{
-    var params = [];
-    var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
-    if ( match !== null )
-    {
-        forEach( match[1].split( "," ), function( param, index ) {
-            params.push( trim( param ) );
+        // Trim away the modifiers.
+        name = name.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ name[0] ] || 0 );
+
+        // CTOR is a special name for the constructor method.
+        if ( name === CTOR )
+        {
+            modifier = PRIVATE;
+            virtual = false;
+        }
+
+        return new MemberInfo({
+            access: modifier,
+            virtual: virtual,
+            name: name
         });
     }
-    type.members[ name ].method = method;
-    type.members[ name ].params = params;
-    type.members[ name ].callsuper = CALL_SUPER.test( method );
-}
-
-/**
- * @private
- * @description Defines a property on the type.
- * @param {Type} Type
- * @param {string} name
- * @param {Object} property
- */
-function defineProperty( Type, info, property )
-{
-    if ( typeOf( property ) !== "object" )
-        property = { value: property };
-
-    var different = 0;
-
-    // IE8 will actually enumerate over members added during an enumeration,
-    // so we need to write to a temp object and copy the accessors over once
-    // we're done.
-    var temp = {};
-    forIn( property, function( method, type )
-    {
-        type = type.toLowerCase();
-        var twoLetter = type.substr( 0, 2 );
-        if ( IS_VIRTUAL[ twoLetter ] || IS_VIRTUAL[ type[0] ] )
-            throw error( "DefinitionError", "Property '" + info.name + "' cannot have virtual accessors." );
-
-        var access = GET_ACCESS[ twoLetter ] || GET_ACCESS[ type[0] ] || info.access;
-        if ( ACCESS[ access ] < ACCESS[ info.access ] )
-        {
-            throw error( "DefinitionError", "The " + type + " accessor of the property '" + info.name +
-                "' cannot have a lower access modifier than the property itself." );
-        }
-
-        type = type.substr( GET_PREFIX[ twoLetter ] || GET_PREFIX[ type[0] ] || 0 );
-
-        if ( type !== "get" && type !== "set" )
-            return;
-
-        if ( access !== info.access )
-            different++;
-
-        if (
-            Type.parent !== null &&
-            Type.parent.members[ info.name ] &&
-            Type.parent.members[ info.name ][ type ] &&
-            Type.parent.members[ info.name ][ type ].access !== access
-        )
-        {
-            throw error( "DefinitionError", "Cannot change access modifier of '" + type + "' accessor for property '" + info.name +
-                "' from " + Type.parent.members[ info.name ][ type ].access + " to " + access + "." );
-        }
-
-        if ( method !== null && !isFunc( method ) )
-        {
-            throw error( "TypeError", type.substr( 0, 1 ).toUpperCase() + type.substr( 1 ) + " accessor for property '" +
-                info.name + "' must be a function or null (uses default implementation.)" );
-        }
-        
-        temp[ type ] =
-        {
-            access: access,
-            method: method
-        };
-    });
-    property.get = temp.get;
-    property.set = temp.set;
-
-    if ( different === 2 )
-        throw error( "DefinitionError", "Cannot set access modifers for both accessors of the property '" + info.name + "'." );
-
-    if ( !property.get && !property.set )
-    {
-        property.get = { access: info.access };
-        property.set = { access: info.access };
-    }
-
-    if ( property.get && !isFunc( property.get.method ) )
-    {
-        property.get.method = function() {
-            return this._value();
-        };
-    }
-    if ( property.set && !isFunc( property.set.method ) )
-    {
-        property.set.method = function( value ) {
-            this._value( value );
-        };
-    }
-
-    forEach([ property.get, property.set ], function( accessor, index )
-    {
-        if ( !accessor ) return;
-
-        var type = index === 0 ? "get" : "set";
-        if (
-            Type.parent !== null &&
-            Type.parent.members[ info.name ] &&
-            Type.parent.members[ info.name ].access !== PRIVATE &&
-            Type.parent.members[ info.name ][ type ] === undefined
-        )
-            throw error( "DefinitionError", "Cannot change read/write definition of property '" + info.name + "'." );
-
-        Type.members[ info.name ][ type ] =
-        {
-            access: accessor.access,
-            method: accessor.method,
-            callsuper: CALL_SUPER.test( accessor.method )
-        };
-    });
-
-    Type.members[ info.name ].value = property.value ? property.value : null;
-}
-
-/**
- * @private
- * @param {function()} type
- * @param {Object} obj
- */
-function applyPrototypeMembers( type, obj )
-{
-    var proto = type.prototype;
-    if ( proto.constructor.prototype !== proto )
-        applyPrototypeMembers( proto.constructor, obj );
-    for ( var prop in proto )
-    {
-        if ( hasOwn( proto, prop ) )
-            obj[ prop ] = proto[ prop ];
-    }
-}
-
-function createElement()
-{
-    var obj = document.createElement(), prop;
-    for ( prop in obj )
-    {
-        if ( hasOwn( obj, prop ) )
-            resetProperty( obj, prop );
-    }
-    return obj;
-}
-
-function resetProperty( obj, propertyName )
-{
-    var _value;
-    Object.defineProperty( obj, propertyName,
-    {
-        configurable: true,
-        get: function() {
-            return _value;
-        },
-        set: function( value ) {
-            _value = value;
-        }
-    });
-}
-
-/**
- * @private
- * @description Initializes the type.
- * @param {Type} type The type to initialize.
- * @param {Object} pub The public interface to initialize on.
- * @param {Array} args Arguments for the constructor.
- * @param {boolean} ctor Run the constructor.
- */
-function initializeType( type, pub, args, ctor )
-{
-    mode = addFlag( mode, RETURN_SCOPE );
-    var scope = type();
-    mode = removeFlag( mode, RETURN_SCOPE );
-
-    addProperty( scope.self, "_pub", {
-        get: function() {
-            return pub;
-        }
-    });
-
-    buildMembers( type, scope );
-    exposeMembers( type, scope, pub );
 
     /**
-     * @internal
-     * Use in conjunction with _pry to expose the private scope.
+     * @private
+     * @description Checks the memeber info on a type and throws an error if invalid.
+     * @param {Template} template
+     * @param {MemberInfo} info
      */
-    pub.$scope = function()
+    function validate( template, info )
     {
-        if ( tunnel.value() === type )
-            return scope.self;
-    };
+        // Check for name collision.
+        if ( alreadyDefined( template, info.name ) )
+            throw error( "DefinitionError", "Member '" + info.name + "' is already defined." );
 
-    if ( ctor )
-        scope.self.ctor.apply( scope.self, args );
-
-    fake( function()
-    {
-        function run( type, scope )
+        // Make sure the access modifier isn't being changed.
+        if ( info.access !== PRIVATE && template.parent !== null )
         {
-            if ( type.parent !== null )
-                run( type.parent, scope.parent );
-            forEach( type.members, function( member, name )
+            var base = template.parent.members.get( info.name );
+            if ( base !== null && base.access !== info.access )
             {
-                if ( member.method )
-                    scope.self[ name ]();
+                throw error( "DefinitionError", "Cannot change access modifier of member '" + info.name + "' from " +
+                    base.access + " to " + info.access + "." );
+            }
+        }
+    }
+
+    /**
+     * @private
+     * @description Checks if member name collides with another member.
+     * @param {Template} template The type to check.
+     * @param {string} name The member name.
+     * @param {bool} [base] True if the type being checked is a base type.
+     * @return {bool}
+     */
+    function alreadyDefined( template, name, base )
+    {
+        var member = template.members.get( name );
+        if (
+            member !== null &&
+            ( !base || member.access !== PRIVATE ) &&
+            ( !base || member instanceof Event || member.virtual === false )
+        )
+            return true;
+
+        if ( template.parent !== null )
+            return alreadyDefined( template.parent, name, true );
+
+        return false;
+    }
+
+    /**
+     * @private
+     * @description Creates a method member.
+     * @param {Function} method
+     * @return {Method}
+     */
+    function createMethod( method )
+    {
+        var params = [];
+        var match = method.toString().match( /^function\s*\(([^())]+)\)/ );
+        if ( match !== null )
+        {
+            var items = match[1].split( "," );
+            var i = 0, len = items.length;
+            for ( ; i < len; i++ )
+                params.push( trim( items[ i ] ) );
+        }
+        var member = new Method();
+        member.method = method;
+        member.params = params;
+        member.callsuper = CALL_SUPER.test( method );
+        return member;
+    }
+
+    /**
+     * @private
+     * @description Defines a property on the type.
+     * @param {Template} template
+     * @param {MemberInfo} property
+     * @param {Object} descriptor
+     * @return {Property}
+     */
+    function createProperty( template, property, descriptor )
+    {
+        var member = new Property();
+        member.access = property.access;
+        member.name = property.name;
+        member.virtual = property.virtual;
+
+        if ( typeOf( descriptor ) !== "object" )
+        {
+            member.value = descriptor;
+            descriptor = {};
+        }
+        else
+            member.value = descriptor.value;
+
+        if ( member.value === undefined )
+            member.value = null;
+
+        var elements = keys( descriptor ), i = 0, len = elements.length;
+        for ( ; i < len; i++ )
+        {
+            var method = descriptor[ elements[ i ] ];
+            var info = parse( elements[ i ].toLowerCase() );
+
+            if ( info.name !== "get" && info.name !== "set" )
+                continue;
+
+            if ( info.virtual )
+                throw error( "DefinitionError", "Property '" + property.name + "' cannot have virtual accessors." );
+
+            if ( method !== null && !isFunc( method ) )
+            {
+                throw error( "TypeError", "The " + info.name + " accessor for property '" +
+                    property.name + "' must be a function or null (uses default implementation.)" );
+            }
+
+            member[ info.name ] = new Accessor({
+                access: info.access,
+                method: method
             });
         }
-        run( type, scope );
-    });
 
-    return scope.self;
-}
-
-/**
- * @private
- * @description Creates the type members on the instance.
- * @param {Type} type The instance type.
- * @param {Scope} scope The private scope of the instance.
- */
-function buildMembers( type, scope )
-{
-    // Instantiate mixins and add proxies to their members.
-    forEach( type.mixins, function( mixin )
-    {
-        initializeType( mixin, scope.self._pub, [], false );
-        tunnel.open( mixin );
-        var inner = scope.self._pub.$scope();
-        tunnel.close();
-        createProxy( mixin, inner, type, scope.self );
-        scope.mixins.push( inner );
-    });
-
-    // Instantiate the parent.
-    if ( type.parent !== null )
-    {
-        if (
-            type.parent.members.ctor &&
-            type.parent.members.ctor.params.length > 0 &&
-            ( !type.members.ctor || !type.members.ctor.callsuper )
-        )
-            throw error( "InitializationError", "Base constructor contains parameters and must be called explicitly." );
-
-        mode = addFlag( mode, RETURN_SCOPE );
-        scope.parent = type.parent();
-        mode = removeFlag( mode, RETURN_SCOPE );
-
-        scope.parent.self._pub = scope.self._pub;
-        buildMembers( type.parent, scope.parent );
-    }
-
-    // Add proxies to parent members.
-    if ( type.parent !== null )
-        createProxy( type.parent, scope.parent.self, type, scope.self );
-
-    // Add type members.
-    forIn( type.members, function( member, name )
-    {
-        if ( member.method )
-            buildMethod( type, scope, name, member );
-        else if ( member.isEvent )
-            buildEvent( type, scope, name );
-        else
-            buildProperty( type, scope, name, member );
-    });
-
-    // If a constructor isn't defined, provide a default one.
-    if ( !scope.self.ctor )
-    {
-        buildMethod( type, scope, CTOR,
+        // Create default accessors of neither are provided.
+        if ( !member.get && !member.set )
         {
-            callsuper: false,
-            params: [],
-            access: PRIVATE,
-            virtual: false,
-            name: CTOR,
-            method: function() {}
-        });
-    }
-}
-
-function createProxy( srcType, srcObj, dstType, dstObj )
-{
-    forIn( srcType.members, function( member, name )
-    {
-        // If the member is private or if it's been overridden by the child, don't make a reference
-        // to the parent implementation.
-        if ( member.access === PRIVATE || dstType.members[ name ] ) return;
-
-        if ( member.method || member.isEvent )
-            dstObj[ name ] = srcObj[ name ];
-        else
-        {
-            var accessors = {};
-            if ( member.get && member.get.access !== PRIVATE )
-            {
-                accessors.get = function() {
-                    return srcObj[ name ];
-                };
-            }
-            if ( member.set && member.set.access !== PRIVATE )
-            {
-                accessors.set = function( value ) {
-                    srcObj[ name ] = value;
-                };
-            }
-            addProperty( dstObj, name, accessors );
+            member.get = new Accessor({ access: property.access });
+            member.set = new Accessor({ access: property.access });
         }
-    });
-}
+
+        if ( member.get !== null )
+        {
+            // Create default 'get' method if none is provided.
+            if ( member.get.method === null )
+            {
+                member.get.method = function() {
+                    return this._value();
+                };
+            }
+            member.get.callsuper = CALL_SUPER.test( member.get.method );
+        }
+
+        if ( member.set !== null )
+        {
+            // Create default 'set' method if none is provided.
+            if ( member.set.method === null )
+            {
+                member.set.method = function( value ) {
+                    this._value( value );
+                };
+            }
+            member.set.callsuper = CALL_SUPER.test( member.set.method );
+        }
+
+        validateProperty( template, member );
+        return member;
+    }
+
+    /**
+     * @private
+     * @param {Template} template
+     * @param {Property} property
+     */
+    function validateProperty( template, property )
+    {
+        var types = [ "get", "set" ];
+        var different = 0;
+        var i = 0, len = types.length;
+
+        for ( ; i < len; i++ )
+        {
+            var type = types[ i ];
+            var accessor = property[ type ];
+
+            if ( accessor === null )
+                continue;
+
+            var base = template.parent !== null ? template.parent.members.get( property.name ) : null;
+            if ( base !== null && base.access !== PRIVATE && base[ type ] === null )
+                throw error( "DefinitionError", "Cannot change read/write definition of property '" + property.name + "'." );
+
+            if ( ACCESS[ accessor.access ] < ACCESS[ property.access ] )
+            {
+                throw error( "DefinitionError", "The " + type + " accessor of the property '" + property.name +
+                    "' cannot have a higher visibility than the property itself." );
+            }
+
+            if ( accessor.access !== property.access )
+                different++;
+
+            if ( base !== null && accessor.access !== base.access )
+                throw error( "DefinitionError", "Cannot change access modifier of '" + type + "' accessor for property '" + property.name +
+                    "' from " + base.access + " to " + accessor.access + "." );
+        }
+
+        if ( different === 2 )
+            throw error( "DefinitionError", "Cannot set access modifers for both accessors of the property '" + property.name + "'." );
+    }
+
+    /**
+     * @private
+     * @description Checks mixin for circular references.
+     * @param {Template} type
+     * @param {Template} mixin
+     */
+    function checkMixinForCircularReference( type, mixin )
+    {
+        if ( type === mixin )
+            throw error( "DefinitionError", "Cannot include type that includes self." );
+
+        var i = 0, len = mixin.mixins.length;
+        for ( ; i < len; i++ )
+            checkMixinForCircularReference( type, mixin.mixins[ i ] );
+    }
+});
 
 /**
- * @private
- * @description Creates a method member.
- * @param {Type} type
- * @param {Scope} scope
- * @param {string} name
- * @param {Object} member
+ * @implements {Member}
+ * @description
+ * C# style events implemented through faking operator overloading:
+ * http://www.2ality.com/2011/12/fake-operator-overloading.html
  */
-function buildMethod( type, scope, name, member )
+var Event = new Class(
 {
-    if ( name === "ctor" )
+    /**
+     * @constructor
+     */
+    ctor: function()
     {
+        this.name = null;
+        this.access = null;
+    },
+
+    /**
+     * @description Creates the event on the specified scope.
+     * @param {Scope} scope
+     */
+    build: function( scope )
+    {
+        var handlers = [];
+        var raise = new Delegate( function()
+        {
+            var i = 0, len = handlers.length;
+            for ( ; i < len; i++ )
+                handlers[ i ].apply( undefined, arguments );
+        });
+
+        defineProperty( scope.self, this.name,
+        {
+            get: function() {
+                return raise;
+            },
+            set: function( value )
+            {
+                // Make sure two delegates were added together, and that the left operand is ourself.
+                if ( Delegate.operands.length === 2 && Delegate.operands[0] === raise )
+                {
+                    var handler = Delegate.operands[1];
+
+                    // the += operator was used (3 + 3 == 6)
+                    if ( value === 6 )
+                        add( handler );
+
+                    // the -= operator was used (3 - 3 == 0)
+                    else if ( value === 0 )
+                        remove( handler );
+                }
+            }
+        });
+
+        function add( handler ) {
+            handlers.push( handler );
+        }
+
+        function remove( handler )
+        {
+            var index = indexOf( handlers, handler );
+            if ( index > -1 )
+                handlers.splice( index, 1 );
+        }
+    }
+});
+
+/**
+ * @interface
+ */
+var Member = function() {};
+
+/**
+ * @description Creates the member on the specified scope.
+ * @param {Scope} scope
+ */
+Member.prototype.build = function( scope ) {};
+
+/**
+ * @description Gets or sets the member name.
+ * @type {string}
+ */
+Member.prototype.name = null;
+
+/**
+ * @description Gets or sets the member's access level.
+ * @type {string}
+ */
+Member.prototype.access = null;
+
+var MemberInfo = new Struct({
+    access: null,
+    virtual: false,
+    name: null
+});
+
+/**
+ * @implements {Member}
+ */
+var Method = new Class(
+{
+    /**
+     * @constructor
+     */
+    ctor: function()
+    {
+        this.callsuper = false;
+        this.params = [];
+        this.access = null;
+        this.virtual = false;
+        this.name = null;
+        this.method = null;
+    },
+
+    /**
+     * @description Creates the method on the specified scope.
+     * @param {Scope} scope
+     */
+    build: function( scope )
+    {
+        var self = this;
+        if ( this.name === CTOR )
+            this._buildConstructor( scope );
+        else
+        {
+            if ( scope.parent !== null && scope.parent.self[ this.name ] )
+            {
+                var _super = scope.parent.self[ this.name ];
+                scope.self[ this.name ] = function()
+                {
+                    var temp = scope.self._super;
+                    scope.self._super = _super;
+                    var result = self.method.apply( scope.self, arguments );
+                    if ( temp === undefined )
+                        delete scope.self._super;
+                    else
+                        scope.self._super = temp;
+                    return result;
+                };
+            }
+            else
+            {
+                scope.self[ this.name ] = function() {
+                    return self.method.apply( scope.self, arguments );
+                };
+            }
+        }
+        scope.self[ this.name ] = new Delegate( scope.self[ this.name ] );
+    },
+
+    /**
+     * @param {Scope} scope
+     */
+    _buildConstructor: function( scope )
+    {
+        var self = this;
         scope.self.ctor = function()
         {
             // Hide the constructor because it should never be called again.
             delete scope.self.ctor;
 
             // Run each mixin's constructor. If the constructor contains parameters, add it to the queue.
-            var queue = [];
+            var queue = new Dictionary();
             var temp = {
                 _init: scope.self._init,
                 _super: scope.self._super
             };
 
-            forEach( type.mixins, function( mixin, i )
+            for ( var i = 0; i < scope.template.mixins.length; i++ )
             {
-                if ( mixin.members.ctor )
+                var mixin = scope.template.mixins[ i ];
+                if ( mixin.members.contains( CTOR ) )
                 {
-                    if ( mixin.members.ctor.params.length > 0 )
-                        queue.push( mixin );
+                    if ( mixin.members.get( CTOR ).params.length > 0 )
+                        queue.add( mixin.ctor, mixin );
                     else
-                        mixin.members.ctor.method.call( scope.mixins[ i ] );
+                        mixin.members.get( CTOR ).method.call( scope.mixins[ i ] );
                 }
-            });
+            }
 
             // If mixins need to be initialized explicitly, create an _init() method.
-            if ( queue.length > 0 )
+            if ( queue.keys.length > 0 )
             {
+                /**
+                 * @param {Function} mixin The mixin's constructor.
+                 */
                 scope.self._init = function( mixin )
                 {
                     // Make sure we're initializing a valid mixin.
-                    var i = indexOf( queue, mixin );
-                    if ( i === -1 )
+                    if ( !queue.contains( mixin ) )
                         throw error( "InitializationError", "Mixin is not defined for this type or has already been initialized." );
 
                     var args = makeArray( arguments );
                     args.shift();
-                    mixin.members.ctor.method.apply( scope.mixins[ indexOf( type.mixins, mixin ) ], args );
+
+                    var mixinTemplate = queue.get( mixin );
+                    var mixinInstance = scope.mixins[ indexOf( scope.template.mixins, mixinTemplate ) ];
+                    mixinTemplate.members.get( CTOR ).method.apply( mixinInstance, args );
 
                     // Remove mixin from the queue.
-                    queue.splice( i, 1 );
+                    queue.remove( mixin );
                 };
             }
 
             // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
-            if ( type.parent !== null && type.parent.members.ctor )
+            if ( scope.template.parent !== null && scope.template.parent.members.contains( CTOR ) )
             {
-                if ( type.parent.members.ctor.params.length > 0 )
+                if ( scope.template.parent.members.get( CTOR ).params.length > 0 )
                     scope.self._super = scope.parent.self.ctor;
                 else
                     scope.parent.self.ctor();
             }
 
-            member.method.apply( scope.self, arguments );
+            self.method.apply( scope.self, arguments );
 
             if ( temp._super === undefined )
                 delete scope.self._super;
@@ -1617,234 +1986,222 @@ function buildMethod( type, scope, name, member )
             }
         };
     }
-    else
+});
+
+/**
+ * @implements {Member}
+ */
+var Property = new Class(
+{
+    /**
+     * @constructor
+     */
+    ctor: function()
     {
-        if ( scope.parent !== null && scope.parent.self[ name ] )
+        this.name = null;
+        this.access = null;
+        this.value = null;
+        this.virtual = false;
+
+        /**
+         * @type {Accessor}
+         */
+        this.get = null;
+
+        /**
+         * @type {Accessor}
+         */
+        this.set = null;        
+    },
+
+    /**
+     * @private
+     * @description Creates the property on the specified scope.
+     */
+    build: function( scope )
+    {
+        var _value = this.value;
+        var accessors = {};
+
+        if ( this.get )
         {
-            var _super = scope.parent.self[ name ];
-            scope.self[ name ] = function()
+            accessors.get = createAccessor(
+                this.get.method,
+                scope.parent === null ? null : function( value ) {
+                    return scope.parent.self[ this.name ];
+                }
+            );
+        }
+
+        if ( this.set )
+        {
+            accessors.set = createAccessor(
+                this.set.method,
+                scope.parent === null ? null : function( value ) {
+                    scope.parent.self[ this.name ] = value;
+                }
+            );
+        }
+
+        defineProperty( scope.self, this.name, accessors );
+
+        function createAccessor( method, _super )
+        {
+            return function()
             {
-                var temp = scope.self._super;
+                var temp = {
+                    _super: scope.self._super,
+                    _value: scope.self._value
+                };
                 scope.self._super = _super;
-                var result = member.method.apply( scope.self, arguments );
-                if ( temp === undefined )
+                scope.self._value = function( value )
+                {
+                    if ( arguments.length )
+                        _value = value;
+                    return _value;
+                };
+                var result = method.apply( scope.self, arguments );
+                if ( temp._super === undefined )
                     delete scope.self._super;
                 else
-                    scope.self._super = temp;
+                    scope.self._super = temp._super;
+                if ( temp._value === undefined )
+                    delete scope.self._value;
+                else
+                    scope.self._value = temp._value;
                 return result;
             };
         }
-        else
-        {
-            scope.self[ name ] = function() {
-                return member.method.apply( scope.self, arguments );
-            };
-        }
     }
-}
+});
 
-/**
- * @private
- * @description Creates a property member.
- * @param {Type} type
- * @param {Scope} scope
- * @param {string} name
- * @param {Object} member
- */
-function buildProperty( type, scope, name, member )
+var Scope = new Struct({
+    /**
+     * @type {Scope}
+     */
+    parent: null,
+
+    /**
+     * @type {Object}
+     */
+    self: null,
+
+    /**
+     * @type {Array.<Scope>}
+     */
+    mixins: [],
+
+    /**
+     * @type {Template}
+     */
+    template: null
+});
+
+var Template = new Struct({
+    /**
+     * @type {Dictionary.<string, Member>}
+     */
+    members: null,
+
+    /**
+     * @type {Template}
+     */
+    parent: null,
+
+    /**
+     * @type {Array.<Template>}
+     */
+    mixins: [],
+
+    /**
+     * @type {Function}
+     */
+    ctor: null
+});
+
+var Tunnel = new Class({
+    ctor: function() {
+        this._value = null;
+    },
+
+    open: function( type ) {
+        this._value = type;
+    },
+
+    close: function() {
+        this._value = null;
+    },
+
+    value: function() {
+        return this._value;
+    }
+});
+
+var onTypeDefined;
+
+var Type = ( function() {
+
+var builder = new Builder();
+var controller = new Controller();
+var tunnel = new Tunnel();
+var descriptor = new Descriptor();
+
+builder.controller = controller;
+builder.tunnel = tunnel;
+
+controller.builder = builder;
+controller.tunnel = tunnel;
+
+descriptor.controller = controller;
+
+return function()
 {
-    function buildAccessor( method, _super )
+    var template = controller.createTemplate();
+    var args = makeArray( arguments );
+
+    if ( isFunc( args[0] ) )
     {
-        return function()
+        var proxy = function( func, scope )
         {
-            var temp = {
-                _super: scope.self._super,
-                _value: scope.self._value
-            };
-            scope.self._super = _super;
-            scope.self._value = function( value )
+            return function()
             {
-                if ( arguments.length )
-                    _value = value;
-                return _value;
+                func.apply( descriptor, [ template ].concat( makeArray( arguments ) ) );
+                return scope;
             };
-            var result = method.apply( scope.self, arguments );
-            if ( temp._super === undefined )
-                delete scope.self._super;
-            else
-                scope.self._super = temp._super;
-            if ( temp._value === undefined )
-                delete scope.self._value;
-            else
-                scope.self._value = temp._value;
-            return result;
         };
+        var builder = {
+            extend: proxy( descriptor.defineParent, builder ),
+            include: proxy( descriptor.defineMixins, builder ),
+            events: proxy( descriptor.defineEvents, builder ),
+            members: proxy( descriptor.defineMembers, builder )
+        };
+        args[0].call( builder );
     }
-
-    var _value = member.value;
-    var accessors = {};
-    if ( member.get )
-    {
-        accessors.get = buildAccessor(
-            member.get.method,
-            scope.parent === null ? null : function( value ) {
-                return scope.parent.self[ name ];
-            }
-        );
-    }
-    if ( member.set )
-    {
-        accessors.set = buildAccessor(
-            member.set.method,
-            scope.parent === null ? null : function( value ) {
-                scope.parent.self[ name ] = value;
-            }
-        );
-    }
-    addProperty( scope.self, name, accessors );
-}
-
-/**
- * @private
- * @description Creates an event member.
- * @param {Type} type
- * @param {Scope} scope
- * @param {string} name
- */
-function buildEvent( type, scope, name )
-{
-    var _scope = scope;
-    var handlers = [];
-    var callbacks = [];
-    var event =
-    {
-        addHandler: function( handler, scope )
-        {
-            var context = scope || _scope.self;
-            handlers.push( handler );
-            var callback = function() {
-                handler.apply( context, arguments );
-            };
-            callbacks.push( callback );
-            fake( callback );
-        },
-        removeHandler: function( handler )
-        {
-            var i = indexOf( handlers, handler );
-            if ( i > -1 )
-            {
-                handlers.splice( i, 1 );
-                callbacks.splice( i, 1 );
-            }
-        },
-        raise: function()
-        {
-            var i = 0, len = callbacks.length;
-            for ( ; i < len; i++ )
-                callbacks[ i ].apply( undefined, arguments );
-        }
-    };
-    addProperty( scope.self, name, {
-        get: function() {
-            return event;
-        }
-    });
-}
-
-/**
- * @private
- * @description Creates references to the public members of the type on the public interface.
- * @param {Type} type The type being instantiated.
- * @param {Scope} scope The type instance.
- * @param {Object} pub The public interface.
- */
-function exposeMembers( type, scope, pub )
-{
-    if ( type.parent !== null )
-        exposeMembers( type.parent, scope.parent, pub );
-
-    forIn( type.members, function( member, name )
-    {
-        if ( member.access !== PUBLIC )
-            return;
-
-        if ( member.method )
-        {
-            pub[ name ] = scope.self[ name ];
-        }
-        else if ( member.isEvent )
-        {
-            var event = {
-                addHandler: function( handler ) {
-                    scope.self[ name ].addHandler( handler, pub );
-                },
-                removeHandler: scope.self[ name ].removeHandler
-            };
-            addProperty( pub, name, {
-                get: function() {
-                    return event;
-                }
-            });
-        }
-        else
-        {
-            var accessors = {};
-            if ( member.get && member.get.access === PUBLIC )
-            {
-                accessors.get = function() {
-                    return scope.self[ name ];
-                };
-            }
-            if ( member.set && member.set.access === PUBLIC )
-            {
-                accessors.set = function( value ) {
-                    scope.self[ name ] = value;
-                };
-            }
-            addProperty( pub, name, accessors );
-        }
-    });
-}
-
-/**
- * @private
- * @description
- * Adds a property to an object.
- * http://johndyer.name/native-browser-get-set-properties-in-javascript/
- * @param {Object} obj
- * @param {string} name
- * @param {Object} accessors
- */
-function addProperty( obj, name, accessors )
-{
-    // IE8 apparently doesn't support this configuration option.
-    if ( !IE8 )
-        accessors.enumerable = true;
-
-    accessors.configurable = true;
-
-    // IE8 requires that we delete the property first before reconfiguring it.
-    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( IE8 && hasOwn( obj, name ) )
-        delete obj[ name ];
-
-    // obj must be a DOM object in IE8
-    if ( Object.defineProperty )
-        Object.defineProperty( obj, name, accessors );
     else
-        throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
-}
+    {
+        if ( args.length === 2 )
+        {
+            if ( args[0].extend )
+                descriptor.defineParent( template, args[0].extend );
+            
+            if ( args[0].include )
+                descriptor.defineMixins( template, args[0].include );
 
-/**
- * @private
- * @description Fakes execution in order to provide intellisense support for Visual Studio.
- */
-function fake( callback, run )
-{
-    /// <param name="run" value="true" />
-    if ( run )
-        return callback();
-}
+            if ( args[0].events )
+                descriptor.defineEvents( template, args[0].events );
+        }
+        if ( args.length > 0 )
+            descriptor.defineMembers( template, args[1] || args[0] );
+    }
+
+    if ( onTypeDefined )
+        onTypeDefined( Type );
+
+    fake( template.ctor );
+    return template.ctor;
+};
+
+} () );
 
 var Binding = new Struct({
     create: function() {},
@@ -1852,7 +2209,7 @@ var Binding = new Struct({
     filter: []
 });
 
-var BindingConfiguration = define({
+var BindingConfiguration = new Type({
     /**
      * @constructor
      * @param {Binding} binding
@@ -2386,257 +2743,257 @@ function Factory( service )
     this.value = service;
 }
 
-var Kernel = define( function() {
+var Kernel = new Type( function() {
 
-var BindingSyntax = define({
-    /**
-     * @constructor
-     * @param {Kernel} kernel
-     * @param {string} service
-     */
-    ctor: function( kernel, service )
-    {
-        this.kernel = kernel;
-        this.service = service;
-    },
-
-    /**
-     * @description Specifies which provider to bind the service to.
-     * @param {Array|function()} provider
-     * @return {BindingConfiguration}
-     */
-    to: function( provider ) {
-        return new BindingConfiguration( this.kernel.register( this.service, provider ) );
-    },
-
-    toConstant: function( value )
-    {
-        return new BindingConfiguration( this.kernel.register( this.service, function() {
-            return value;
-        }));
-    }
-});
-
-var store = new Store();
-
-this.members({
-    ctor: function()
-    {
-        this.container = {};
-        this.require = null;
-
-        var self = this;
-        var cookbook = new Cookbook( this.container );
-        this.chef = new Chef( cookbook, function() {
-            return self.require;
-        });
-    },
-
-    /**
-     * @description Registers a service.
-     * @param {string} service
-     * @return {BindingSelector}
-     */
-    bind: function( service )
-    {
-        if ( !service || !isString( service ) )
-            throw error( "ArgumentError", "Argument 'service' must have a value." );
-        return new BindingSyntax( this, service );
-    },
-
-    /**
-     * @description Unregisters a service.
-     * @param {string} service
-     * @param {string[]} [filter]
-     * @return {Kernel}
-     */
-    unbind: function( service, filter )
-    {
-        filter = filter || [];
-        var bindings = this.container[ service ] || [];
-        var flen = filter.length;
-        if ( flen )
+    var BindingSyntax = new Type({
+        /**
+         * @constructor
+         * @param {Kernel} kernel
+         * @param {string} service
+         */
+        ctor: function( kernel, service )
         {
-            var b = 0, blen = bindings.length, f, i;
-            for ( ; b < blen; b++ )
+            this.kernel = kernel;
+            this.service = service;
+        },
+
+        /**
+         * @description Specifies which provider to bind the service to.
+         * @param {Array|function()} provider
+         * @return {BindingConfiguration}
+         */
+        to: function( provider ) {
+            return new BindingConfiguration( this.kernel.register( this.service, provider ) );
+        },
+
+        toConstant: function( value )
+        {
+            return new BindingConfiguration( this.kernel.register( this.service, function() {
+                return value;
+            }));
+        }
+    });
+
+    var store = new Store();
+
+    this.members({
+        ctor: function()
+        {
+            this.container = {};
+            this.require = null;
+
+            var self = this;
+            var cookbook = new Cookbook( this.container );
+            this.chef = new Chef( cookbook, function() {
+                return self.require;
+            });
+        },
+
+        /**
+         * @description Registers a service.
+         * @param {string} service
+         * @return {BindingSelector}
+         */
+        bind: function( service )
+        {
+            if ( !service || !isString( service ) )
+                throw error( "ArgumentError", "Argument 'service' must have a value." );
+            return new BindingSyntax( this, service );
+        },
+
+        /**
+         * @description Unregisters a service.
+         * @param {string} service
+         * @param {string[]} [filter]
+         * @return {Kernel}
+         */
+        unbind: function( service, filter )
+        {
+            filter = filter || [];
+            var bindings = this.container[ service ] || [];
+            var flen = filter.length;
+            if ( flen )
             {
-                if ( bindings[ b ].filter )
+                var b = 0, blen = bindings.length, f, i;
+                for ( ; b < blen; b++ )
                 {
-                    // Remove each service in the filter parameter from the binding's filter list.
-                    f = 0;
-                    for ( ; f < flen; f++ )
+                    if ( bindings[ b ].filter )
                     {
-                        // Account for sloppy programming and remove all occurences of the service.
-                        i = indexOf( bindings[ b ].filter, filter[ f ] );
-                        while ( i > -1 )
+                        // Remove each service in the filter parameter from the binding's filter list.
+                        f = 0;
+                        for ( ; f < flen; f++ )
                         {
-                            bindings[ b ].filter.splice( i, 1 );
+                            // Account for sloppy programming and remove all occurences of the service.
                             i = indexOf( bindings[ b ].filter, filter[ f ] );
+                            while ( i > -1 )
+                            {
+                                bindings[ b ].filter.splice( i, 1 );
+                                i = indexOf( bindings[ b ].filter, filter[ f ] );
+                            }
                         }
                     }
-                }
-                if ( !bindings[ b ].filter.length )
-                {
-                    // If the binding now has an empty filter list, remove it because it is useless.
-                    // Note: Move the cursor (b) back one slot so that we don't skip the next item.
-                    bindings.splice( b, 1 );
-                    b--;
-                }
-            }
-            if ( !bindings.length )
-                delete this.container[ service ];
-        }
-        else
-            delete this.container[ service ];
-        return this._pub;
-    },
-
-    /**
-     * @description Resolves a target and its dependencies.
-     * @param {string|function()|Array} target
-     * @param {...Object} [args]
-     * @return {Promise.<TService>}
-     */
-    resolve: function( target, args )
-    {
-        var self = this;
-        args = makeArray( arguments );
-        args.shift( 0 );
-        return this.chef.create( target ).then(
-            function( box )
-            {
-                var factory = self.chef.createFactory( box );
-                return box.recipe.factory ? factory : factory.apply( undefined, args );
-            },
-            function( reason ) {
-                throw reason;
-            }
-        );
-    },
-
-    /**
-     * @description
-     * Binds an object graph.
-     * For example:
-     *   <pre>
-     *     .autoBind({
-     *       foo: {
-     *         bar: 2
-     *       }
-     *     });
-     *   </pre>
-     * is equivalent to:
-     *   <pre>
-     *     .bind( "foo.bar" ).to( 2 );
-     *   </pre>
-     * @param {Object} graph
-     * @return {Kernel}
-     */
-    autoBind: function( graph )
-    {
-        this.registerGraph( "", graph );
-        return this._pub;
-    },
-
-    autoLoad: function( config )
-    {
-        if ( config === false )
-            this.require = null;
-        else
-        {
-            var loader;
-            if ( isFunc( config ) )
-                loader = config;
-            else
-            {
-                if ( isString( config ) )
-                    config = { baseUrl: config };
-                config =
-                {
-                    baseUrl: config.baseUrl || "",
-                    waitSeconds: config.waitSeconds === 0 || config.waitSeconds ? config.waitSeconds : 7,
-                    urlArgs: config.urlArgs || "",
-                    scriptType: config.scriptType || "text/javascript"
-                };
-                loader = function( module )
-                {
-                    var url = path( config.baseUrl, module );
-                    if ( !( /\.js$/ ).test( url ) )
-                        url += ".js";
-                    return store.fetch(
+                    if ( !bindings[ b ].filter.length )
                     {
-                        url: url,
-                        timeout: config.waitSeconds * 1000,
-                        query: config.urlArgs,
-                        scriptType: config.scriptType
-                    });
+                        // If the binding now has an empty filter list, remove it because it is useless.
+                        // Note: Move the cursor (b) back one slot so that we don't skip the next item.
+                        bindings.splice( b, 1 );
+                        b--;
+                    }
+                }
+                if ( !bindings.length )
+                    delete this.container[ service ];
+            }
+            else
+                delete this.container[ service ];
+            return this._pub;
+        },
+
+        /**
+         * @description Resolves a target and its dependencies.
+         * @param {string|function()|Array} target
+         * @param {...Object} [args]
+         * @return {Promise.<TService>}
+         */
+        resolve: function( target, args )
+        {
+            var self = this;
+            args = makeArray( arguments );
+            args.shift( 0 );
+            return this.chef.create( target ).then(
+                function( box )
+                {
+                    var factory = self.chef.createFactory( box );
+                    return box.recipe.factory ? factory : factory.apply( undefined, args );
+                },
+                function( reason ) {
+                    throw reason;
+                }
+            );
+        },
+
+        /**
+         * @description
+         * Binds an object graph.
+         * For example:
+         *   <pre>
+         *     .autoBind({
+         *       foo: {
+         *         bar: 2
+         *       }
+         *     });
+         *   </pre>
+         * is equivalent to:
+         *   <pre>
+         *     .bind( "foo.bar" ).to( 2 );
+         *   </pre>
+         * @param {Object} graph
+         * @return {Kernel}
+         */
+        autoBind: function( graph )
+        {
+            this.registerGraph( "", graph );
+            return this._pub;
+        },
+
+        autoLoad: function( config )
+        {
+            if ( config === false )
+                this.require = null;
+            else
+            {
+                var loader;
+                if ( isFunc( config ) )
+                    loader = config;
+                else
+                {
+                    if ( isString( config ) )
+                        config = { baseUrl: config };
+                    config =
+                    {
+                        baseUrl: config.baseUrl || "",
+                        waitSeconds: config.waitSeconds === 0 || config.waitSeconds ? config.waitSeconds : 7,
+                        urlArgs: config.urlArgs || "",
+                        scriptType: config.scriptType || "text/javascript"
+                    };
+                    loader = function( module )
+                    {
+                        var url = path( config.baseUrl, module );
+                        if ( !( /\.js$/ ).test( url ) )
+                            url += ".js";
+                        return store.fetch(
+                        {
+                            url: url,
+                            timeout: config.waitSeconds * 1000,
+                            query: config.urlArgs,
+                            scriptType: config.scriptType
+                        });
+                    };
+                }
+                this.require = function( modules )
+                {
+                    return Task.when( map( modules, function( module )
+                    {
+                        var promise = loader( module );
+                        if ( !promise || !isFunc( promise.then ) )
+                            throw error( "TypeError", "Service loader must return a promise." );
+                        return promise;
+                    }));
                 };
             }
-            this.require = function( modules )
+        },
+
+        /**
+         * @private
+         * @description Binds a service to a provider and returns the binding.
+         * @param {string} service
+         * @param {Array|function()} provider
+         * @return {Binding}
+         */
+        __register: function( service, provider )
+        {
+            var binding = null;
+            if ( isArray( provider ) )
             {
-                return Task.when( map( modules, function( module )
-                {
-                    var promise = loader( module );
-                    if ( !promise || !isFunc( promise.then ) )
-                        throw error( "TypeError", "Service loader must return a promise." );
-                    return promise;
-                }));
-            };
-        }
-    },
-
-    /**
-     * @private
-     * @description Binds a service to a provider and returns the binding.
-     * @param {string} service
-     * @param {Array|function()} provider
-     * @return {Binding}
-     */
-    __register: function( service, provider )
-    {
-        var binding = null;
-        if ( isArray( provider ) )
-        {
-            provider = provider.slice( 0 );
-            binding = new Binding({
-                create: provider.pop(),
-                inject: provider
-            });
-            if ( !isFunc( binding.create ) )
-                throw error( "ArgumentError", "Expected last array element to be a function." );
-        }
-        else
-        {
-            binding = new Binding({
-                create: provider,
-                inject: ( provider.$inject || [] ).slice( 0 )
-            });
-            if ( !isFunc( binding.create ) )
-                throw error( "ArgumentError", "Expected provider to be a function." );
-        }
-        this.container[ service ] = this.container[ service ] || [];
-        this.container[ service ].push( binding );
-        return binding;
-    },
-
-    /**
-     * @private
-     * @param {string} path
-     * @param {Object} graph
-     */
-    __registerGraph: function( path, graph )
-    {
-        var self = this,
-            prefix = path === "" ?  "" : path + ".";
-        forIn( graph, function( type, name )
-        {
-            if ( isPlainObject( type ) )
-                self.registerGraph( prefix + name, type );
+                provider = provider.slice( 0 );
+                binding = new Binding({
+                    create: provider.pop(),
+                    inject: provider
+                });
+                if ( !isFunc( binding.create ) )
+                    throw error( "ArgumentError", "Expected last array element to be a function." );
+            }
             else
-                self.register( prefix + name, type );
-        });
-    }
-});
+            {
+                binding = new Binding({
+                    create: provider,
+                    inject: ( provider.$inject || [] ).slice( 0 )
+                });
+                if ( !isFunc( binding.create ) )
+                    throw error( "ArgumentError", "Expected provider to be a function." );
+            }
+            this.container[ service ] = this.container[ service ] || [];
+            this.container[ service ].push( binding );
+            return binding;
+        },
+
+        /**
+         * @private
+         * @param {string} path
+         * @param {Object} graph
+         */
+        __registerGraph: function( path, graph )
+        {
+            var self = this,
+                prefix = path === "" ?  "" : path + ".";
+            forIn( graph, function( type, name )
+            {
+                if ( isPlainObject( type ) )
+                    self.registerGraph( prefix + name, type );
+                else
+                    self.register( prefix + name, type );
+            });
+        }
+    });
 
 });
 
@@ -2657,7 +3014,7 @@ var Recipe = new Struct(
 });
 
 var _exports = {
-    define: define,
+    define: Type,
 
     simple: Class,
     struct: Struct,

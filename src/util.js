@@ -312,3 +312,51 @@ var setImmediate = ( function()
         return setImmediate;
     }
 } () );
+
+/**
+ * @private
+ * @description Fakes execution in order to provide intellisense support for Visual Studio.
+ */
+function fake( callback, run )
+{
+    /// <param name="run" value="true" />
+    if ( run )
+        return callback();
+}
+
+/**
+ * @private
+ * @description
+ * Adds a property to an object.
+ * http://johndyer.name/native-browser-get-set-properties-in-javascript/
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+ *
+ * @param {Object} obj The object on which to define the property.
+ * @param {string} prop The name of the property to be defined or modified.
+ * @param {Object} descriptor The descriptor for the property being defined or modified.
+ */
+function defineProperty( obj, prop, descriptor )
+{
+    if ( descriptor.enumerable === undefined )
+        descriptor.enumerable = true;
+
+    // IE8 apparently doesn't support this configuration option.
+    if ( IE8 )
+        delete descriptor.enumerable;
+
+    if ( descriptor.configurable === undefined )
+        descriptor.configurable = true;
+
+    // IE8 requires that we delete the property first before reconfiguring it.
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
+    if ( IE8 && hasOwn( obj, prop ) )
+        delete obj[ prop ];
+
+    if ( Object.defineProperty )
+    {
+        // obj must be a DOM object in IE8
+        Object.defineProperty( obj, prop, descriptor );
+    }
+    else
+        throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
+}

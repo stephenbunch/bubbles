@@ -16,13 +16,17 @@ module.exports = function( grunt )
                 src: [
                     "src/_head.js",
                     "src/error.js",
+                    "src/Constants.js",
                     "src/util.js",
                     "src/Class.js",
                     "src/Struct.js",
+                    "src/Dictionary.js",
+                    "src/Delegate.js",
                     "src/Store.js",
                     "src/Task.js",
+                    "src/define/*.js",
                     "src/type.js",
-                    "src/composition/**/*.js",
+                    "src/compose/*.js",
                     "src/_exports.js",
                     "src/_tail.js"
                 ],

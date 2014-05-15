@@ -15,7 +15,7 @@ var Struct = ( function()
             mode = "new";
             var instance = Struct();
             mode = "default";
-            extend( instance, members, values );
+            extend( instance, members, values || {} );
             return instance;
         };
         return Struct;

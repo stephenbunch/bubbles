@@ -1,4 +1,4 @@
-var BindingConfiguration = define({
+var BindingConfiguration = new Type({
     /**
      * @constructor
      * @param {Binding} binding

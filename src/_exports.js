@@ -1,5 +1,5 @@
 var _exports = {
-    define: define,
+    define: Type,
 
     simple: Class,
     struct: Struct,

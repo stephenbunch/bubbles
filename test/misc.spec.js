@@ -93,6 +93,6 @@ describe( ".$scope", function()
     {
         var A = type.define();
         var a = new A();
-        expect( a.$scope() ).to.be.undefined;
+        expect( a.__scope__ ).to.be.empty;
     });
 });
