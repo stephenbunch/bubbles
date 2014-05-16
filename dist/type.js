@@ -2827,12 +2827,12 @@ var Kernel = new Type( function()
          * @return {BindingConfiguration}
          */
         to: function( provider ) {
-            return new BindingConfiguration( this.kernel.register( this.service, provider ) );
+            return new BindingConfiguration( this.kernel.registerProvider( this.service, provider ) );
         },
 
         toConstant: function( value )
         {
-            return new BindingConfiguration( this.kernel.register( this.service, function() {
+            return new BindingConfiguration( this.kernel.registerProvider( this.service, function() {
                 return value;
             }));
         }
@@ -2953,7 +2953,7 @@ var Kernel = new Type( function()
          * @param {Object} graph
          * @return {Kernel}
          */
-        autoBind: function( graph )
+        register: function( graph )
         {
             this.registerGraph( "", graph );
             return this._pub;
@@ -3013,7 +3013,7 @@ var Kernel = new Type( function()
          * @param {Array|function()} provider
          * @return {Binding}
          */
-        __register: function( service, provider )
+        __registerProvider: function( service, provider )
         {
             var binding = null;
             if ( isArray( provider ) )
@@ -3054,7 +3054,7 @@ var Kernel = new Type( function()
                 if ( isPlainObject( type ) )
                     self.registerGraph( prefix + name, type );
                 else
-                    self.register( prefix + name, type );
+                    self.registerProvider( prefix + name, type );
             });
         }
     });

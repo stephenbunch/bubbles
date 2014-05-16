@@ -180,7 +180,7 @@ describe( "Kernel", function()
         });
     });
 
-    describe( ".autoBind()", function()
+    describe( ".register()", function()
     {
         it( "should register an object graph by convention", function( done )
         {
@@ -191,7 +191,7 @@ describe( "Kernel", function()
                     called += 1;
                 }
             });
-            var kernel = type.Kernel().autoBind({ app: graph });
+            var kernel = type.Kernel().register({ app: graph });
             kernel.resolve( "app.bar.Foo" ).then( function()
             {
                 expect( called ).to.equal( 1 );
