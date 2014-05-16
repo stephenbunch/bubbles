@@ -104,7 +104,8 @@ var Builder = new Class(
             this._proxy( scope.parent, scope );
 
         // Add our own members.
-        i = 0, len = scope.template.members.values.length;
+        i = 0;
+        len = scope.template.members.values.length;
         for ( ; i < len; i++ )
             scope.template.members.values[ i ].build( scope );
 
@@ -125,15 +126,12 @@ var Builder = new Class(
      */
     _proxy: function( source, target )
     {
-        var i = 0, len = source.template.members.values.length;
-        for ( ; i < len; i++ )
+        forEach( source.template.members.values, function( member )
         {
-            var member = source.template.members.values[ i ];
-
             // If the member is private or if it's been overridden by the child, don't make
             // a reference to the parent implementation.
             if ( member.access === PRIVATE || target.template.members.get( member.name ) )
-                continue;
+                return;
 
             if ( member instanceof Method || member instanceof Event )
             {
@@ -156,7 +154,7 @@ var Builder = new Class(
                 }
                 defineProperty( target.self, member.name, accessors );
             }
-        }
+        });
     },
 
     /**

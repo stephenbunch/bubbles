@@ -85,7 +85,7 @@ var Struct = ( function()
                                 break;
 
                             default:
-                                task.dest[ prop ] = task.tmpl[ prop ]
+                                task.dest[ prop ] = task.tmpl[ prop ];
                                 break;
                         }
                     }

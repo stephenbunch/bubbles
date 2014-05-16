@@ -34,15 +34,18 @@ module.exports = function( grunt )
         },
 
         jshint: {
-            options: {
-                loopfunc: true
-            },
             uses_defaults: [
-                "src/deferred.js",
-                "src/kernel.js",
-                "src/promise.js",
-                "src/type.js",
-                "src/util.js"
+                "src/error.js",
+                "src/constants.js",
+                "src/util.js",
+                "src/Class.js",
+                "src/Struct.js",
+                "src/Dictionary.js",
+                "src/Task.js",
+                "src/define/*.js",
+                "src/require/*.js",
+                "src/Type.js",
+                "src/compose/*.js"
             ],
             with_overrides: {
                 options: {
@@ -143,7 +146,7 @@ module.exports = function( grunt )
         var type = require( "./dist/type.js" );
         var adapter = {
             deferred: function() {
-                return type.defer();
+                return type.Task();
             }
         };
         var options = {

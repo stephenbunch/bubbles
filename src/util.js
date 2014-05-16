@@ -352,3 +352,12 @@ function defineProperty( obj, prop, descriptor )
     else
         throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
 }
+
+function loop( callback )
+{
+    while ( true )
+    {
+        if ( !callback.call( undefined ) )
+            break;
+    }
+}

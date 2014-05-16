@@ -414,6 +414,15 @@ function defineProperty( obj, prop, descriptor )
         throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
 }
 
+function loop( callback )
+{
+    while ( true )
+    {
+        if ( !callback.call( undefined ) )
+            break;
+    }
+}
+
 var Class = function( methods )
 {
     methods = methods || {};
@@ -540,7 +549,7 @@ var Struct = ( function()
                                 break;
 
                             default:
-                                task.dest[ prop ] = task.tmpl[ prop ]
+                                task.dest[ prop ] = task.tmpl[ prop ];
                                 break;
                         }
                     }
@@ -947,7 +956,8 @@ var Builder = new Class(
             this._proxy( scope.parent, scope );
 
         // Add our own members.
-        i = 0, len = scope.template.members.values.length;
+        i = 0;
+        len = scope.template.members.values.length;
         for ( ; i < len; i++ )
             scope.template.members.values[ i ].build( scope );
 
@@ -968,15 +978,12 @@ var Builder = new Class(
      */
     _proxy: function( source, target )
     {
-        var i = 0, len = source.template.members.values.length;
-        for ( ; i < len; i++ )
+        forEach( source.template.members.values, function( member )
         {
-            var member = source.template.members.values[ i ];
-
             // If the member is private or if it's been overridden by the child, don't make
             // a reference to the parent implementation.
             if ( member.access === PRIVATE || target.template.members.get( member.name ) )
-                continue;
+                return;
 
             if ( member instanceof Method || member instanceof Event )
             {
@@ -999,7 +1006,7 @@ var Builder = new Class(
                 }
                 defineProperty( target.self, member.name, accessors );
             }
-        }
+        });
     },
 
     /**
@@ -1349,12 +1356,10 @@ var Descriptor = new Class( function()
 
         defineMembers: function( template, members )
         {
-            var names = keys( members || {} );
-            var i = 0, len = names.length;
-            for ( ; i < len; i++ )
+            forEach( keys( members || {} ), function( key )
             {
-                var info = parse( names[ i ] );
-                var descriptor = members[ names[ i ] ];
+                var info = parse( key );
+                var descriptor = members[ key ];
 
                 validate( template, info );
 
@@ -1389,7 +1394,7 @@ var Descriptor = new Class( function()
                 member.access = info.access;
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
-            }
+            });
         },
 
         /**
@@ -2169,9 +2174,8 @@ var Store = new Class(
         }
         else if ( this._last !== null )
         {
-            var task = this._last;
+            this._last.resolve( type );
             this._last = null;
-            task.resolve( type );
         }
     }
 });
@@ -2372,44 +2376,39 @@ var Box = new Class(
      */
     _prepare: function( recipe )
     {
+        var self = this;
         var result = new Component( recipe );
         var pending = [ result ];
-        while ( pending.length )
+        loop( function()
         {
             var component = pending.shift();
-            if ( component.recipe.lazy )
-                continue;
-
-            var i = 0, len = component.recipe.ingredients.length;
-            for ( ; i < len; i++ )
+            if ( !component.recipe.lazy )
             {
-                var service = component.recipe.ingredients[ i ];
-                var recipe = this._cookbook.search( service, component.recipe.name );
-                if ( recipe )
+                forEach( component.recipe.ingredients, function( service, index )
                 {
-                    var child = new Component( recipe );
-                    child.parent = component;
-                    child.order = i;
-                    component.children[ i ] = child;
-                    pending.push( child );
-                }
-                else
-                {
-                    this.missing.push( service );
-                    this._onUpdate(
-                        service,
-                        ( function( component, order ) {
-                            return function( child )
-                            {
-                                child.parent = component;
-                                child.order = order;
-                                component.children[ i ] = child;
-                            };
-                        }( component, i ))
-                    );
-                }
+                    var recipe = self._cookbook.search( service, component.recipe.name );
+                    if ( recipe )
+                    {
+                        var child = new Component( recipe );
+                        child.parent = component;
+                        child.order = index;
+                        component.children[ index ] = child;
+                        pending.push( child );
+                    }
+                    else
+                    {
+                        self.missing.push( service );
+                        self._onUpdate( service, function( child )
+                        {
+                            child.parent = component;
+                            child.order = index;
+                            component.children[ index ] = child;
+                        });
+                    }
+                });
             }
-        }
+            return pending.length;
+        });
         return result;
     },
 

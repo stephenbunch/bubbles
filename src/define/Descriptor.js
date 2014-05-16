@@ -71,12 +71,10 @@ var Descriptor = new Class( function()
 
         defineMembers: function( template, members )
         {
-            var names = keys( members || {} );
-            var i = 0, len = names.length;
-            for ( ; i < len; i++ )
+            forEach( keys( members || {} ), function( key )
             {
-                var info = parse( names[ i ] );
-                var descriptor = members[ names[ i ] ];
+                var info = parse( key );
+                var descriptor = members[ key ];
 
                 validate( template, info );
 
@@ -111,7 +109,7 @@ var Descriptor = new Class( function()
                 member.access = info.access;
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
-            }
+            });
         },
 
         /**

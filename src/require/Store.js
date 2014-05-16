@@ -65,9 +65,8 @@ var Store = new Class(
         }
         else if ( this._last !== null )
         {
-            var task = this._last;
+            this._last.resolve( type );
             this._last = null;
-            task.resolve( type );
         }
     }
 });

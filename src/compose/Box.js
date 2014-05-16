@@ -66,44 +66,39 @@ var Box = new Class(
      */
     _prepare: function( recipe )
     {
+        var self = this;
         var result = new Component( recipe );
         var pending = [ result ];
-        while ( pending.length )
+        loop( function()
         {
             var component = pending.shift();
-            if ( component.recipe.lazy )
-                continue;
-
-            var i = 0, len = component.recipe.ingredients.length;
-            for ( ; i < len; i++ )
+            if ( !component.recipe.lazy )
             {
-                var service = component.recipe.ingredients[ i ];
-                var recipe = this._cookbook.search( service, component.recipe.name );
-                if ( recipe )
+                forEach( component.recipe.ingredients, function( service, index )
                 {
-                    var child = new Component( recipe );
-                    child.parent = component;
-                    child.order = i;
-                    component.children[ i ] = child;
-                    pending.push( child );
-                }
-                else
-                {
-                    this.missing.push( service );
-                    this._onUpdate(
-                        service,
-                        ( function( component, order ) {
-                            return function( child )
-                            {
-                                child.parent = component;
-                                child.order = order;
-                                component.children[ i ] = child;
-                            };
-                        }( component, i ))
-                    );
-                }
+                    var recipe = self._cookbook.search( service, component.recipe.name );
+                    if ( recipe )
+                    {
+                        var child = new Component( recipe );
+                        child.parent = component;
+                        child.order = index;
+                        component.children[ index ] = child;
+                        pending.push( child );
+                    }
+                    else
+                    {
+                        self.missing.push( service );
+                        self._onUpdate( service, function( child )
+                        {
+                            child.parent = component;
+                            child.order = index;
+                            component.children[ index ] = child;
+                        });
+                    }
+                });
             }
-        }
+            return pending.length;
+        });
         return result;
     },
 
