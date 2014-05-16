@@ -1,6 +1,3 @@
-/**
- * @implements {Member}
- */
 var Property = new Class(
 {
     /**

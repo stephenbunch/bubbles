@@ -39,7 +39,7 @@ describe( "type instantiation", function()
     });
 });
 
-describe( "instanceof operator", function()
+describe( "`instanceof` operator", function()
 {
     it( "should work on the public interface (except in IE8)", function()
     {
@@ -87,12 +87,12 @@ describe( "instanceof operator", function()
     });
 });
 
-describe( ".$scope", function()
+describe( ".__scope__", function()
 {
     it( "should return undefined", function()
     {
         var A = type.define();
         var a = new A();
-        expect( a.__scope__ ).to.be.empty;
+        expect( a.__scope__ ).to.be.undefined;
     });
 });

@@ -1,4 +1,5 @@
-var BindingConfiguration = new Type({
+var BindingConfiguration = new Type(
+{
     /**
      * @constructor
      * @param {Binding} binding

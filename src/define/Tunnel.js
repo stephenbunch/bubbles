@@ -1,4 +1,5 @@
-var Tunnel = new Class({
+var Tunnel = new Class(
+{
     ctor: function() {
         this._value = null;
     },

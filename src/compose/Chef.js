@@ -1,4 +1,5 @@
-var Chef = new Class({
+var Chef = new Class(
+{
     /**
      * @param {Cookbook} cookbook
      * @param {function(): function(Array.<string>): Promise} loader

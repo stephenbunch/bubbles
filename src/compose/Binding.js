@@ -1,4 +1,5 @@
-var Binding = new Struct({
+var Binding = new Struct(
+{
     create: function() {},
     inject: [],
     filter: []

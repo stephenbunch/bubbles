@@ -5,7 +5,7 @@ var Class = function( methods )
         methods = methods();
 
     var mode = "default";
-    var Class = function()
+    var ctor = function()
     {
         if ( mode === "new" )
         {
@@ -24,6 +24,10 @@ var Class = function( methods )
             return result;
         else
             return instance;
+    };
+
+    var Class = function() {
+        return ctor.apply( undefined, arguments );
     };
 
     if ( !methods.ctor )

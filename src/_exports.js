@@ -1,9 +1,6 @@
 var _exports = {
     define: Type,
 
-    simple: Class,
-    struct: Struct,
-
     /**
      * @description
      * A factory for creating custom errors. Pass a name to get the error definition.
@@ -22,13 +19,14 @@ var _exports = {
     of: typeOf,
 
     defer: Task,
+
     kernel: Kernel,
     factory: Factory,
     lazy: Lazy,
 
-    delegate: function() {
-        return Delegate.apply( undefined, arguments );
-    }
+    proxy: proxy,
+
+    module: Module
 };
 
 if ( typeof module !== "undefined" && module.exports )

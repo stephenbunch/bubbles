@@ -1,4 +1,5 @@
-var Kernel = new Type( function() {
+var Kernel = new Type( function()
+{
 
     var BindingSyntax = new Type({
         /**

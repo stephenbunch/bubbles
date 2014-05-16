@@ -27,7 +27,7 @@ describe( "Task", function()
         });
     });
 
-    describe( "type.defer.when()", function()
+    describe( "Task.when()", function()
     {
         it( "should combine multiple promises into a single promise", function( done )
         {

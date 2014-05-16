@@ -421,7 +421,7 @@ var Class = function( methods )
         methods = methods();
 
     var mode = "default";
-    var Class = function()
+    var ctor = function()
     {
         if ( mode === "new" )
         {
@@ -442,6 +442,10 @@ var Class = function( methods )
             return instance;
     };
 
+    var Class = function() {
+        return ctor.apply( undefined, arguments );
+    };
+
     if ( !methods.ctor )
         methods.ctor = function() { };
 
@@ -454,7 +458,7 @@ var Struct = ( function()
     return function ( members )
     {
         var mode = "default";
-        var Struct = function( values )
+        var ctor = function( values )
         {
             if ( mode === "new" )
             {
@@ -468,6 +472,9 @@ var Struct = ( function()
             mode = "default";
             extend( instance, members, values || {} );
             return instance;
+        };
+        var Struct = function() {
+            return ctor.apply( undefined, arguments );
         };
         return Struct;
     };
@@ -613,91 +620,6 @@ var Dictionary = new Class(
      */
     contains: function( key ) {
         return indexOf( this.keys, key ) > -1;
-    }
-});
-
-var Delegate = function( method, scope )
-{
-    method = proxy( method, scope );
-    method.valueOf = function()
-    {
-        Delegate.operands.push( this );
-        return 3;
-    };
-    return method;
-};
-Delegate.operands = [];
-
-var Store = new Class({
-    ctor: function()
-    {
-        this._pending = {};
-        this._cache = {};
-        this._browser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
-        this._last = null;
-
-        onTypeDefined = proxy( this._onTypeDefined, this );
-    },
-
-    fetch: function( options )
-    {
-        var task = new Task();
-        if ( this._browser )
-        {
-            var url = options.url;
-            if ( ( /^\/\// ).test( url ) )
-                url = window.location.protocol + url;
-            else if ( ( /^\// ).test( url ) )
-                url = window.location.protocol + "//" + window.location.host + url;
-            else
-                url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
-
-            if ( this._cache[ url ] )
-                task.resolve( this._cache[ url ] );
-            else if ( this._pending[ url ] )
-                this._pending[ url ].bind( task );
-            else
-            {
-                var script = document.createElement( "script" );
-                script.src = url;
-                script.addEventListener( "error", function()
-                {
-                    task.reject();
-                }, false );
-                document.body.appendChild( script );
-                this._pending[ url ] = task;
-            }
-        }
-        else
-        {
-            this._last = task;
-            require( options.url );
-        }
-        return task.promise;
-    },
-
-    _onTypeDefined: function( type )
-    {
-        if ( this._browser )
-        {
-            var scripts = document.getElementsByTagName( "script" );
-            var url = scripts[ scripts.length - 1 ].src;
-            if ( this._pending[ url ] )
-            {
-                this._cache[ url ] = type;
-                var task = this._pending[ url ];
-                delete this._pending[ url ];
-                setTimeout( function() {
-                    task.resolve( type );
-                });
-            }
-        }
-        else if ( this._last !== null )
-        {
-            var task = this._last;
-            this._last = null;
-            task.resolve( type );
-        }
     }
 });
 
@@ -912,7 +834,8 @@ Task.when = function( promises )
     return task.promise;
 };
 
-var Accessor = new Struct({
+var Accessor = new Struct(
+{
     access: null,
     method: null,
     callsuper: false
@@ -1770,114 +1693,124 @@ var Descriptor = new Class( function()
 });
 
 /**
- * @implements {Member}
  * @description
  * C# style events implemented through faking operator overloading:
  * http://www.2ality.com/2011/12/fake-operator-overloading.html
  */
-var Event = new Class(
+var Event = new Class( function()
 {
-    /**
-     * @constructor
-     */
-    ctor: function()
+    var Delegate = ( function()
     {
-        this.name = null;
-        this.access = null;
-    },
-
-    /**
-     * @description Creates the event on the specified scope.
-     * @param {Scope} scope
-     */
-    build: function( scope )
-    {
-        var self = this;
-        var handlers = [];
-        var raise = new Delegate( function()
+        var Delegate = function( method, scope )
         {
-            var i = 0, len = handlers.length;
-            for ( ; i < len; i++ )
-                handlers[ i ].apply( undefined, arguments );
-        });
+            method = proxy( method, scope );
+            method.valueOf = valueOf;
+            return method;
+        };
 
-        raise._pub = new Delegate( function()
-        {
-            throw error(
-                "InvalidOperationError",
-                "The event '" + self.name + "' can only be the target of an increment or decrement (+= or -=) except when used from within its own type."
-            );
-        });
+        var _valueOf;
 
-        defineProperty( scope.self, this.name,
+        Delegate.operands = [];
+        Delegate.reset = function()
         {
-            get: function() {
-                return raise;
-            },
-            set: function( value )
+            Delegate.operands = [];
+            Function.prototype.valueOf = _valueOf;
+        };
+        
+        var valueOf = function()
+        {
+            // Only keep the last two operands.
+            if ( Delegate.operands.length === 2 )
+                Delegate.operands.splice( 0, 1 );
+            Delegate.operands.push( this );
+
+            // Temporarily override the valueOf method so that we can use the += and -= syntax
+            // for adding and removing event handlers.
+            if ( Function.prototype.valueOf !== valueOf )
             {
-                // Make sure two delegates were added together, and that the left operand is ourself.
-                if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise._pub ) )
-                {
-                    var handler = Delegate.operands[1];
-
-                    // the += operator was used (3 + 3 == 6)
-                    if ( value === 6 )
-                        add( handler );
-
-                    // the -= operator was used (3 - 3 == 0)
-                    else if ( value === 0 )
-                        remove( handler );
-                }
-                Delegate.operands = [];
+                _valueOf = Function.prototype.valueOf;
+                Function.prototype.valueOf = valueOf;
             }
-        });
+            return 3;
+        };
 
-        function add( handler ) {
-            handlers.push( handler );
-        }
+        return Delegate;
+    } () );
 
-        function remove( handler )
+    return {
+        /**
+         * @constructor
+         */
+        ctor: function()
         {
-            var index = indexOf( handlers, handler );
-            if ( index > -1 )
-                handlers.splice( index, 1 );
+            this.name = null;
+            this.access = null;
+        },
+
+        /**
+         * @description Creates the event on the specified scope.
+         * @param {Scope} scope
+         */
+        build: function( scope )
+        {
+            var self = this;
+            var handlers = [];
+            var raise = new Delegate( function()
+            {
+                var i = 0, len = handlers.length;
+                for ( ; i < len; i++ )
+                    handlers[ i ].apply( undefined, arguments );
+            });
+
+            raise._pub = new Delegate( function() {
+                throw error( "InvalidOperationError", "The event '" + self.name + "' cannot be raised except from within its own type." );
+            });
+
+            defineProperty( scope.self, this.name,
+            {
+                get: function() {
+                    return raise;
+                },
+                set: function( value )
+                {
+                    // Make sure two delegates were added together, and that the left operand is ourself.
+                    if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise._pub ) )
+                    {
+                        var handler = Delegate.operands[1];
+
+                        // the += operator was used (3 + 3 == 6)
+                        if ( value === 6 )
+                            add( handler );
+
+                        // the -= operator was used (3 - 3 == 0)
+                        else if ( value === 0 )
+                            remove( handler );
+                    }
+                    Delegate.reset();
+                }
+            });
+
+            function add( handler ) {
+                handlers.push( handler );
+            }
+
+            function remove( handler )
+            {
+                var index = indexOf( handlers, handler );
+                if ( index > -1 )
+                    handlers.splice( index, 1 );
+            }
         }
-    }
+    };
 });
 
-/**
- * @interface
- */
-var Member = function() {};
-
-/**
- * @description Creates the member on the specified scope.
- * @param {Scope} scope
- */
-Member.prototype.build = function( scope ) {};
-
-/**
- * @description Gets or sets the member name.
- * @type {string}
- */
-Member.prototype.name = null;
-
-/**
- * @description Gets or sets the member's access level.
- * @type {string}
- */
-Member.prototype.access = null;
-
-var MemberInfo = new Struct({
+var MemberInfo = new Struct(
+{
     access: null,
     virtual: false,
     name: null
 });
 
-/**
- * @implements {Member}
- */
 var Method = new Class(
 {
     /**
@@ -1926,7 +1859,7 @@ var Method = new Class(
                 };
             }
         }
-        scope.self[ this.name ] = new Delegate( scope.self[ this.name ] );
+        scope.self[ this.name ] = scope.self[ this.name ];
     },
 
     /**
@@ -2014,9 +1947,6 @@ var Method = new Class(
     }
 });
 
-/**
- * @implements {Member}
- */
 var Property = new Class(
 {
     /**
@@ -2102,7 +2032,8 @@ var Property = new Class(
     }
 });
 
-var Scope = new Struct({
+var Scope = new Struct(
+{
     /**
      * @type {Scope}
      */
@@ -2124,9 +2055,10 @@ var Scope = new Struct({
     template: null
 });
 
-var Template = new Struct({
+var Template = new Struct(
+{
     /**
-     * @type {Dictionary.<string, Member>}
+     * @type {Dictionary.<string, Event|Method|Property>}
      */
     members: null,
 
@@ -2146,7 +2078,8 @@ var Template = new Struct({
     ctor: null
 });
 
-var Tunnel = new Class({
+var Tunnel = new Class(
+{
     ctor: function() {
         this._value = null;
     },
@@ -2161,6 +2094,85 @@ var Tunnel = new Class({
 
     value: function() {
         return this._value;
+    }
+});
+
+var Module = ( function() {
+
+    
+} () );
+
+var Store = new Class(
+{
+    ctor: function()
+    {
+        this._pending = {};
+        this._cache = {};
+        this._browser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
+        this._last = null;
+
+        onTypeDefined = proxy( this._onTypeDefined, this );
+    },
+
+    fetch: function( options )
+    {
+        var task = new Task();
+        if ( this._browser )
+        {
+            var url = options.url;
+            if ( ( /^\/\// ).test( url ) )
+                url = window.location.protocol + url;
+            else if ( ( /^\// ).test( url ) )
+                url = window.location.protocol + "//" + window.location.host + url;
+            else
+                url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
+
+            if ( this._cache[ url ] )
+                task.resolve( this._cache[ url ] );
+            else if ( this._pending[ url ] )
+                this._pending[ url ].bind( task );
+            else
+            {
+                var script = document.createElement( "script" );
+                script.src = url;
+                script.addEventListener( "error", function()
+                {
+                    task.reject();
+                }, false );
+                document.body.appendChild( script );
+                this._pending[ url ] = task;
+            }
+        }
+        else
+        {
+            this._last = task;
+            require( options.url );
+        }
+        return task.promise;
+    },
+
+    _onTypeDefined: function( type )
+    {
+        if ( this._browser )
+        {
+            var scripts = document.getElementsByTagName( "script" );
+            var url = scripts[ scripts.length - 1 ].src;
+            if ( this._pending[ url ] )
+            {
+                this._cache[ url ] = type;
+                var task = this._pending[ url ];
+                delete this._pending[ url ];
+                setTimeout( function() {
+                    task.resolve( type );
+                });
+            }
+        }
+        else if ( this._last !== null )
+        {
+            var task = this._last;
+            this._last = null;
+            task.resolve( type );
+        }
     }
 });
 
@@ -2234,13 +2246,15 @@ var Type = ( function() {
 
 } () );
 
-var Binding = new Struct({
+var Binding = new Struct(
+{
     create: function() {},
     inject: [],
     filter: []
 });
 
-var BindingConfiguration = new Type({
+var BindingConfiguration = new Type(
+{
     /**
      * @constructor
      * @param {Binding} binding
@@ -2290,7 +2304,8 @@ var BindingConfiguration = new Type({
     }
 });
 
-var Box = new Class({
+var Box = new Class(
+{
     /**
      * @constructor
      * @param {Cookbook} cookbook
@@ -2438,7 +2453,8 @@ var Box = new Class({
     }
 });
 
-var Chef = new Class({
+var Chef = new Class(
+{
     /**
      * @param {Cookbook} cookbook
      * @param {function(): function(Array.<string>): Promise} loader
@@ -2637,7 +2653,8 @@ var Chef = new Class({
     }
 });
 
-var Component = new Class({
+var Component = new Class(
+{
     /**
      * @constructor
      * @param {Recipe} recipe
@@ -2779,7 +2796,8 @@ function Factory( service )
     this.value = service;
 }
 
-var Kernel = new Type( function() {
+var Kernel = new Type( function()
+{
 
     var BindingSyntax = new Type({
         /**
@@ -3052,9 +3070,6 @@ var Recipe = new Struct(
 var _exports = {
     define: Type,
 
-    simple: Class,
-    struct: Struct,
-
     /**
      * @description
      * A factory for creating custom errors. Pass a name to get the error definition.
@@ -3073,13 +3088,14 @@ var _exports = {
     of: typeOf,
 
     defer: Task,
+
     kernel: Kernel,
     factory: Factory,
     lazy: Lazy,
 
-    delegate: function() {
-        return Delegate.apply( undefined, arguments );
-    }
+    proxy: proxy,
+
+    module: Module
 };
 
 if ( typeof module !== "undefined" && module.exports )

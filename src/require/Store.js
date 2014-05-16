@@ -1,4 +1,5 @@
-var Store = new Class({
+var Store = new Class(
+{
     ctor: function()
     {
         this._pending = {};

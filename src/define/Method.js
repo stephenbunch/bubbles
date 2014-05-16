@@ -1,6 +1,3 @@
-/**
- * @implements {Member}
- */
 var Method = new Class(
 {
     /**
@@ -49,7 +46,7 @@ var Method = new Class(
                 };
             }
         }
-        scope.self[ this.name ] = new Delegate( scope.self[ this.name ] );
+        scope.self[ this.name ] = scope.self[ this.name ];
     },
 
     /**

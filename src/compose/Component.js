@@ -1,4 +1,5 @@
-var Component = new Class({
+var Component = new Class(
+{
     /**
      * @constructor
      * @param {Recipe} recipe

@@ -1,6 +1,6 @@
 describe( "event", function()
 {
-    describe( "+=", function()
+    describe( "`+=` operator", function()
     {
         it( "should add an event handler", function()
         {
@@ -13,15 +13,35 @@ describe( "event", function()
             });
             var a = new A();
             var called = false;
-            a.foo += type.delegate( function() {
+            a.foo += function() {
                 called = true;
+            };
+            a.onFoo();
+            expect( called ).to.be.true;
+        });
+
+        it( "should work even if handler.valueOf() has been called", function()
+        {
+            var A = type.define({
+                events: [ "foo" ]
+            }, {
+                onFoo: function() {
+                    this.foo();
+                }
             });
+            var a = new A();
+            var called = false;
+            var handler = function() {
+                called = true;
+            };
+            handler.valueOf();
+            a.foo += handler;
             a.onFoo();
             expect( called ).to.be.true;
         });
     });
 
-    describe( "()", function()
+    describe( "invoke", function()
     {
         it( "should raise an event", function()
         {
@@ -34,9 +54,9 @@ describe( "event", function()
             });
             var a = new A();
             var out = null;
-            a.foo += type.delegate( function( x ) {
+            a.foo += function( x ) {
                 out = x;
-            });
+            };
             a.onFoo( 2 );
             expect( out ).to.equal( 2 );
         });
@@ -51,7 +71,7 @@ describe( "event", function()
         });
     });
 
-    describe( "-=", function()
+    describe( "`-=` operator", function()
     {
         it( "should remove an event handler", function()
         {
@@ -64,9 +84,9 @@ describe( "event", function()
             });
             var a = new A();
             var called = 0;
-            var handler = type.delegate( function() {
+            var handler = function() {
                 called++;
-            });
+            };
             a.foo += handler;
             a.onFoo();
             a.foo -= handler;
@@ -85,9 +105,9 @@ describe( "event", function()
             });
             var a = new A();
             var called = 0;
-            var handler = type.delegate( function() {
+            var handler = function() {
                 called++;
-            });
+            };
             a.foo += handler;
             a.foo += handler;
             a.onFoo();

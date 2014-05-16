@@ -1,4 +1,5 @@
-var Box = new Class({
+var Box = new Class(
+{
     /**
      * @constructor
      * @param {Cookbook} cookbook

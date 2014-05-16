@@ -1,4 +1,5 @@
-var Scope = new Struct({
+var Scope = new Struct(
+{
     /**
      * @type {Scope}
      */

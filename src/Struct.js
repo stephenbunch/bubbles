@@ -3,7 +3,7 @@ var Struct = ( function()
     return function ( members )
     {
         var mode = "default";
-        var Struct = function( values )
+        var ctor = function( values )
         {
             if ( mode === "new" )
             {
@@ -17,6 +17,9 @@ var Struct = ( function()
             mode = "default";
             extend( instance, members, values || {} );
             return instance;
+        };
+        var Struct = function() {
+            return ctor.apply( undefined, arguments );
         };
         return Struct;
     };
