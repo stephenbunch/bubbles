@@ -2973,5 +2973,12 @@ if ( typeof module !== "undefined" && module.exports )
 else
     window.type = _exports;
 
+if ( typeof define === "function" && define.amd )
+{
+    define( function() {
+        return _exports;
+    });
+}
+
 } ( typeof global === "undefined" ? window : global ) );
 
