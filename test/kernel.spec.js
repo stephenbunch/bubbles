@@ -30,11 +30,11 @@ describe( "Kernel", function()
                 return type.Task().reject( e );
             });
             kernel.bind( "foo" ).toConstant( 2 );
-            kernel.resolve( "foo" ).then( function( foo )
+            kernel.get( "foo" ).then( function( foo )
             {
                 expect( foo ).to.equal( 2 );
                 kernel.unbind( "foo" );
-                return kernel.resolve( "foo" );
+                return kernel.get( "foo" );
             }).then( null, function( reason )
             {
                 expect( reason ).to.equal( e );
@@ -53,26 +53,26 @@ describe( "Kernel", function()
             kernel.bind( "foo" ).toConstant( 2 ).whenFor([ "bar", "baz" ]);
             kernel.bind( "bar" ).to([ "foo", function( foo ) {} ]);
             kernel.bind( "baz" ).to([ "foo", function( foo ) {} ]);
-            kernel.resolve( "bar" ).then( function()
+            kernel.get( "bar" ).then( function()
             {
                 kernel.unbind( "foo", [ "bar" ]);
-                return kernel.resolve( "bar" );
+                return kernel.get( "bar" );
             }).then( null, function( reason )
             {
                 expect( reason ).to.equal( e );
-                return kernel.resolve( "baz" );
+                return kernel.get( "baz" );
             }).then( done );
         });
     });
 
-    describe( ".resolve()", function()
+    describe( ".get()", function()
     {
         it( "should support the array syntax for listing dependencies", function( done )
         {
             var kernel = type.Kernel();
             kernel.bind( "foo" ).toConstant( 2 );
             var out = 0;
-            kernel.resolve( [ "foo", function( x )
+            kernel.get( [ "foo", function( x )
             {
                 out = x;
             }]).then( function()
@@ -95,10 +95,10 @@ describe( "Kernel", function()
                 this.foo = baz;
             };
             Bar.$inject = [ "foo" ];
-            kernel.resolve( Bar ).then( function( bar )
+            kernel.get( Bar ).then( function( bar )
             {
                 expect( bar.foo ).to.equal( 2 );
-                return kernel.resolve( Bar );
+                return kernel.get( Bar );
             }).then( function( bar )
             {
                 expect( bar.foo ).to.equal( 2 );
@@ -115,7 +115,7 @@ describe( "Kernel", function()
                 return type.Task().reject( e );
             });
             kernel.bind( "bar" ).to([ "foo", function() {} ]);
-            kernel.resolve([ "bar", "baz", function() {} ]).then( null, function( reason )
+            kernel.get([ "bar", "baz", function() {} ]).then( null, function( reason )
             {
                 expect( reason ).to.equal( e );
                 done();
@@ -134,7 +134,7 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            kernel.resolve( "foo" ).then( null, function( e )
+            kernel.get( "foo" ).then( null, function( e )
             {
                 expect( e ).to.be.instanceof( TypeError );
                 done();
@@ -153,7 +153,7 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            kernel.resolve( "foo" ).then( null, function( e )
+            kernel.get( "foo" ).then( null, function( e )
             {
                 expect( e ).to.be.instanceof( TypeError );
                 done();
@@ -172,7 +172,7 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            kernel.resolve( "foo" ).then( null, function( e )
+            kernel.get( "foo" ).then( null, function( e )
             {
                 expect( e ).to.be.instanceof( TypeError );
                 done();
@@ -192,7 +192,7 @@ describe( "Kernel", function()
                 }
             });
             var kernel = type.Kernel().register({ app: graph });
-            kernel.resolve( "app.bar.Foo" ).then( function()
+            kernel.get( "app.bar.Foo" ).then( function()
             {
                 expect( called ).to.equal( 1 );
                 done();
@@ -207,7 +207,7 @@ describe( "Kernel", function()
         {
             var kernel = type.Kernel();
             kernel.autoLoad( browser ? "test/stubs" : "../test/stubs" );
-            kernel.resolve( "class1" ).then( function( class1 )
+            kernel.get( "class1" ).then( function( class1 )
             {
                 expect( class1.foo() ).to.equal( 2 );
                 done();
@@ -218,7 +218,7 @@ describe( "Kernel", function()
         {
             var kernel = type.Kernel();
             kernel.autoLoad( browser ? "test/stubs" : "../test/stubs" );
-            kernel.resolve( "ns1.ns2.class2" ).then( function( class2 )
+            kernel.get( "ns1.ns2.class2" ).then( function( class2 )
             {
                 expect( class2.bar() ).to.equal( 2 );
                 done();
@@ -236,7 +236,7 @@ describe( "Kernel", function()
                 kernel.bind( "foo" ).to( function() {
                     return 2;
                 });
-                kernel.resolve( "foo" ).then( function( foo )
+                kernel.get( "foo" ).then( function( foo )
                 {
                     expect( foo ).to.equal( 2 );
                     done();
@@ -251,7 +251,7 @@ describe( "Kernel", function()
                 var kernel = type.Kernel();
                 var obj = {};
                 kernel.bind( "foo" ).toConstant( obj );
-                kernel.resolve( "foo" ).then( function( foo )
+                kernel.get( "foo" ).then( function( foo )
                 {
                     expect( foo ).to.equal( obj );
                     done();
@@ -269,10 +269,10 @@ describe( "Kernel", function()
                 var kernel = type.Kernel();
                 kernel.bind( "foo" ).to( function() { return {}; } ).asSingleton();
                 var out;
-                kernel.resolve( "foo" ).then( function( foo )
+                kernel.get( "foo" ).then( function( foo )
                 {
                     out = foo;
-                    return kernel.resolve( "foo" );
+                    return kernel.get( "foo" );
                 }).then( function( foo )
                 {
                     expect( foo ).to.equal( out );
@@ -301,16 +301,16 @@ describe( "Kernel", function()
                 }]);
 
                 // Bindings should be tried in reverse order.
-                kernel.resolve( "bar" ).then( function()
+                kernel.get( "bar" ).then( function()
                 {
                     expect( out ).to.equal( 3 );
-                    return kernel.resolve( "baz" );
+                    return kernel.get( "baz" );
                 }).then( function()
                 {
                     expect( out ).to.equal( 4 );
 
                     // Resolving an anonymous service should use the default binding if it exists.
-                    return kernel.resolve([ "foo", function( foo ) {
+                    return kernel.get([ "foo", function( foo ) {
                         out = foo;
                     }]);
                 }).then( function()
@@ -328,7 +328,7 @@ describe( "Kernel", function()
         {
             var kernel = type.Kernel();
             kernel.bind( "foo" ).toConstant( 2 );
-            kernel.resolve( type.Factory( "foo" ) ).then( function( factory )
+            kernel.get( type.Factory( "foo" ) ).then( function( factory )
             {
                 expect( factory() ).to.equal( 2 );
                 done();
@@ -339,7 +339,7 @@ describe( "Kernel", function()
         {
             var kernel = type.Kernel();
             kernel.bind( "foo" ).to( function( a ) { return a + 2; } );
-            kernel.resolve( type.Factory( "foo" ) ).then( function( factory )
+            kernel.get( type.Factory( "foo" ) ).then( function( factory )
             {
                 expect( factory( 5 ) ).to.equal( 7 );
                 done();
@@ -356,7 +356,7 @@ describe( "Kernel", function()
                 return ++foo;
             });
             kernel.bind( "bar" ).to( bar );
-            kernel.resolve( type.Factory( "bar" ) ).then( function( factory )
+            kernel.get( type.Factory( "bar" ) ).then( function( factory )
             {
                 factory();
                 factory();
@@ -374,7 +374,7 @@ describe( "Kernel", function()
                 calledA++;
                 return 2;
             });
-            kernel.resolve( type.Factory( "foo" ) ).then( function( factory )
+            kernel.get( type.Factory( "foo" ) ).then( function( factory )
             {
                 factory();
                 kernel.unbind( "foo" );
@@ -404,7 +404,7 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            kernel.resolve( type.Factory( "foo" ) ).then( function( fooFactory )
+            kernel.get( type.Factory( "foo" ) ).then( function( fooFactory )
             {
                 expect( fooFactory() ).to.equal( 2 );
                 done();
@@ -418,7 +418,7 @@ describe( "Kernel", function()
         {
             var kernel = type.Kernel();
             kernel.bind( "foo" ).toConstant( 2 );
-            kernel.resolve( type.Lazy( "foo" ) ).then( function( lazy )
+            kernel.get( type.Lazy( "foo" ) ).then( function( lazy )
             {
                 return lazy();
             }).then( function( value )
@@ -440,7 +440,7 @@ describe( "Kernel", function()
                 });
                 return token.promise;
             });
-            kernel.resolve( type.Lazy( "foo" ) ).then( function( lazy )
+            kernel.get( type.Lazy( "foo" ) ).then( function( lazy )
             {
                 lazy()
                     .then( function( result )

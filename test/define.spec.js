@@ -25,7 +25,7 @@ describe( ".def()", function()
         });
         var kernel = type.Kernel();
         kernel.bind( "bar" ).to( function() { return 2; } );
-        kernel.resolve( A ).then( function( a )
+        kernel.get( A ).then( function( a )
         {
             expect( a.value() ).to.equal( 2 );
             done();

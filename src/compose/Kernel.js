@@ -110,7 +110,7 @@ var Kernel = new Type( function()
          * @param {...Object} [args]
          * @return {Promise.<TService>}
          */
-        resolve: function( target, args )
+        get: function( target, args )
         {
             var self = this;
             args = makeArray( arguments );
