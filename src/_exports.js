@@ -1,5 +1,8 @@
 var _exports = {
-    def: Type,
+    Class: Type,
+    Event: Descriptor.Event,
+
+    extend: Type.extend,
 
     /**
      * @description
@@ -50,9 +53,7 @@ var _exports = {
      * @param {*} [scope]
      * @return {Function}
      */
-    proxy: proxy,
-
-    module: Module
+    proxy: proxy
 };
 
 if ( typeof module !== "undefined" && module.exports )

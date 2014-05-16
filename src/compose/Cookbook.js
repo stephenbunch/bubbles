@@ -32,7 +32,7 @@ var Cookbook = new Class(
                 ingredients: idea
             });
         }
-        if ( typeOf( idea ) === "string" )
+        if ( isString( idea ) )
         {
             binding = this._lookup( idea, destination );
             if ( binding )

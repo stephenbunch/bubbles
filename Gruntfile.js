@@ -23,7 +23,6 @@ module.exports = function( grunt )
                     "src/Dictionary.js",
                     "src/Task.js",
                     "src/define/*.js",
-                    "src/require/*.js",
                     "src/Type.js",
                     "src/compose/*.js",
                     "src/_exports.js",
@@ -43,7 +42,6 @@ module.exports = function( grunt )
                 "src/Dictionary.js",
                 "src/Task.js",
                 "src/define/*.js",
-                "src/require/*.js",
                 "src/Type.js",
                 "src/compose/*.js"
             ],
@@ -159,21 +157,51 @@ module.exports = function( grunt )
         });
     });
 
-    grunt.registerTask( "mocha", function()
+    grunt.registerTask( "browsertest", function()
     {
-        grunt.log.writeln( "Running All Tests" );
+        grunt.log.writeln( "Running Browser Tests" );
         var done = this.async();
         var Mocha = require( "mocha" );
         var mocha = new Mocha({
             bail: true,
             grep: grunt.option( "grep" )
         });
-        grunt.file.expand( "test/**/*.spec.js" ).forEach( function( file )
+        grunt.file.expand( "test/browser/**/*.spec.js" ).forEach( function( file )
         {
             mocha.addFile( file );
         });
+
+        global.requirejs = require( "requirejs" );
+        global.requirejs.config({
+            baseUrl: "."
+        });
+        global.define = require( "amdefine" );
+        global.require = require;
         global.type = require( "./dist/type.js" );
         global.expect = require( "chai" ).expect;
+
+        mocha.run( function( failures ) {
+            done( failures === 0 );
+        });
+    });
+
+    grunt.registerTask( "nodetest", function()
+    {
+        grunt.log.writeln( "Running Node Tests" );
+        var done = this.async();
+        var Mocha = require( "mocha" );
+        var mocha = new Mocha({
+            bail: true,
+            grep: grunt.option( "grep" )
+        });
+        grunt.file.expand( "test/node/**/*.spec.js" ).forEach( function( file )
+        {
+            mocha.addFile( file );
+        });
+
+        global.type = require( "./dist/type.js" );
+        global.expect = require( "chai" ).expect;
+
         mocha.run( function( failures ) {
             done( failures === 0 );
         });
@@ -183,5 +211,5 @@ module.exports = function( grunt )
     grunt.loadNpmTasks( "grunt-contrib-uglify" );
     grunt.loadNpmTasks( "grunt-contrib-watch" );
 
-    grunt.registerTask( "default", [ "jshint", "concat", "uglify", "mocha", "aplus" ] );
+    grunt.registerTask( "default", [ "jshint", "concat", "uglify", "browsertest", "nodetest", "aplus" ] );
 };

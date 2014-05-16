@@ -19,7 +19,9 @@
     "mocha": "~1.15.0",
     "chai": "~1.8.1",
     "source-map": "~0.1.31",
-    "sinon": "~1.7.3"
+    "sinon": "~1.7.3",
+    "requirejs": "~2.1.11",
+    "amdefine": "~0.1.0"
   },
   "scripts": {
     "test": "grunt"

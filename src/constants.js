@@ -11,6 +11,8 @@ var IE8 = ( function() {
     }
 } () );
 
+var BROWSER = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
+
 // member access levels
 var PUBLIC = "public";
 var PRIVATE = "private";

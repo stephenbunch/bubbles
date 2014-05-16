@@ -1,12 +1,11 @@
-describe( "event", function()
+describe( "Event", function()
 {
     describe( "`+=` operator", function()
     {
         it( "should add an event handler", function()
         {
-            var A = type.def({
-                events: [ "foo" ]
-            }, {
+            var A = type.Class({
+                foo: type.Event,
                 onFoo: function() {
                     this.foo();
                 }
@@ -22,9 +21,8 @@ describe( "event", function()
 
         it( "should work even if handler.valueOf() has been called", function()
         {
-            var A = type.def({
-                events: [ "foo" ]
-            }, {
+            var A = type.Class({
+                foo: type.Event,
                 onFoo: function() {
                     this.foo();
                 }
@@ -45,9 +43,8 @@ describe( "event", function()
     {
         it( "should raise an event", function()
         {
-            var A = type.def({
-                events: [ "foo" ]
-            }, {
+            var A = type.Class({
+                foo: type.Event,
                 onFoo: function( x ) {
                     this.foo( x );
                 }
@@ -63,7 +60,7 @@ describe( "event", function()
 
         it( "should be hidden from the outside", function()
         {
-            var A = type.def({ events: [ "foo" ] }, {} );
+            var A = type.Class({ foo: type.Event });
             var a = new A();
             expect( function() {
                 a.foo();
@@ -75,9 +72,8 @@ describe( "event", function()
     {
         it( "should remove an event handler", function()
         {
-            var A = type.def({
-                events: [ "foo" ]
-            }, {
+            var A = type.Class({
+                foo: type.Event,
                 onFoo: function() {
                     this.foo();
                 }
@@ -96,9 +92,8 @@ describe( "event", function()
 
         it( "should only remove one event handler", function()
         {
-            var A = type.def({
-                events: [ "foo" ]
-            }, {
+            var A = type.Class({
+                foo: type.Event,
                 onFoo: function() {
                     this.foo();
                 }

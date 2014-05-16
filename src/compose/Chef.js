@@ -47,6 +47,12 @@ var Chef = new Class(
 
         function done( result )
         {
+            if ( !isArray( result ) )
+            {
+                task.reject( error( "TypeError", "Loaded successfully. Expected result to be an array." ) );
+                return false;
+            }
+
             var bindings = {};
             var i = 0, len = box.missing.length;
             for ( ; i < len; i++ )
@@ -57,11 +63,11 @@ var Chef = new Class(
                 // Validate the returned service. If there's no way we can turn it into a binding,
                 // we'll get ourselves into a never-ending loop trying to resolve it.
                 var svc = result[ i ];
-                if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
+                if ( !svc || !( /(function|array)/ ).test( typeOf( svc ) ) )
                 {
                     task.reject(
-                        new TypeError( "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
-                            service + "'. Expected service to be a string, array, or function. Found '" +
+                        error( "TypeError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                            service + "'. Expected service to be an array or function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
                         )
                     );
@@ -71,7 +77,7 @@ var Chef = new Class(
                 {
                     svc = svc[ svc.length - 1 ];
                     task.reject(
-                        new TypeError( "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                        error( "InvalidOperationError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
                         )

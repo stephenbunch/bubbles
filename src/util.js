@@ -120,6 +120,14 @@ function isArray( object ) {
     return typeOf( object ) === "array";
 }
 
+function isObject( object ) {
+    return typeOf( object ) === "object";
+}
+
+function isString( object ) {
+    return typeOf( object ) === "string";
+}
+
 /**
  * @internal
  * @description
@@ -255,7 +263,7 @@ function map( items, callback, context )
  * @param {...string} paths
  * @return {string}
  */
-function path()
+function pathCombine()
 {
     return map( arguments, function( path, index ) {
         return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );

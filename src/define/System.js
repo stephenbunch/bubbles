@@ -1,4 +1,4 @@
-var Controller = new Class( function()
+var System = new Class( function()
 {
     // Makes the constructor look clean in the console.
     var Type = function( ctor )
@@ -74,7 +74,7 @@ var Controller = new Class( function()
         /**
          * @return {Template}
          */
-        createTemplate: function()
+        createType: function()
         {
             var me = this;
             var Self = null;

@@ -2,7 +2,7 @@ var Builder = new Class(
 {
     ctor: function()
     {
-        this.controller = null;
+        this.system = null;
         this.tunnel = null;
     },
 
@@ -16,7 +16,7 @@ var Builder = new Class(
     init: function( template, pub, args, ctor )
     {
         var self = this;
-        var scope = this.controller.createScope( template );
+        var scope = this.system.createScope( template );
 
         defineProperty( scope.self, "_pub",
         {
@@ -85,7 +85,7 @@ var Builder = new Class(
                     throw error( "InitializationError", "Base constructor contains parameters and must be called explicitly." );
             }
 
-            scope.parent = this.controller.createScope( scope.template.parent );
+            scope.parent = this.system.createScope( scope.template.parent );
             scope.parent.self._pub = scope.self._pub;
             this._build( scope.parent );
         }

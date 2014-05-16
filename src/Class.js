@@ -20,7 +20,7 @@ var Class = function( methods )
         mode = "default";
 
         var result = instance.ctor.apply( instance, arguments );
-        if ( isFunc( result ) || isArray( result ) || typeOf( result ) === "object" )
+        if ( isFunc( result ) || isArray( result ) || isObject( result ) )
             return result;
         else
             return instance;

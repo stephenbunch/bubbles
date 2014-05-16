@@ -31,7 +31,7 @@ var Descriptor = new Class( function()
          * @constructor
          */
         ctor: function() {
-            this.controller = null;
+            this.system = null;
         },
 
         /**
@@ -39,7 +39,7 @@ var Descriptor = new Class( function()
          * @param {Template} template
          * @param {Function} Parent
          */
-        defineParent: function( template, Parent )
+        theParent: function( template, Parent )
         {
             // Since name collision detection happens when the type is defined, we must prevent people
             // from changing the inheritance hierarchy after defining members.
@@ -50,9 +50,9 @@ var Descriptor = new Class( function()
                 throw error( "TypeError", "Parent type must be a function." );
 
             // Only set the parent member if the parent type was created by us.
-            if ( this.controller.isTypeOurs( Parent ) )
+            if ( this.system.isTypeOurs( Parent ) )
             {
-                var baseTemplate = this.controller.getTemplate( Parent );
+                var baseTemplate = this.system.getTemplate( Parent );
 
                 // Check for circular reference.
                 var t = baseTemplate;
@@ -63,13 +63,13 @@ var Descriptor = new Class( function()
                     t = t.parent;
                 }
                 template.parent = baseTemplate;
-                template.ctor.prototype = this.controller.createEmpty( baseTemplate );
+                template.ctor.prototype = this.system.createEmpty( baseTemplate );
             }
             else
                 template.ctor.prototype = new Parent();
         },
 
-        defineMembers: function( template, members )
+        theMembers: function( template, members )
         {
             forEach( keys( members || {} ), function( key )
             {
@@ -93,7 +93,21 @@ var Descriptor = new Class( function()
                         throw error( "TypeError", "Member '" + CTOR + "' must be a function." );
                 }
 
-                var member = isFunc( descriptor ) ? createMethod( descriptor ) : createProperty( template, info, descriptor );
+                var member;
+                if ( descriptor === Descriptor.Event )
+                {
+                    member = new Event();
+                    if ( info.virtual )
+                        throw error( "DefinitionError", "Events cannot be virtual." );
+                }
+                else
+                {
+                    if ( isFunc( descriptor ) )
+                        member = createMethod( descriptor );
+                    else
+                        member = createProperty( template, info, descriptor );
+                    member.virtual = info.virtual;
+                }
 
                 if ( info.name === CTOR )
                 {
@@ -110,32 +124,6 @@ var Descriptor = new Class( function()
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
             });
-        },
-
-        /**
-         * @description Defines events on the type.
-         * @param {Template} template
-         * @param {Array.<string>} events
-         */
-        defineEvents: function( template, events )
-        {
-            var i = 0, len = events.length;
-            for ( ; i < len; i++ )
-            {
-                var info = parse( events[ i ] );
-                validate( template, info );
-
-                if ( info.name === CTOR )
-                    throw error( "DefinitionError", "Event cannot be named 'ctor'." );
-
-                if ( info.virtual )
-                    throw error( "DefinitionError", "Events cannot be virtual." );
-
-                var member = new Event();
-                member.name = info.name;
-                member.access = info.access;
-                template.members.add( info.name, member );
-            }
         }
     };
 
@@ -259,7 +247,7 @@ var Descriptor = new Class( function()
         member.name = property.name;
         member.virtual = property.virtual;
 
-        if ( typeOf( descriptor ) !== "object" )
+        if ( !isObject( descriptor ) )
         {
             member.value = descriptor;
             descriptor = {};
@@ -370,3 +358,9 @@ var Descriptor = new Class( function()
             throw error( "DefinitionError", "Cannot set access modifers for both accessors of the property '" + property.name + "'." );
     }
 });
+
+Descriptor.Event = ( function()
+{
+    var Event = function() {};
+    return new Event();
+} () );

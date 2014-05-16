@@ -1,6 +1,5 @@
 var Kernel = new Type( function()
 {
-
     var BindingSyntax = new Type({
         /**
          * @constructor
@@ -30,19 +29,49 @@ var Kernel = new Type( function()
         }
     });
 
-    var store = new Store();
-
-    this.members({
+    return {
         ctor: function()
         {
             this.container = {};
-            this.require = null;
+            this.detectModuleSupport();
 
             var self = this;
             var cookbook = new Cookbook( this.container );
-            this.chef = new Chef( cookbook, function() {
-                return self.require;
+
+            this.chef = new Chef( cookbook, function()
+            {
+                if ( self.require === null )
+                    return null;
+
+                return function( modules )
+                {
+                    return self.require(
+                        map( modules, function( module ) {
+                            return self.resolvePath( module );
+                        })
+                    );
+                };
             });
+        },
+
+        require: {
+            get: null,
+            set: function( value )
+            {
+                if ( value !== null && !isFunc( value ) )
+                    throw error( "ArgumentError", "Value must be a function or `null`." );
+                this._value( value );
+            }
+        },
+
+        pathPrefix: {
+            get: null,
+            set: function( value )
+            {
+                if ( value !== null && !isString( value ) )
+                    throw error( "ArgumentError", "Value must be a string or `null`." );
+                this._value( value );
+            }
         },
 
         /**
@@ -52,7 +81,7 @@ var Kernel = new Type( function()
          */
         bind: function( service )
         {
-            if ( !service || typeOf( service ) !== "string" )
+            if ( !service || !isString( service ) )
                 throw error( "ArgumentError", "Argument 'service' must have a value." );
             return new BindingSyntax( this, service );
         },
@@ -151,49 +180,31 @@ var Kernel = new Type( function()
             return this._pub;
         },
 
-        autoLoad: function( config )
+        __detectModuleSupport: function()
         {
-            if ( config === false )
-                this.require = null;
-            else
+            // AMD modules with RequireJS.
+            if ( global.requirejs !== undefined )
             {
-                var loader;
-                if ( isFunc( config ) )
-                    loader = config;
-                else
-                {
-                    if ( typeOf( config ) === "string" )
-                        config = { baseUrl: config };
-                    config =
-                    {
-                        baseUrl: config.baseUrl || "",
-                        waitSeconds: config.waitSeconds === 0 || config.waitSeconds ? config.waitSeconds : 7,
-                        urlArgs: config.urlArgs || "",
-                        scriptType: config.scriptType || "text/javascript"
-                    };
-                    loader = function( module )
-                    {
-                        var url = path( config.baseUrl, module );
-                        if ( !( /\.js$/ ).test( url ) )
-                            url += ".js";
-                        return store.fetch(
-                        {
-                            url: url,
-                            timeout: config.waitSeconds * 1000,
-                            query: config.urlArgs,
-                            scriptType: config.scriptType
-                        });
-                    };
-                }
                 this.require = function( modules )
                 {
-                    return Task.when( map( modules, function( module )
-                    {
-                        var promise = loader( module );
-                        if ( !promise || !isFunc( promise.then ) )
-                            throw error( "TypeError", "Service loader must return a promise." );
-                        return promise;
-                    }));
+                    var task = new Task();
+                    global.requirejs( modules, function() {
+                        task.resolve( makeArray( arguments ) );
+                    });
+                    return task.promise;
+                };
+            }
+
+            // CommonJS with Node.
+            else if ( !BROWSER )
+            {
+                this.require = function( modules )
+                {
+                    return new Task().resolve(
+                        map( modules, function( module ) {
+                            return global.require( module );
+                        })
+                    );
                 };
             }
         },
@@ -248,7 +259,13 @@ var Kernel = new Type( function()
                 else
                     self.registerProvider( prefix + name, type );
             });
-        }
-    });
+        },
 
+        __resolvePath: function( path )
+        {
+            if ( this.pathPrefix )
+                return pathCombine( this.pathPrefix, path );
+            return path;
+        }
+    };
 });

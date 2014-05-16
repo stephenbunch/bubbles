@@ -51,6 +51,8 @@ var IE8 = ( function() {
     }
 } () );
 
+var BROWSER = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
+
 // member access levels
 var PUBLIC = "public";
 var PRIVATE = "private";
@@ -179,6 +181,14 @@ function isFunc( object ) {
  */
 function isArray( object ) {
     return typeOf( object ) === "array";
+}
+
+function isObject( object ) {
+    return typeOf( object ) === "object";
+}
+
+function isString( object ) {
+    return typeOf( object ) === "string";
 }
 
 /**
@@ -316,7 +326,7 @@ function map( items, callback, context )
  * @param {...string} paths
  * @return {string}
  */
-function path()
+function pathCombine()
 {
     return map( arguments, function( path, index ) {
         return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
@@ -445,7 +455,7 @@ var Class = function( methods )
         mode = "default";
 
         var result = instance.ctor.apply( instance, arguments );
-        if ( isFunc( result ) || isArray( result ) || typeOf( result ) === "object" )
+        if ( isFunc( result ) || isArray( result ) || isObject( result ) )
             return result;
         else
             return instance;
@@ -854,7 +864,7 @@ var Builder = new Class(
 {
     ctor: function()
     {
-        this.controller = null;
+        this.system = null;
         this.tunnel = null;
     },
 
@@ -868,7 +878,7 @@ var Builder = new Class(
     init: function( template, pub, args, ctor )
     {
         var self = this;
-        var scope = this.controller.createScope( template );
+        var scope = this.system.createScope( template );
 
         defineProperty( scope.self, "_pub",
         {
@@ -937,7 +947,7 @@ var Builder = new Class(
                     throw error( "InitializationError", "Base constructor contains parameters and must be called explicitly." );
             }
 
-            scope.parent = this.controller.createScope( scope.template.parent );
+            scope.parent = this.system.createScope( scope.template.parent );
             scope.parent.self._pub = scope.self._pub;
             this._build( scope.parent );
         }
@@ -1052,227 +1062,6 @@ var Builder = new Class(
     }
 });
 
-var Controller = new Class( function()
-{
-    // Makes the constructor look clean in the console.
-    var Type = function( ctor )
-    {
-        return function() {
-            return ctor.apply( undefined, arguments );
-        };
-    };
-
-    return {
-        ctor: function()
-        {
-            this.tunnel = null;
-            this.builder = null;
-
-            this._checkTypeOurs = false;
-            this._typeCheckResult = false;
-            this._returnScope = false;
-            this._returnBase = false;
-            this._returnTemplate = false;
-        },
-
-        /**
-         * @param {Function} ctor
-         * @return {boolean}
-         */
-        isTypeOurs: function( ctor )
-        {
-            this._checkTypeOurs = true;
-            ctor();
-            var result = this._typeCheckResult;
-            this._typeCheckResult = false;
-            this._checkTypeOurs = false;
-            return result;
-        },
-
-        /**
-         * @param {Template} ctor
-         * @return {Scope}
-         */
-        createScope: function( template )
-        {
-            this._returnScope = true;
-            var scope = template.ctor();
-            this._returnScope = false;
-            return scope;
-        },
-
-        /**
-         * @param {Template} template
-         * @return {Object}
-         */
-        createEmpty: function( template )
-        {
-            this._returnBase = true;
-            var instance = new template.ctor();
-            this._returnBase = false;
-            return instance;
-        },
-
-        /**
-         * @param {Function} ctor
-         * @return {Template}
-         */
-        getTemplate: function( ctor )
-        {
-            this._returnTemplate = true;
-            var template = ctor();
-            this._returnTemplate = false;
-            return template;
-        },
-
-        /**
-         * @return {Template}
-         */
-        createTemplate: function()
-        {
-            var me = this;
-            var Self = null;
-            var template = new Template();
-            var run = true;
-
-            var ctor = function()
-            {
-                if ( me._returnBase )
-                    return;
-
-                if ( me._checkTypeOurs )
-                {
-                    me._typeCheckResult = true;
-                    return;
-                }
-
-                if ( me._returnScope )
-                {
-                    if ( Self === null )
-                        Self = me._createSelf( template );
-
-                    var scope = new Scope();
-                    scope.template = template;
-
-                    if ( IE8 )
-                    {
-                        scope.self = createElement();
-                        applyPrototype( Self, scope.self );
-                    }
-                    else
-                        scope.self = new Self();
-
-                    return scope;
-                }
-
-                if ( me._returnTemplate )
-                    return template;
-
-                if ( run )
-                {
-                    var pub;
-                    run = false;
-
-                    if ( IE8 )
-                    {
-                        pub = createElement();
-                        applyPrototype( template.ctor, pub );
-                    }
-                    else
-                        pub = new template.ctor();
-
-                    me.builder.init( template, pub, arguments, true );
-                    run = true;
-                    return pub;
-                }
-            };
-
-            template.ctor = Type( ctor );
-            template.members = new Dictionary();
-            return template;
-        },
-
-        /**
-         * @private
-         * @description Creates a new private scope type.
-         * @param {Template} template
-         * @return {Function}
-         */
-        _createSelf: function( template )
-        {
-            var self = this;
-            var Self = function() {};
-            Self.prototype = this.createEmpty( template );
-
-            /**
-             * Gets the private scope of the type instance.
-             * @return {?}
-             */
-            Self.prototype._pry = function( pub )
-            {
-                self.tunnel.open( template.ctor );
-                var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
-                self.tunnel.close();
-                return scope || pub;
-            };
-
-            return Self;
-        }
-    };
-
-    /**
-     * @private
-     * @param {Function} ctor
-     * @param {Object} obj
-     */
-    function applyPrototype( ctor, obj )
-    {
-        var proto = ctor.prototype;
-        if ( proto.constructor.prototype !== proto )
-            applyPrototype( proto.constructor, obj );
-        for ( var prop in proto )
-        {
-            if ( hasOwn( proto, prop ) )
-                obj[ prop ] = proto[ prop ];
-        }
-    }
-
-    /**
-     * @private
-     * @return {HTMLElement}
-     */
-    function createElement()
-    {
-        var obj = document.createElement(), prop;
-        for ( prop in obj )
-        {
-            if ( hasOwn( obj, prop ) )
-                resetProperty( obj, prop );
-        }
-        return obj;
-    }
-
-    /**
-     * @private
-     * @param {Object|Function|Array} obj
-     * @param {string} propertyName
-     */
-    function resetProperty( obj, propertyName )
-    {
-        var _value;
-        Object.defineProperty( obj, propertyName,
-        {
-            configurable: true,
-            get: function() {
-                return _value;
-            },
-            set: function( value ) {
-                _value = value;
-            }
-        });
-    }
-});
-
 var Descriptor = new Class( function()
 {
     var GET_ACCESS = {
@@ -1306,7 +1095,7 @@ var Descriptor = new Class( function()
          * @constructor
          */
         ctor: function() {
-            this.controller = null;
+            this.system = null;
         },
 
         /**
@@ -1314,7 +1103,7 @@ var Descriptor = new Class( function()
          * @param {Template} template
          * @param {Function} Parent
          */
-        defineParent: function( template, Parent )
+        theParent: function( template, Parent )
         {
             // Since name collision detection happens when the type is defined, we must prevent people
             // from changing the inheritance hierarchy after defining members.
@@ -1325,9 +1114,9 @@ var Descriptor = new Class( function()
                 throw error( "TypeError", "Parent type must be a function." );
 
             // Only set the parent member if the parent type was created by us.
-            if ( this.controller.isTypeOurs( Parent ) )
+            if ( this.system.isTypeOurs( Parent ) )
             {
-                var baseTemplate = this.controller.getTemplate( Parent );
+                var baseTemplate = this.system.getTemplate( Parent );
 
                 // Check for circular reference.
                 var t = baseTemplate;
@@ -1338,13 +1127,13 @@ var Descriptor = new Class( function()
                     t = t.parent;
                 }
                 template.parent = baseTemplate;
-                template.ctor.prototype = this.controller.createEmpty( baseTemplate );
+                template.ctor.prototype = this.system.createEmpty( baseTemplate );
             }
             else
                 template.ctor.prototype = new Parent();
         },
 
-        defineMembers: function( template, members )
+        theMembers: function( template, members )
         {
             forEach( keys( members || {} ), function( key )
             {
@@ -1368,7 +1157,21 @@ var Descriptor = new Class( function()
                         throw error( "TypeError", "Member '" + CTOR + "' must be a function." );
                 }
 
-                var member = isFunc( descriptor ) ? createMethod( descriptor ) : createProperty( template, info, descriptor );
+                var member;
+                if ( descriptor === Descriptor.Event )
+                {
+                    member = new Event();
+                    if ( info.virtual )
+                        throw error( "DefinitionError", "Events cannot be virtual." );
+                }
+                else
+                {
+                    if ( isFunc( descriptor ) )
+                        member = createMethod( descriptor );
+                    else
+                        member = createProperty( template, info, descriptor );
+                    member.virtual = info.virtual;
+                }
 
                 if ( info.name === CTOR )
                 {
@@ -1385,32 +1188,6 @@ var Descriptor = new Class( function()
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
             });
-        },
-
-        /**
-         * @description Defines events on the type.
-         * @param {Template} template
-         * @param {Array.<string>} events
-         */
-        defineEvents: function( template, events )
-        {
-            var i = 0, len = events.length;
-            for ( ; i < len; i++ )
-            {
-                var info = parse( events[ i ] );
-                validate( template, info );
-
-                if ( info.name === CTOR )
-                    throw error( "DefinitionError", "Event cannot be named 'ctor'." );
-
-                if ( info.virtual )
-                    throw error( "DefinitionError", "Events cannot be virtual." );
-
-                var member = new Event();
-                member.name = info.name;
-                member.access = info.access;
-                template.members.add( info.name, member );
-            }
         }
     };
 
@@ -1534,7 +1311,7 @@ var Descriptor = new Class( function()
         member.name = property.name;
         member.virtual = property.virtual;
 
-        if ( typeOf( descriptor ) !== "object" )
+        if ( !isObject( descriptor ) )
         {
             member.value = descriptor;
             descriptor = {};
@@ -1645,6 +1422,12 @@ var Descriptor = new Class( function()
             throw error( "DefinitionError", "Cannot set access modifers for both accessors of the property '" + property.name + "'." );
     }
 });
+
+Descriptor.Event = ( function()
+{
+    var Event = function() {};
+    return new Event();
+} () );
 
 /**
  * @description
@@ -1956,6 +1739,227 @@ var Scope = new Struct(
     template: null
 });
 
+var System = new Class( function()
+{
+    // Makes the constructor look clean in the console.
+    var Type = function( ctor )
+    {
+        return function() {
+            return ctor.apply( undefined, arguments );
+        };
+    };
+
+    return {
+        ctor: function()
+        {
+            this.tunnel = null;
+            this.builder = null;
+
+            this._checkTypeOurs = false;
+            this._typeCheckResult = false;
+            this._returnScope = false;
+            this._returnBase = false;
+            this._returnTemplate = false;
+        },
+
+        /**
+         * @param {Function} ctor
+         * @return {boolean}
+         */
+        isTypeOurs: function( ctor )
+        {
+            this._checkTypeOurs = true;
+            ctor();
+            var result = this._typeCheckResult;
+            this._typeCheckResult = false;
+            this._checkTypeOurs = false;
+            return result;
+        },
+
+        /**
+         * @param {Template} ctor
+         * @return {Scope}
+         */
+        createScope: function( template )
+        {
+            this._returnScope = true;
+            var scope = template.ctor();
+            this._returnScope = false;
+            return scope;
+        },
+
+        /**
+         * @param {Template} template
+         * @return {Object}
+         */
+        createEmpty: function( template )
+        {
+            this._returnBase = true;
+            var instance = new template.ctor();
+            this._returnBase = false;
+            return instance;
+        },
+
+        /**
+         * @param {Function} ctor
+         * @return {Template}
+         */
+        getTemplate: function( ctor )
+        {
+            this._returnTemplate = true;
+            var template = ctor();
+            this._returnTemplate = false;
+            return template;
+        },
+
+        /**
+         * @return {Template}
+         */
+        createType: function()
+        {
+            var me = this;
+            var Self = null;
+            var template = new Template();
+            var run = true;
+
+            var ctor = function()
+            {
+                if ( me._returnBase )
+                    return;
+
+                if ( me._checkTypeOurs )
+                {
+                    me._typeCheckResult = true;
+                    return;
+                }
+
+                if ( me._returnScope )
+                {
+                    if ( Self === null )
+                        Self = me._createSelf( template );
+
+                    var scope = new Scope();
+                    scope.template = template;
+
+                    if ( IE8 )
+                    {
+                        scope.self = createElement();
+                        applyPrototype( Self, scope.self );
+                    }
+                    else
+                        scope.self = new Self();
+
+                    return scope;
+                }
+
+                if ( me._returnTemplate )
+                    return template;
+
+                if ( run )
+                {
+                    var pub;
+                    run = false;
+
+                    if ( IE8 )
+                    {
+                        pub = createElement();
+                        applyPrototype( template.ctor, pub );
+                    }
+                    else
+                        pub = new template.ctor();
+
+                    me.builder.init( template, pub, arguments, true );
+                    run = true;
+                    return pub;
+                }
+            };
+
+            template.ctor = Type( ctor );
+            template.members = new Dictionary();
+            return template;
+        },
+
+        /**
+         * @private
+         * @description Creates a new private scope type.
+         * @param {Template} template
+         * @return {Function}
+         */
+        _createSelf: function( template )
+        {
+            var self = this;
+            var Self = function() {};
+            Self.prototype = this.createEmpty( template );
+
+            /**
+             * Gets the private scope of the type instance.
+             * @return {?}
+             */
+            Self.prototype._pry = function( pub )
+            {
+                self.tunnel.open( template.ctor );
+                var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
+                self.tunnel.close();
+                return scope || pub;
+            };
+
+            return Self;
+        }
+    };
+
+    /**
+     * @private
+     * @param {Function} ctor
+     * @param {Object} obj
+     */
+    function applyPrototype( ctor, obj )
+    {
+        var proto = ctor.prototype;
+        if ( proto.constructor.prototype !== proto )
+            applyPrototype( proto.constructor, obj );
+        for ( var prop in proto )
+        {
+            if ( hasOwn( proto, prop ) )
+                obj[ prop ] = proto[ prop ];
+        }
+    }
+
+    /**
+     * @private
+     * @return {HTMLElement}
+     */
+    function createElement()
+    {
+        var obj = document.createElement(), prop;
+        for ( prop in obj )
+        {
+            if ( hasOwn( obj, prop ) )
+                resetProperty( obj, prop );
+        }
+        return obj;
+    }
+
+    /**
+     * @private
+     * @param {Object|Function|Array} obj
+     * @param {string} propertyName
+     */
+    function resetProperty( obj, propertyName )
+    {
+        var _value;
+        Object.defineProperty( obj, propertyName,
+        {
+            configurable: true,
+            get: function() {
+                return _value;
+            },
+            set: function( value ) {
+                _value = value;
+            }
+        });
+    }
+});
+
 var Template = new Struct(
 {
     /**
@@ -1993,162 +1997,77 @@ var Tunnel = new Class(
     }
 });
 
-var Module = ( function() {
-
-    
-} () );
-
-var Store = new Class(
-{
-    ctor: function()
-    {
-        this._pending = {};
-        this._cache = {};
-        this._browser = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
-        this._last = null;
-
-        onTypeDefined = proxy( this._onTypeDefined, this );
-    },
-
-    fetch: function( options )
-    {
-        var task = new Task();
-        if ( this._browser )
-        {
-            var url = options.url;
-            if ( ( /^\/\// ).test( url ) )
-                url = window.location.protocol + url;
-            else if ( ( /^\// ).test( url ) )
-                url = window.location.protocol + "//" + window.location.host + url;
-            else
-                url = window.location.protocol + "//" + window.location.host + window.location.pathname + url;
-
-            if ( this._cache[ url ] )
-                task.resolve( this._cache[ url ] );
-            else if ( this._pending[ url ] )
-                this._pending[ url ].bind( task );
-            else
-            {
-                var script = document.createElement( "script" );
-                script.src = url;
-                script.addEventListener( "error", function()
-                {
-                    task.reject();
-                }, false );
-                document.body.appendChild( script );
-                this._pending[ url ] = task;
-            }
-        }
-        else
-        {
-            this._last = task;
-            require( options.url );
-        }
-        return task.promise;
-    },
-
-    _onTypeDefined: function( type )
-    {
-        if ( this._browser )
-        {
-            var scripts = document.getElementsByTagName( "script" );
-            var url = scripts[ scripts.length - 1 ].src;
-            if ( this._pending[ url ] )
-            {
-                this._cache[ url ] = type;
-                var task = this._pending[ url ];
-                delete this._pending[ url ];
-                setTimeout( function() {
-                    task.resolve( type );
-                });
-            }
-        }
-        else if ( this._last !== null )
-        {
-            this._last.resolve( type );
-            this._last = null;
-        }
-    }
-});
-
 var onTypeDefined;
 
 var Type = ( function() {
 
+    var system = new System();
     var builder = new Builder();
-    var controller = new Controller();
     var tunnel = new Tunnel();
-    var descriptor = new Descriptor();
+    var describe = new Descriptor();
 
-    builder.controller = controller;
+    builder.system = system;
     builder.tunnel = tunnel;
 
-    controller.builder = builder;
-    controller.tunnel = tunnel;
+    system.builder = builder;
+    system.tunnel = tunnel;
 
-    descriptor.controller = controller;
+    describe.system = system;
 
-    var define = function()
+    /**
+     * @param {Object} descriptor
+     * @return {Function}
+     */
+    var define = function( descriptor )
     {
-        var template = controller.createTemplate();
-        template.ctor.extend = function()
+        var type = system.createType();
+        process( type, descriptor );
+        return type.ctor;
+    };
+
+    /**
+     * @param {Template} type
+     * @param {Object} descriptor
+     */
+    var process = function( type, descriptor )
+    {
+        type.ctor.extend = function( descriptor )
         {
-            var derived = controller.createTemplate();
-            descriptor.defineParent( derived, template.ctor );
-            process( derived, makeArray( arguments ) );
+            var derived = system.createType();
+            describe.theParent( derived, type.ctor );
+            process( derived, descriptor );
             return derived.ctor;
         };
 
-        process( template, makeArray( arguments ) );
-        return template.ctor;
-    };
-
-    var process = function( template, args )
-    {
-        if ( isFunc( args[0] ) )
-        {
-            var proxy = function( func, scope )
-            {
-                return function()
-                {
-                    func.apply( descriptor, [ template ].concat( makeArray( arguments ) ) );
-                    return scope;
-                };
-            };
-            var builder = {
-                extend: proxy( descriptor.defineParent, builder ),
-                include: proxy( descriptor.defineMixins, builder ),
-                events: proxy( descriptor.defineEvents, builder ),
-                members: proxy( descriptor.defineMembers, builder )
-            };
-            args[0].call( builder );
-        }
-        else
-        {
-            if ( args.length === 2 )
-            {
-                if ( args[0].extend )
-                    descriptor.defineParent( template, args[0].extend );
-                
-                if ( args[0].include )
-                    descriptor.defineMixins( template, args[0].include );
-
-                if ( args[0].events )
-                    descriptor.defineEvents( template, args[0].events );
-            }
-            if ( args.length > 0 )
-                descriptor.defineMembers( template, args[1] || args[0] );
-        }
+        if ( isFunc( descriptor ) )
+            describe.theMembers( type, descriptor.call( undefined ) );
+        else if ( isObject( descriptor ) )
+            describe.theMembers( type, descriptor );
 
         if ( onTypeDefined )
-            onTypeDefined( template.ctor );
+            onTypeDefined( type.ctor );
 
-        fake( template.ctor );
+        fake( type.ctor );
     };
 
-    return function() {
+    var exports = function() {
         return define.apply( undefined, arguments );
     };
+
+    /**
+     * @param {Function} type
+     * @param {Object} descriptor
+     * @return {Function}
+     */
+    exports.extend = function( type, descriptor )
+    {
+        var derived = system.createType();
+        describe.theParent( derived, type );
+        process( derived, descriptor );
+        return derived.ctor;
+    };
+
+    return exports;
 
 } () );
 
@@ -2403,6 +2322,12 @@ var Chef = new Class(
 
         function done( result )
         {
+            if ( !isArray( result ) )
+            {
+                task.reject( error( "TypeError", "Loaded successfully. Expected result to be an array." ) );
+                return false;
+            }
+
             var bindings = {};
             var i = 0, len = box.missing.length;
             for ( ; i < len; i++ )
@@ -2413,11 +2338,11 @@ var Chef = new Class(
                 // Validate the returned service. If there's no way we can turn it into a binding,
                 // we'll get ourselves into a never-ending loop trying to resolve it.
                 var svc = result[ i ];
-                if ( !svc || !( /(string|function|array)/ ).test( typeOf( svc ) ) )
+                if ( !svc || !( /(function|array)/ ).test( typeOf( svc ) ) )
                 {
                     task.reject(
-                        new TypeError( "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
-                            service + "'. Expected service to be a string, array, or function. Found '" +
+                        error( "TypeError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                            service + "'. Expected service to be an array or function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
                         )
                     );
@@ -2427,7 +2352,7 @@ var Chef = new Class(
                 {
                     svc = svc[ svc.length - 1 ];
                     task.reject(
-                        new TypeError( "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                        error( "InvalidOperationError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
                             ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
                         )
@@ -2623,7 +2548,7 @@ var Cookbook = new Class(
                 ingredients: idea
             });
         }
-        if ( typeOf( idea ) === "string" )
+        if ( isString( idea ) )
         {
             binding = this._lookup( idea, destination );
             if ( binding )
@@ -2699,7 +2624,6 @@ function Factory( service )
 
 var Kernel = new Type( function()
 {
-
     var BindingSyntax = new Type({
         /**
          * @constructor
@@ -2729,19 +2653,49 @@ var Kernel = new Type( function()
         }
     });
 
-    var store = new Store();
-
-    this.members({
+    return {
         ctor: function()
         {
             this.container = {};
-            this.require = null;
+            this.detectModuleSupport();
 
             var self = this;
             var cookbook = new Cookbook( this.container );
-            this.chef = new Chef( cookbook, function() {
-                return self.require;
+
+            this.chef = new Chef( cookbook, function()
+            {
+                if ( self.require === null )
+                    return null;
+
+                return function( modules )
+                {
+                    return self.require(
+                        map( modules, function( module ) {
+                            return self.resolvePath( module );
+                        })
+                    );
+                };
             });
+        },
+
+        require: {
+            get: null,
+            set: function( value )
+            {
+                if ( value !== null && !isFunc( value ) )
+                    throw error( "ArgumentError", "Value must be a function or `null`." );
+                this._value( value );
+            }
+        },
+
+        pathPrefix: {
+            get: null,
+            set: function( value )
+            {
+                if ( value !== null && !isString( value ) )
+                    throw error( "ArgumentError", "Value must be a string or `null`." );
+                this._value( value );
+            }
         },
 
         /**
@@ -2751,7 +2705,7 @@ var Kernel = new Type( function()
          */
         bind: function( service )
         {
-            if ( !service || typeOf( service ) !== "string" )
+            if ( !service || !isString( service ) )
                 throw error( "ArgumentError", "Argument 'service' must have a value." );
             return new BindingSyntax( this, service );
         },
@@ -2850,49 +2804,31 @@ var Kernel = new Type( function()
             return this._pub;
         },
 
-        autoLoad: function( config )
+        __detectModuleSupport: function()
         {
-            if ( config === false )
-                this.require = null;
-            else
+            // AMD modules with RequireJS.
+            if ( global.requirejs !== undefined )
             {
-                var loader;
-                if ( isFunc( config ) )
-                    loader = config;
-                else
-                {
-                    if ( typeOf( config ) === "string" )
-                        config = { baseUrl: config };
-                    config =
-                    {
-                        baseUrl: config.baseUrl || "",
-                        waitSeconds: config.waitSeconds === 0 || config.waitSeconds ? config.waitSeconds : 7,
-                        urlArgs: config.urlArgs || "",
-                        scriptType: config.scriptType || "text/javascript"
-                    };
-                    loader = function( module )
-                    {
-                        var url = path( config.baseUrl, module );
-                        if ( !( /\.js$/ ).test( url ) )
-                            url += ".js";
-                        return store.fetch(
-                        {
-                            url: url,
-                            timeout: config.waitSeconds * 1000,
-                            query: config.urlArgs,
-                            scriptType: config.scriptType
-                        });
-                    };
-                }
                 this.require = function( modules )
                 {
-                    return Task.when( map( modules, function( module )
-                    {
-                        var promise = loader( module );
-                        if ( !promise || !isFunc( promise.then ) )
-                            throw error( "TypeError", "Service loader must return a promise." );
-                        return promise;
-                    }));
+                    var task = new Task();
+                    global.requirejs( modules, function() {
+                        task.resolve( makeArray( arguments ) );
+                    });
+                    return task.promise;
+                };
+            }
+
+            // CommonJS with Node.
+            else if ( !BROWSER )
+            {
+                this.require = function( modules )
+                {
+                    return new Task().resolve(
+                        map( modules, function( module ) {
+                            return global.require( module );
+                        })
+                    );
                 };
             }
         },
@@ -2947,9 +2883,15 @@ var Kernel = new Type( function()
                 else
                     self.registerProvider( prefix + name, type );
             });
-        }
-    });
+        },
 
+        __resolvePath: function( path )
+        {
+            if ( this.pathPrefix )
+                return pathCombine( this.pathPrefix, path );
+            return path;
+        }
+    };
 });
 
 function Lazy( service )
@@ -2969,7 +2911,10 @@ var Recipe = new Struct(
 });
 
 var _exports = {
-    def: Type,
+    Class: Type,
+    Event: Descriptor.Event,
+
+    extend: Type.extend,
 
     /**
      * @description
@@ -3020,9 +2965,7 @@ var _exports = {
      * @param {*} [scope]
      * @return {Function}
      */
-    proxy: proxy,
-
-    module: Module
+    proxy: proxy
 };
 
 if ( typeof module !== "undefined" && module.exports )

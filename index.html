@@ -9,6 +9,7 @@
     <div id="mocha"></div>
     <script src="node_modules/mocha/mocha.js"></script>
     <script src="node_modules/chai/chai.js"></script>
+    <script src="node_modules/requirejs/require.js"></script>
 
     <script src="dist/type.js"></script>
     <script>
@@ -16,15 +17,13 @@
         window.expect = chai.expect;
      </script>
 
-    <script src="test/define.spec.js"></script>
-    <script src="test/access.spec.js"></script>
-    <script src="test/this.spec.js"></script>
-    <script src="test/constructors.spec.js"></script>
-    <script src="test/properties.spec.js"></script>
-    <script src="test/events.spec.js"></script>
-    <script src="test/misc.spec.js"></script>
-    <script src="test/task.spec.js"></script>
-    <script src="test/kernel.spec.js"></script>
+    <script src="test/browser/Descriptor.spec.js"></script>
+    <script src="test/browser/Class.spec.js"></script>
+    <script src="test/browser/Constructor.spec.js"></script>
+    <script src="test/browser/Property.spec.js"></script>
+    <script src="test/browser/Event.spec.js"></script>
+    <script src="test/browser/Task.spec.js"></script>
+    <script src="test/browser/kernel.spec.js"></script>
 
     <script>
         mocha.checkLeaks();
