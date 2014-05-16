@@ -2,12 +2,12 @@ describe( "mixins", function()
 {
     it( "should mix protected members", function()
     {
-        var A = type.define({
+        var A = type.def({
             _foo: function() {
                 return "hello";
             }
         });
-        var B = type.define({ include: [ A ] }, {
+        var B = type.def({ include: [ A ] }, {
             bar: function() {
                 return this.foo() + " world";
             }
@@ -20,12 +20,12 @@ describe( "mixins", function()
     it( "should not mix private members", function()
     {
         var out = null;
-        var A = type.define({
+        var A = type.def({
             __foo: function() {
                 return "hello";
             }
         });
-        var B = type.define({ include: [ A ] }, {
+        var B = type.def({ include: [ A ] }, {
             bar: function() {
                 out = this.foo;
             }
@@ -37,29 +37,29 @@ describe( "mixins", function()
 
     it( "should overwrite each other in the order specified", function()
     {
-        var A = type.define({
+        var A = type.def({
             foo: function() {
                 return 1;
             }
         });
-        var B = type.define({
+        var B = type.def({
             foo: function() {
                 return 2;
             }
         });
-        var C = type.define({ include: [ A, B ] }, {});
+        var C = type.def({ include: [ A, B ] }, {});
         var c = new C();
         expect( c.foo() ).to.equal( 2 );
     });
 
     it( "should not overwrite original or base type members", function()
     {
-        var A = type.define({
+        var A = type.def({
             foo: function() {
                 return 2;
             }
         });
-        var C = type.define({
+        var C = type.def({
             foo: function() {
                 return 1;
             },
@@ -67,7 +67,7 @@ describe( "mixins", function()
                 return 1;
             }
         });
-        var B = type.define({
+        var B = type.def({
             extend: A,
             include: [ C ]
         }, {

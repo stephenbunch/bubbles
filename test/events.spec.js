@@ -4,7 +4,7 @@ describe( "event", function()
     {
         it( "should add an event handler", function()
         {
-            var A = type.define({
+            var A = type.def({
                 events: [ "foo" ]
             }, {
                 onFoo: function() {
@@ -22,7 +22,7 @@ describe( "event", function()
 
         it( "should work even if handler.valueOf() has been called", function()
         {
-            var A = type.define({
+            var A = type.def({
                 events: [ "foo" ]
             }, {
                 onFoo: function() {
@@ -45,7 +45,7 @@ describe( "event", function()
     {
         it( "should raise an event", function()
         {
-            var A = type.define({
+            var A = type.def({
                 events: [ "foo" ]
             }, {
                 onFoo: function( x ) {
@@ -63,11 +63,11 @@ describe( "event", function()
 
         it( "should be hidden from the outside", function()
         {
-            var A = type.define({ events: [ "foo" ] }, {} );
+            var A = type.def({ events: [ "foo" ] }, {} );
             var a = new A();
             expect( function() {
                 a.foo();
-            }).to.throw( type.Error( "InvalidOperationError" ) );
+            }).to.throw( type.error( "InvalidOperationError" ) );
         });
     });
 
@@ -75,7 +75,7 @@ describe( "event", function()
     {
         it( "should remove an event handler", function()
         {
-            var A = type.define({
+            var A = type.def({
                 events: [ "foo" ]
             }, {
                 onFoo: function() {
@@ -96,7 +96,7 @@ describe( "event", function()
 
         it( "should only remove one event handler", function()
         {
-            var A = type.define({
+            var A = type.def({
                 events: [ "foo" ]
             }, {
                 onFoo: function() {

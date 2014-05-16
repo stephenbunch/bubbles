@@ -2,12 +2,12 @@ describe( "constructors", function()
 {
     it( "should call the parent constructor if it is parameterless", function()
     {
-        var A = type.define({
+        var A = type.def({
             ctor: function() {
                 out += "hello";
             }
         });
-        var B = type.define({ extend: A }, {
+        var B = type.def({ extend: A }, {
             ctor: function() {
                 out += " world";
             }
@@ -18,24 +18,24 @@ describe( "constructors", function()
         expect( out ).to.equal( "hello world" );
 
         out = "";
-        var C = type.define({
+        var C = type.def({
             ctor: function() {
                 out = "foo";
             }
         });
-        var D = type.define({ extend: C }, {} );
+        var D = type.def({ extend: C }, {} );
         var d = new D();
         expect( out ).to.equal( "foo" );
     });
 
     it( "should not call the parent constructor if it contains parameters", function()
     {
-        var A = type.define({
+        var A = type.def({
             ctor: function( punctuation ) {
                 message += " world" + punctuation;
             }
         });
-        var B = type.define({ extend: A }, {
+        var B = type.def({ extend: A }, {
             ctor: function() {
                 message += "hello";
                 this._super( "!" );
@@ -49,17 +49,17 @@ describe( "constructors", function()
 
     it( "should call the grandparent constructor when the parent constructor is called if it is parameterless", function()
     {
-        var A = type.define({
+        var A = type.def({
             ctor: function() {
                 message += " world";
             }
         });
-        var B = type.define({ extend: A }, {
+        var B = type.def({ extend: A }, {
             ctor: function( punctuation ) {
                 message += punctuation;
             }
         });
-        var C = type.define({ extend: B }, {
+        var C = type.def({ extend: B }, {
             ctor: function() {
                 message += "hello";
                 this._super( "!" );
@@ -73,21 +73,21 @@ describe( "constructors", function()
 
     it( "cannot be defined twice", function()
     {
-        type.define( function()
+        type.def( function()
         {
             var scope = this;
             scope.members({ ctor: function() {} });
             expect( function()
             {
                 scope.members({ ctor: function() {} });
-            }).to.throw( type.Error( "DefinitionError" ) );
+            }).to.throw( type.error( "DefinitionError" ) );
         });
     });
 
     it( "should not show up on the private scope or the public interface", function()
     {
         var out = "";
-        var A = type.define({
+        var A = type.def({
             ctor: function() {
                 out += "ctor";
                 expect( this.ctor ).to.be.undefined;

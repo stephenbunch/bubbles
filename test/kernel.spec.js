@@ -186,7 +186,7 @@ describe( "Kernel", function()
         {
             var called = 0;
             var graph = { bar: {} };
-            graph.bar.Foo = type.define({
+            graph.bar.Foo = type.def({
                 ctor: function() {
                     called += 1;
                 }

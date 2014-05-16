@@ -3068,7 +3068,7 @@ var Recipe = new Struct(
 });
 
 var _exports = {
-    define: Type,
+    def: Type,
 
     /**
      * @description
@@ -3078,7 +3078,7 @@ var _exports = {
      * @param {string} [message]
      * @return {Function|Error}
      */
-    Error: error,
+    error: error,
 
     /**
      * @description Gets the internal JavaScript [[Class]] of an object.

@@ -2,19 +2,19 @@ describe( "type instantiation", function()
 {
     it( "should throw an error if the parent constructor contains parameters and the child constructor does not explicitly call it", function()
     {
-        var A = type.define({
+        var A = type.def({
             ctor: function( arg ) { }
         });
-        var B = type.define({ extend: A }, {} );
+        var B = type.def({ extend: A }, {} );
         expect( function()
         {
             var b = new B();
-        }).to.throw( type.Error( "InitializationError" ) );
+        }).to.throw( type.error( "InitializationError" ) );
     });
 
     it( "should work without the 'new' operator", function()
     {
-        var A = type.define({
+        var A = type.def({
             ctor: function( a, b, c )
             {
                 result = a + b + c;
@@ -27,15 +27,15 @@ describe( "type instantiation", function()
 
     it( "should throw an error if not all mixins are initialized", function()
     {
-        var A = type.define();
-        var B = type.define({
+        var A = type.def();
+        var B = type.def({
             ctor: function( a ) {}
         });
-        var C = type.define({ include: [ A, B ] }, {} );
+        var C = type.def({ include: [ A, B ] }, {} );
         expect( function()
         {
             var c = new C();
-        }).to.throw( type.Error( "InitializationError" ) );
+        }).to.throw( type.error( "InitializationError" ) );
     });
 });
 
@@ -43,9 +43,9 @@ describe( "`instanceof` operator", function()
 {
     it( "should work on the public interface (except in IE8)", function()
     {
-        var A = type.define();
-        var B = type.define({ extend: A }, {} );
-        var C = type.define({ extend: B }, {} );
+        var A = type.def();
+        var B = type.def({ extend: A }, {} );
+        var C = type.def({ extend: B }, {} );
 
         var a = new A();
         expect( a ).to.be.instanceof( A );
@@ -60,19 +60,19 @@ describe( "`instanceof` operator", function()
     it( "should work on the private scope (except in IE8)", function()
     {
         var out = "";
-        var A = type.define({
+        var A = type.def({
             ctor: function() {
                 out += "a";
                 expect( this ).to.be.instanceof( A );
             }
         });
-        var B = type.define({ extend: A }, {
+        var B = type.def({ extend: A }, {
             ctor: function() {
                 out += "b";
                 expect( this ).to.be.instanceof( A );
             }
         });
-        var C = type.define({ extend: B }, {
+        var C = type.def({ extend: B }, {
             ctor: function() {
                 out += "c";
                 expect( this ).to.be.instanceof( A );
@@ -91,7 +91,7 @@ describe( ".__scope__", function()
 {
     it( "should return undefined", function()
     {
-        var A = type.define();
+        var A = type.def();
         var a = new A();
         expect( a.__scope__ ).to.be.undefined;
     });

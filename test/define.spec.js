@@ -1,21 +1,21 @@
-describe( ".define()", function()
+describe( ".def()", function()
 {
     it( "should throw an error when overriding a method that is not virtual", function()
     {
-        var A = type.define({
+        var A = type.def({
             bar: function() {}
         });
         expect( function()
         {
-            type.define({ extend: A }, {
+            type.def({ extend: A }, {
                 bar: function() {}
             });
-        }).to.throw( type.Error( "DefinitionError" ) );
+        }).to.throw( type.error( "DefinitionError" ) );
     });
 
     it( "should support the array syntax for specifing constructor dependencies", function( done )
     {
-        var A = type.define({
+        var A = type.def({
             ctor: [ "bar", function( foo ) {
                 this.foo = foo;
             }],
@@ -36,11 +36,11 @@ describe( ".define()", function()
     {
         expect( function()
         {
-            type.define({ ctor: null });
+            type.def({ ctor: null });
         }).to.throw( TypeError );
         expect( function()
         {
-            type.define({ ctor: [ "foo", "bar" ] });
+            type.def({ ctor: [ "foo", "bar" ] });
         }).to.throw( TypeError );
     });
 
@@ -48,7 +48,7 @@ describe( ".define()", function()
     {
         expect( function()
         {
-            type.define({
+            type.def({
                 foo: {
                     get: "bar",
                     set: function() {}
@@ -61,7 +61,7 @@ describe( ".define()", function()
     {
         expect( function()
         {
-            type.define({
+            type.def({
                 foo: {
                     get: function() {},
                     set: "bar"
@@ -72,58 +72,58 @@ describe( ".define()", function()
 
     it( "should throw an error if a property's read/write capabilities are redefined", function()
     {
-        var A = type.define({
+        var A = type.def({
             $foo: {
                 get: function() {}
             }
         });
         expect( function()
         {
-            type.define({ extend: A }, {
+            type.def({ extend: A }, {
                 foo: {
                     set: function() {}
                 }
             });
-        }).to.throw( type.Error( "DefinitionError" ) );
+        }).to.throw( type.error( "DefinitionError" ) );
     });
 
     it( "should throw an error if access modifers are specified for both property accessors", function()
     {
         expect( function()
         {
-            var A = type.define({
+            var A = type.def({
                 foo: {
                     __get: null,
                     __set: null
                 }
             });
-        }).to.throw( type.Error( "DefinitionError" ) );
+        }).to.throw( type.error( "DefinitionError" ) );
     });
 
     it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
     {
-        var A = type.define({
+        var A = type.def({
             ctor: function( a ) {}
         });
         expect( function()
         {
-            type.define({ extend: A }, {
+            type.def({ extend: A }, {
                 ctor: function() {}
             });
-        }).to.throw( type.Error( "DefinitionError" ) );
+        }).to.throw( type.error( "DefinitionError" ) );
     });
 
     it( "should throw an error if members have already been defined", function()
     {
-        var A = type.define();
-        type.define( function()
+        var A = type.def();
+        type.def( function()
         {
             var scope = this;
             scope.members({ foo: function() {} });
             expect( function()
             {
                 scope.extend( A );
-            }).to.throw( type.Error( "DefinitionError" ) );
+            }).to.throw( type.error( "DefinitionError" ) );
         });
     });
 
@@ -133,28 +133,28 @@ describe( ".define()", function()
         A.prototype.foo = function() {
             return 2;
         };
-        var B = type.define({ extend: A }, {});
+        var B = type.def({ extend: A }, {});
         var b = new B();
         expect( b.foo() ).to.equal( 2 );
     });
 
     it( "can define one or more events", function()
     {
-        var A = type.define({ events: [ "foo", "bar" ] }, {});
+        var A = type.def({ events: [ "foo", "bar" ] }, {});
         var a = new A();
 
         expect( function() {
             a.foo();
-        }).to.throw( type.Error( "InvalidOperationError" ) );
+        }).to.throw( type.error( "InvalidOperationError" ) );
 
         expect( function() {
             a.bar();
-        }).to.throw( type.Error( "InvalidOperationError" ) );
+        }).to.throw( type.error( "InvalidOperationError" ) );
     });
 
     it( "can define one or more mixins", function()
     {
-        var A = type.define({
+        var A = type.def({
             ctor: function() {
                 this.message = "hello";
             },
@@ -162,7 +162,7 @@ describe( ".define()", function()
                 return this.message;
             }
         });
-        var B = type.define({
+        var B = type.def({
             ctor: function() {
                 this.message = " world";
             },
@@ -170,7 +170,7 @@ describe( ".define()", function()
                 return this.message;
             }
         });
-        var C = type.define({ include: [ A, B ] }, {
+        var C = type.def({ include: [ A, B ] }, {
             ctor: function() {
                 this.message = "!";
             },
@@ -186,14 +186,14 @@ describe( ".define()", function()
     {
         expect( function()
         {
-            type.define({ include: [ function() {} ] }, {});
+            type.def({ include: [ function() {} ] }, {});
         }).to.throw( TypeError );
     });
 
     it( "should throw an error if the constructor has already been defined", function()
     {
-        var A = type.define();
-        type.define( function()
+        var A = type.def();
+        type.def( function()
         {
             var scope = this;
             scope.members({ ctor: function() {} });
