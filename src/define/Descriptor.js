@@ -316,7 +316,7 @@ var Descriptor = new Class( function()
             }
 
             member[ info.name ] = new Accessor({
-                access: info.access,
+                access: info.access === PUBLIC ? property.access : info.access,
                 method: method
             });
         }

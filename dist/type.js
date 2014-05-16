@@ -7,14 +7,21 @@
 ( function() {
 "use strict";
 
-// A factory for creating custom errors.
+/**
+ * @description A factory for creating custom errors.
+ */ 
 var error = ( function()
 {
     var cache = {
         "Error": Error,
         "TypeError": TypeError
     };
-    return function( name, message )
+
+    return function() {
+        return factory.apply( undefined, arguments );
+    };
+
+    function factory( name, message )
     {
         if ( !cache[ name ] )
         {
@@ -28,7 +35,7 @@ var error = ( function()
         if ( message )
             return new cache[ name ]( message );
         return cache[ name ];
-    };
+    }
 } () );
 
 // IE8 only supports Object.defineProperty on DOM objects.
@@ -53,7 +60,7 @@ var PROTECTED = "protected";
 var CTOR = "ctor";
 
 /**
- * @private
+ * @internal
  * @description
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
@@ -81,7 +88,7 @@ function isArrayLike( obj )
 }
 
 /**
- * @private
+ * @internal
  * @description Turns an object into a true array.
  * @param {Object|Array} obj
  * @return {Array}
@@ -98,7 +105,7 @@ function makeArray( obj )
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Iterates of an array, passing in the item and index.
  * @param {Array} arr
@@ -106,15 +113,21 @@ function makeArray( obj )
  */
 function forEach( arr, callback )
 {
-    for ( var i = 0; i < arr.length; i++ )
+    if ( Array.prototype.forEach )
+        arr.forEach( callback );
+    else
     {
-        if ( callback.call( undefined, arr[ i ], i ) === false )
-            break;
+        var i = 0, len = arr.length;
+        for ( ; i < len; i++ )
+        {
+            if ( callback.call( undefined, arr[ i ], i ) === false )
+                break;
+        }
     }
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Iterates of an object, passing in the item and key.
  * @param {Object} obj
@@ -130,7 +143,7 @@ function forIn( obj, callback )
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
@@ -149,7 +162,7 @@ function typeOf( object )
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether an object is a function.
  * @param {*} object
  * @return {boolean}
@@ -159,7 +172,7 @@ function isFunc( object ) {
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether an object is an array.
  * @param {*} object
  * @return {boolean}
@@ -168,12 +181,8 @@ function isArray( object ) {
     return typeOf( object ) === "array";
 }
 
-function isString( object ) {
-    return typeOf( object ) === "string";
-}
-
 /**
- * @private
+ * @internal
  * @description
  * Removes trailing whitespace from a string.
  * http://stackoverflow.com/a/2308157/740996
@@ -185,7 +194,7 @@ function trim( value ) {
 }
 
 /**
- * @private
+ * @internal
  * @description Gets the keys of an object.
  * @param {Object} object
  * @return {Array}
@@ -204,7 +213,7 @@ function keys( object )
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
  * @param {Object} obj
  * @param {string} prop
@@ -215,7 +224,7 @@ function hasOwn( obj, prop ) {
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
  * @param {Array} array
@@ -242,7 +251,7 @@ function indexOf( array, item )
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether an object was created using "{}" or "new Object".
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
  * @param {Object} obj
@@ -279,6 +288,7 @@ function isPlainObject( obj )
 }
 
 /**
+ * @internal
  * @description
  * Executes a callback for each item in the set, producing a new array containing the return values.
  * @param {Array|Object} items
@@ -301,6 +311,7 @@ function map( items, callback, context )
 }
 
 /**
+ * @internal
  * @description Safely combines multiple path segments.
  * @param {...string} paths
  * @return {string}
@@ -310,18 +321,6 @@ function path()
     return map( arguments, function( path, index ) {
         return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
     }).join( "/" );
-}
-
-function addFlag( mask, flag ) {
-    return mask |= flag;
-}
-
-function removeFlag( mask, flag ) {
-    return mask &= ~flag;
-}
-
-function hasFlag( mask, flag ) {
-    return ( mask & flag ) === flag;
 }
 
 function proxy( method, scope )
@@ -368,7 +367,7 @@ var setImmediate = ( function()
 } () );
 
 /**
- * @private
+ * @internal
  * @description Fakes execution in order to provide intellisense support for Visual Studio.
  */
 function fake( callback, run )
@@ -379,7 +378,7 @@ function fake( callback, run )
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Adds a property to an object.
  * http://johndyer.name/native-browser-get-set-properties-in-javascript/
@@ -485,7 +484,8 @@ var Struct = ( function()
             var task = pending.shift();
             if ( task.array )
             {
-                for ( var i = 0; i < task.array.length; i++ )
+                var i = 0, len = task.array.length;
+                for ( ; i < len; i++ )
                 {
                     switch ( typeOf( task.array[ i ] ) )
                     {
@@ -616,13 +616,14 @@ var Dictionary = new Class(
     }
 });
 
-var Delegate = function( method )
+var Delegate = function( method, scope )
 {
+    method = proxy( method, scope );
     method.valueOf = function()
     {
         Delegate.operands.push( this );
         return 3;
-    }
+    };
     return method;
 };
 Delegate.operands = [];
@@ -838,7 +839,8 @@ var Task = new Class( function()
                 state = status;
                 value = response;
 
-                for ( var i = 0; i < queue.length; i++ )
+                var i = 0, len = queue.length;
+                for ( ; i < len; i++ )
                     queue[ i ]( state, value );
                 queue = [];
             }
@@ -972,7 +974,8 @@ var Builder = new Class(
                 if ( scope.template.parent !== null )
                     run( scope.parent );
 
-                for ( var i = 0; i < scope.template.members.values.length; i++ )
+                var i = 0, len = scope.template.members.values.length;
+                for ( ; i < len; i++ )
                 {
                     if ( scope.template.members.values[ i ] instanceof Method )
                         scope.self[ template.members.keys[ i ] ]();
@@ -992,7 +995,8 @@ var Builder = new Class(
     _build: function( scope )
     {
         // Instantiate mixins and add proxies to their members.
-        for ( var i = 0; i < scope.template.mixins.length; i++ )
+        var i = 0, len = scope.template.mixins.length;
+        for ( ; i < len; i++ )
         {
             var mixin = this.init( scope.template.mixins[ i ], scope.self._pub, [], false );
             this._proxy( mixin, scope );
@@ -1020,8 +1024,9 @@ var Builder = new Class(
             this._proxy( scope.parent, scope );
 
         // Add our own members.
-        for ( var j = 0; j < scope.template.members.values.length; j++ )
-            scope.template.members.values[ j ].build( scope );
+        i = 0, len = scope.template.members.values.length;
+        for ( ; i < len; i++ )
+            scope.template.members.values[ i ].build( scope );
 
         // If a constructor isn't defined, create a default one.
         if ( !scope.self.ctor )
@@ -1040,7 +1045,8 @@ var Builder = new Class(
      */
     _proxy: function( source, target )
     {
-        for ( var i = 0; i < source.template.members.values.length; i++ )
+        var i = 0, len = source.template.members.values.length;
+        for ( ; i < len; i++ )
         {
             var member = source.template.members.values[ i ];
 
@@ -1084,11 +1090,10 @@ var Builder = new Class(
         if ( scope.template.parent !== null )
             this._expose( scope.parent, pub );
 
-        for ( var i = 0; i < scope.template.members.values.length; i++ )
+        forEach( scope.template.members.values, function( member )
         {
-            var member = scope.template.members.values[ i ];
             if ( member.access !== PUBLIC )
-                continue;
+                return;
 
             if ( member instanceof Method )
             {
@@ -1099,7 +1104,7 @@ var Builder = new Class(
                 defineProperty( pub, member.name,
                 {
                     get: function() {
-                        return scope.self[ member.name ];
+                        return scope.self[ member.name ]._pub;
                     },
                     set: function( value ) {
                         scope.self[ member.name ] = value;
@@ -1123,179 +1128,216 @@ var Builder = new Class(
                 }
                 defineProperty( pub, member.name, accessors );
             }
-        }
+        });
     }
 });
 
-var Controller = new Class(
+var Controller = new Class( function()
 {
-    ctor: function()
+    // Makes the constructor look clean in the console.
+    var Type = function( ctor )
     {
-        this.tunnel = null;
-        this.builder = null;
-
-        this._checkTypeOurs = false;
-        this._typeCheckResult = false;
-        this._returnScope = false;
-        this._returnBase = false;
-        this._returnTemplate = false;
-    },
-
-    /**
-     * @param {Function} ctor
-     * @return {boolean}
-     */
-    isTypeOurs: function( ctor )
-    {
-        this._checkTypeOurs = true;
-        ctor();
-        var result = this._typeCheckResult;
-        this._typeCheckResult = false;
-        this._checkTypeOurs = false;
-        return result;
-    },
-
-    /**
-     * @param {Template} ctor
-     * @return {Scope}
-     */
-    createScope: function( template )
-    {
-        this._returnScope = true;
-        var scope = template.ctor();
-        this._returnScope = false;
-        return scope;
-    },
-
-    /**
-     * @param {Template} template
-     * @return {Object}
-     */
-    createEmpty: function( template )
-    {
-        this._returnBase = true;
-        var instance = new template.ctor();
-        this._returnBase = false;
-        return instance;
-    },
-
-    /**
-     * @param {Function} ctor
-     * @return {Template}
-     */
-    getTemplate: function( ctor )
-    {
-        this._returnTemplate = true;
-        var template = ctor();
-        this._returnTemplate = false;
-        return template;
-    },
-
-    /**
-     * @return {Template}
-     */
-    createTemplate: function()
-    {
-        var me = this;
-        var Self = null;
-        var template = new Template();
-        var run = true;
-
-        var Type = function()
-        {
-            if ( me._returnBase )
-                return;
-
-            if ( me._checkTypeOurs )
-            {
-                me._typeCheckResult = true;
-                return;
-            }
-
-            if ( me._returnScope )
-            {
-                if ( Self === null )
-                    Self = me._createSelf( template );
-
-                var scope = new Scope();
-                scope.template = template;
-
-                if ( IE8 )
-                {
-                    scope.self = me._createElement();
-                    me._applyPrototype( Self, scope.self );
-                }
-                else
-                    scope.self = new Self();
-
-                return scope;
-            }
-
-            if ( me._returnTemplate )
-                return template;
-
-            if ( run )
-            {
-                var pub;
-                run = false;
-
-                if ( IE8 )
-                {
-                    pub = me._createElement();
-                    me._applyPrototype( template.ctor, pub );
-                }
-                else
-                    pub = new Type();
-
-                me.builder.init( template, pub, arguments, true );
-                run = true;
-                return pub;
-            }
+        return function() {
+            return ctor.apply( undefined, arguments );
         };
+    };
 
-        template.ctor = Type;
-        template.members = new Dictionary();
-        return template;
-    },
+    return {
+        ctor: function()
+        {
+            this.tunnel = null;
+            this.builder = null;
+
+            this._checkTypeOurs = false;
+            this._typeCheckResult = false;
+            this._returnScope = false;
+            this._returnBase = false;
+            this._returnTemplate = false;
+        },
+
+        /**
+         * @param {Function} ctor
+         * @return {boolean}
+         */
+        isTypeOurs: function( ctor )
+        {
+            this._checkTypeOurs = true;
+            ctor();
+            var result = this._typeCheckResult;
+            this._typeCheckResult = false;
+            this._checkTypeOurs = false;
+            return result;
+        },
+
+        /**
+         * @param {Template} ctor
+         * @return {Scope}
+         */
+        createScope: function( template )
+        {
+            this._returnScope = true;
+            var scope = template.ctor();
+            this._returnScope = false;
+            return scope;
+        },
+
+        /**
+         * @param {Template} template
+         * @return {Object}
+         */
+        createEmpty: function( template )
+        {
+            this._returnBase = true;
+            var instance = new template.ctor();
+            this._returnBase = false;
+            return instance;
+        },
+
+        /**
+         * @param {Function} ctor
+         * @return {Template}
+         */
+        getTemplate: function( ctor )
+        {
+            this._returnTemplate = true;
+            var template = ctor();
+            this._returnTemplate = false;
+            return template;
+        },
+
+        /**
+         * @return {Template}
+         */
+        createTemplate: function()
+        {
+            var me = this;
+            var Self = null;
+            var template = new Template();
+            var run = true;
+
+            var ctor = function()
+            {
+                if ( me._returnBase )
+                    return;
+
+                if ( me._checkTypeOurs )
+                {
+                    me._typeCheckResult = true;
+                    return;
+                }
+
+                if ( me._returnScope )
+                {
+                    if ( Self === null )
+                        Self = me._createSelf( template );
+
+                    var scope = new Scope();
+                    scope.template = template;
+
+                    if ( IE8 )
+                    {
+                        scope.self = createElement();
+                        applyPrototype( Self, scope.self );
+                    }
+                    else
+                        scope.self = new Self();
+
+                    return scope;
+                }
+
+                if ( me._returnTemplate )
+                    return template;
+
+                if ( run )
+                {
+                    var pub;
+                    run = false;
+
+                    if ( IE8 )
+                    {
+                        pub = createElement();
+                        applyPrototype( template.ctor, pub );
+                    }
+                    else
+                        pub = new template.ctor();
+
+                    me.builder.init( template, pub, arguments, true );
+                    run = true;
+                    return pub;
+                }
+            };
+
+            template.ctor = Type( ctor );
+            template.members = new Dictionary();
+            return template;
+        },
+
+        /**
+         * @private
+         * @description Creates a new private scope type.
+         * @param {Template} template
+         * @return {Function}
+         */
+        _createSelf: function( template )
+        {
+            var self = this;
+            var Self = function() {};
+            Self.prototype = this.createEmpty( template );
+
+            /**
+             * Gets the private scope of the type instance.
+             * @return {?}
+             */
+            Self.prototype._pry = function( pub )
+            {
+                self.tunnel.open( template.ctor );
+                var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
+                self.tunnel.close();
+                return scope || pub;
+            };
+
+            return Self;
+        }
+    };
 
     /**
      * @private
      * @param {Function} ctor
      * @param {Object} obj
      */
-    _applyPrototype: function( ctor, obj )
+    function applyPrototype( ctor, obj )
     {
         var proto = ctor.prototype;
         if ( proto.constructor.prototype !== proto )
-            this._applyPrototype( proto.constructor, obj );
+            applyPrototype( proto.constructor, obj );
         for ( var prop in proto )
         {
             if ( hasOwn( proto, prop ) )
                 obj[ prop ] = proto[ prop ];
         }
-    },
+    }
 
     /**
      * @private
      * @return {HTMLElement}
      */
-    _createElement: function()
+    function createElement()
     {
         var obj = document.createElement(), prop;
         for ( prop in obj )
         {
             if ( hasOwn( obj, prop ) )
-                this._resetProperty( obj, prop );
+                resetProperty( obj, prop );
         }
         return obj;
-    },
+    }
 
     /**
      * @private
      * @param {Object|Function|Array} obj
      * @param {string} propertyName
      */
-    _resetProperty: function( obj, propertyName )
+    function resetProperty( obj, propertyName )
     {
         var _value;
         Object.defineProperty( obj, propertyName,
@@ -1308,33 +1350,6 @@ var Controller = new Class(
                 _value = value;
             }
         });
-    },
-
-    /**
-     * @private
-     * @description Creates a new private scope type.
-     * @param {Template} template
-     * @return {Function}
-     */
-    _createSelf: function( template )
-    {
-        var self = this;
-        var Self = function() {};
-        Self.prototype = this.createEmpty( template );
-
-        /**
-         * Gets the private scope of the type instance.
-         * @return {?}
-         */
-        Self.prototype._pry = function( pub )
-        {
-            self.tunnel.open( template.ctor );
-            var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
-            self.tunnel.close();
-            return scope || pub;
-        };
-
-        return Self;
     }
 });
 
@@ -1656,7 +1671,7 @@ var Descriptor = new Class( function()
             }
 
             member[ info.name ] = new Accessor({
-                access: info.access,
+                access: info.access === PUBLIC ? property.access : info.access,
                 method: method
             });
         }
@@ -1777,12 +1792,21 @@ var Event = new Class(
      */
     build: function( scope )
     {
+        var self = this;
         var handlers = [];
         var raise = new Delegate( function()
         {
             var i = 0, len = handlers.length;
             for ( ; i < len; i++ )
                 handlers[ i ].apply( undefined, arguments );
+        });
+
+        raise._pub = new Delegate( function()
+        {
+            throw error(
+                "InvalidOperationError",
+                "The event '" + self.name + "' can only be the target of an increment or decrement (+= or -=) except when used from within its own type."
+            );
         });
 
         defineProperty( scope.self, this.name,
@@ -1793,7 +1817,7 @@ var Event = new Class(
             set: function( value )
             {
                 // Make sure two delegates were added together, and that the left operand is ourself.
-                if ( Delegate.operands.length === 2 && Delegate.operands[0] === raise )
+                if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise._pub ) )
                 {
                     var handler = Delegate.operands[1];
 
@@ -1805,6 +1829,7 @@ var Event = new Class(
                     else if ( value === 0 )
                         remove( handler );
                 }
+                Delegate.operands = [];
             }
         });
 
@@ -1922,7 +1947,8 @@ var Method = new Class(
                 _super: scope.self._super
             };
 
-            for ( var i = 0; i < scope.template.mixins.length; i++ )
+            var i = 0, len = scope.template.mixins.length;
+            for ( ; i < len; i++ )
             {
                 var mixin = scope.template.mixins[ i ];
                 if ( mixin.members.contains( CTOR ) )
@@ -1930,7 +1956,7 @@ var Method = new Class(
                     if ( mixin.members.get( CTOR ).params.length > 0 )
                         queue.add( mixin.ctor, mixin );
                     else
-                        mixin.members.get( CTOR ).method.call( scope.mixins[ i ] );
+                        mixin.members.get( CTOR ).method.call( scope.mixins[ i ].self );
                 }
             }
 
@@ -1979,7 +2005,7 @@ var Method = new Class(
             else
                 scope.self._init = temp._init;
 
-            if ( queue.length > 0 )
+            if ( queue.keys.length > 0 )
             {
                 throw error( "InitializationError", "Some mixins were not initialized. Please make sure the constructor " +
                     "calls this._init() for each mixin having parameters in its constructor." );
@@ -2020,6 +2046,7 @@ var Property = new Class(
      */
     build: function( scope )
     {
+        var self = this;
         var _value = this.value;
         var accessors = {};
 
@@ -2028,7 +2055,7 @@ var Property = new Class(
             accessors.get = createAccessor(
                 this.get.method,
                 scope.parent === null ? null : function( value ) {
-                    return scope.parent.self[ this.name ];
+                    return scope.parent.self[ self.name ];
                 }
             );
         }
@@ -2038,7 +2065,7 @@ var Property = new Class(
             accessors.set = createAccessor(
                 this.set.method,
                 scope.parent === null ? null : function( value ) {
-                    scope.parent.self[ this.name ] = value;
+                    scope.parent.self[ self.name ] = value;
                 }
             );
         }
@@ -2141,65 +2168,69 @@ var onTypeDefined;
 
 var Type = ( function() {
 
-var builder = new Builder();
-var controller = new Controller();
-var tunnel = new Tunnel();
-var descriptor = new Descriptor();
+    var builder = new Builder();
+    var controller = new Controller();
+    var tunnel = new Tunnel();
+    var descriptor = new Descriptor();
 
-builder.controller = controller;
-builder.tunnel = tunnel;
+    builder.controller = controller;
+    builder.tunnel = tunnel;
 
-controller.builder = builder;
-controller.tunnel = tunnel;
+    controller.builder = builder;
+    controller.tunnel = tunnel;
 
-descriptor.controller = controller;
+    descriptor.controller = controller;
 
-return function()
-{
-    var template = controller.createTemplate();
-    var args = makeArray( arguments );
+    return function() {
+        return define.apply( undefined, arguments );
+    };
 
-    if ( isFunc( args[0] ) )
+    function define()
     {
-        var proxy = function( func, scope )
+        var template = controller.createTemplate();
+        var args = makeArray( arguments );
+
+        if ( isFunc( args[0] ) )
         {
-            return function()
+            var proxy = function( func, scope )
             {
-                func.apply( descriptor, [ template ].concat( makeArray( arguments ) ) );
-                return scope;
+                return function()
+                {
+                    func.apply( descriptor, [ template ].concat( makeArray( arguments ) ) );
+                    return scope;
+                };
             };
-        };
-        var builder = {
-            extend: proxy( descriptor.defineParent, builder ),
-            include: proxy( descriptor.defineMixins, builder ),
-            events: proxy( descriptor.defineEvents, builder ),
-            members: proxy( descriptor.defineMembers, builder )
-        };
-        args[0].call( builder );
-    }
-    else
-    {
-        if ( args.length === 2 )
-        {
-            if ( args[0].extend )
-                descriptor.defineParent( template, args[0].extend );
-            
-            if ( args[0].include )
-                descriptor.defineMixins( template, args[0].include );
-
-            if ( args[0].events )
-                descriptor.defineEvents( template, args[0].events );
+            var builder = {
+                extend: proxy( descriptor.defineParent, builder ),
+                include: proxy( descriptor.defineMixins, builder ),
+                events: proxy( descriptor.defineEvents, builder ),
+                members: proxy( descriptor.defineMembers, builder )
+            };
+            args[0].call( builder );
         }
-        if ( args.length > 0 )
-            descriptor.defineMembers( template, args[1] || args[0] );
+        else
+        {
+            if ( args.length === 2 )
+            {
+                if ( args[0].extend )
+                    descriptor.defineParent( template, args[0].extend );
+                
+                if ( args[0].include )
+                    descriptor.defineMixins( template, args[0].include );
+
+                if ( args[0].events )
+                    descriptor.defineEvents( template, args[0].events );
+            }
+            if ( args.length > 0 )
+                descriptor.defineMembers( template, args[1] || args[0] );
+        }
+
+        if ( onTypeDefined )
+            onTypeDefined( template.ctor );
+
+        fake( template.ctor );
+        return template.ctor;
     }
-
-    if ( onTypeDefined )
-        onTypeDefined( Type );
-
-    fake( template.ctor );
-    return template.ctor;
-};
 
 } () );
 
@@ -2314,7 +2345,8 @@ var Box = new Class({
         this.missing.splice( 0 );
 
         var handlers = this._handlers.slice( 0 );
-        for ( var i = 0; i < handlers.length; i++ )
+        var i = 0, len = handlers.length;
+        for ( ; i < len; i++ )
             handlers[ i ]( services );
     },
 
@@ -2333,7 +2365,8 @@ var Box = new Class({
             if ( component.recipe.lazy )
                 continue;
 
-            for ( var i = 0; i < component.recipe.ingredients.length; i++ )
+            var i = 0, len = component.recipe.ingredients.length;
+            for ( ; i < len; i++ )
             {
                 var service = component.recipe.ingredients[ i ];
                 var recipe = this._cookbook.search( service, component.recipe.name );
@@ -2454,7 +2487,8 @@ var Chef = new Class({
         function done( result )
         {
             var bindings = {};
-            for ( var i = 0; i < box.missing.length; i++ )
+            var i = 0, len = box.missing.length;
+            for ( ; i < len; i++ )
             {
                 // Unbox the service value from Lazy and Factory objects.
                 var service = box.missing[ i ].value || box.missing[ i ];
@@ -2524,7 +2558,8 @@ var Chef = new Class({
             if ( cmp.recipe.lazy )
                 continue;
 
-            for ( var i = 0; i < cmp.children.length; i++ )
+            var i = 0, len = cmp.children.length;
+            for ( ; i < len; i++ )
                 pending.push( cmp.children[ i ] );
         }
 
@@ -2533,7 +2568,8 @@ var Chef = new Class({
 
         return function()
         {
-            for ( var i = 0; i < components.length; i++ )
+            var i = 0, len = components.length;
+            for ( ; i < len; i++ )
             {
                 var cmp = components[ i ];
 
@@ -2669,7 +2705,7 @@ var Cookbook = new Class(
                 ingredients: idea
             });
         }
-        if ( isString( idea ) )
+        if ( typeOf( idea ) === "string" )
         {
             binding = this._lookup( idea, destination );
             if ( binding )
@@ -2796,7 +2832,7 @@ var Kernel = new Type( function() {
          */
         bind: function( service )
         {
-            if ( !service || !isString( service ) )
+            if ( !service || typeOf( service ) !== "string" )
                 throw error( "ArgumentError", "Argument 'service' must have a value." );
             return new BindingSyntax( this, service );
         },
@@ -2906,7 +2942,7 @@ var Kernel = new Type( function() {
                     loader = config;
                 else
                 {
-                    if ( isString( config ) )
+                    if ( typeOf( config ) === "string" )
                         config = { baseUrl: config };
                     config =
                     {
@@ -3039,7 +3075,11 @@ var _exports = {
     defer: Task,
     kernel: Kernel,
     factory: Factory,
-    lazy: Lazy
+    lazy: Lazy,
+
+    delegate: function() {
+        return Delegate.apply( undefined, arguments );
+    }
 };
 
 if ( typeof module !== "undefined" && module.exports )

@@ -1,6 +1,6 @@
 describe( "event", function()
 {
-    describe( ".addHandler()", function()
+    describe( "+=", function()
     {
         it( "should add an event handler", function()
         {
@@ -8,13 +8,12 @@ describe( "event", function()
                 events: [ "foo" ]
             }, {
                 onFoo: function() {
-                    this.foo.raise();
+                    this.foo();
                 }
             });
             var a = new A();
             var called = false;
-            a.foo.addHandler( function()
-            {
+            a.foo += type.delegate( function() {
                 called = true;
             });
             a.onFoo();
@@ -22,7 +21,7 @@ describe( "event", function()
         });
     });
 
-    describe( ".raise()", function()
+    describe( "()", function()
     {
         it( "should raise an event", function()
         {
@@ -30,13 +29,12 @@ describe( "event", function()
                 events: [ "foo" ]
             }, {
                 onFoo: function( x ) {
-                    this.foo.raise( x );
+                    this.foo( x );
                 }
             });
             var a = new A();
             var out = null;
-            a.foo.addHandler( function( x )
-            {
+            a.foo += type.delegate( function( x ) {
                 out = x;
             });
             a.onFoo( 2 );
@@ -47,30 +45,13 @@ describe( "event", function()
         {
             var A = type.define({ events: [ "foo" ] }, {} );
             var a = new A();
-            expect( a.foo.raise ).to.be.undefined;
-        });
-
-        it( "should raise on the public interface", function()
-        {
-            var A = type.define({
-                events: [ "foo" ]
-            }, {
-                onFoo: function() {
-                    this.foo.raise();
-                }
-            });
-            var out = null;
-            var a = new A();
-            a.foo.addHandler( function()
-            {
-                out = this;
-            });
-            a.onFoo();
-            expect( out ).to.equal( a );
+            expect( function() {
+                a.foo();
+            }).to.throw( type.error( "InvalidOperationError" ) );
         });
     });
 
-    describe( ".removeHandler()", function()
+    describe( "-=", function()
     {
         it( "should remove an event handler", function()
         {
@@ -78,17 +59,17 @@ describe( "event", function()
                 events: [ "foo" ]
             }, {
                 onFoo: function() {
-                    this.foo.raise();
+                    this.foo();
                 }
             });
             var a = new A();
             var called = 0;
-            var handler = function() {
+            var handler = type.delegate( function() {
                 called++;
-            };
-            a.foo.addHandler( handler );
+            });
+            a.foo += handler;
             a.onFoo();
-            a.foo.removeHandler( handler );
+            a.foo -= handler;
             a.onFoo();
             expect( called ).to.equal( 1 );
         });
@@ -99,21 +80,21 @@ describe( "event", function()
                 events: [ "foo" ]
             }, {
                 onFoo: function() {
-                    this.foo.raise();
+                    this.foo();
                 }
             });
             var a = new A();
             var called = 0;
-            var handler = function() {
+            var handler = type.delegate( function() {
                 called++;
-            };
-            a.foo.addHandler( handler );
-            a.foo.addHandler( handler );
+            });
+            a.foo += handler;
+            a.foo += handler;
             a.onFoo();
-            a.foo.removeHandler( handler );
+            a.foo -= handler;
             a.onFoo();
             expect( called ).to.equal( 3 );
-            a.foo.removeHandler( handler );
+            a.foo -= handler;
             a.onFoo();
             expect( called ).to.equal( 3 );
         });

@@ -53,7 +53,8 @@ var Box = new Class({
         this.missing.splice( 0 );
 
         var handlers = this._handlers.slice( 0 );
-        for ( var i = 0; i < handlers.length; i++ )
+        var i = 0, len = handlers.length;
+        for ( ; i < len; i++ )
             handlers[ i ]( services );
     },
 
@@ -72,7 +73,8 @@ var Box = new Class({
             if ( component.recipe.lazy )
                 continue;
 
-            for ( var i = 0; i < component.recipe.ingredients.length; i++ )
+            var i = 0, len = component.recipe.ingredients.length;
+            for ( ; i < len; i++ )
             {
                 var service = component.recipe.ingredients[ i ];
                 var recipe = this._cookbook.search( service, component.recipe.name );

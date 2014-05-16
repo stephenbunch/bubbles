@@ -1,11 +1,18 @@
-// A factory for creating custom errors.
+/**
+ * @description A factory for creating custom errors.
+ */ 
 var error = ( function()
 {
     var cache = {
         "Error": Error,
         "TypeError": TypeError
     };
-    return function( name, message )
+
+    return function() {
+        return factory.apply( undefined, arguments );
+    };
+
+    function factory( name, message )
     {
         if ( !cache[ name ] )
         {
@@ -19,5 +26,5 @@ var error = ( function()
         if ( message )
             return new cache[ name ]( message );
         return cache[ name ];
-    };
+    }
 } () );

@@ -136,7 +136,8 @@ var Task = new Class( function()
                 state = status;
                 value = response;
 
-                for ( var i = 0; i < queue.length; i++ )
+                var i = 0, len = queue.length;
+                for ( ; i < len; i++ )
                     queue[ i ]( state, value );
                 queue = [];
             }

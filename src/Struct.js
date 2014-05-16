@@ -33,7 +33,8 @@ var Struct = ( function()
             var task = pending.shift();
             if ( task.array )
             {
-                for ( var i = 0; i < task.array.length; i++ )
+                var i = 0, len = task.array.length;
+                for ( ; i < len; i++ )
                 {
                     switch ( typeOf( task.array[ i ] ) )
                     {

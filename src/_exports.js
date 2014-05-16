@@ -24,7 +24,11 @@ var _exports = {
     defer: Task,
     kernel: Kernel,
     factory: Factory,
-    lazy: Lazy
+    lazy: Lazy,
+
+    delegate: function() {
+        return Delegate.apply( undefined, arguments );
+    }
 };
 
 if ( typeof module !== "undefined" && module.exports )

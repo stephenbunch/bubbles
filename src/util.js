@@ -1,5 +1,5 @@
 /**
- * @private
+ * @internal
  * @description
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
@@ -27,7 +27,7 @@ function isArrayLike( obj )
 }
 
 /**
- * @private
+ * @internal
  * @description Turns an object into a true array.
  * @param {Object|Array} obj
  * @return {Array}
@@ -44,7 +44,7 @@ function makeArray( obj )
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Iterates of an array, passing in the item and index.
  * @param {Array} arr
@@ -52,15 +52,21 @@ function makeArray( obj )
  */
 function forEach( arr, callback )
 {
-    for ( var i = 0; i < arr.length; i++ )
+    if ( Array.prototype.forEach )
+        arr.forEach( callback );
+    else
     {
-        if ( callback.call( undefined, arr[ i ], i ) === false )
-            break;
+        var i = 0, len = arr.length;
+        for ( ; i < len; i++ )
+        {
+            if ( callback.call( undefined, arr[ i ], i ) === false )
+                break;
+        }
     }
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Iterates of an object, passing in the item and key.
  * @param {Object} obj
@@ -76,7 +82,7 @@ function forIn( obj, callback )
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
@@ -95,7 +101,7 @@ function typeOf( object )
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether an object is a function.
  * @param {*} object
  * @return {boolean}
@@ -105,7 +111,7 @@ function isFunc( object ) {
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether an object is an array.
  * @param {*} object
  * @return {boolean}
@@ -114,12 +120,8 @@ function isArray( object ) {
     return typeOf( object ) === "array";
 }
 
-function isString( object ) {
-    return typeOf( object ) === "string";
-}
-
 /**
- * @private
+ * @internal
  * @description
  * Removes trailing whitespace from a string.
  * http://stackoverflow.com/a/2308157/740996
@@ -131,7 +133,7 @@ function trim( value ) {
 }
 
 /**
- * @private
+ * @internal
  * @description Gets the keys of an object.
  * @param {Object} object
  * @return {Array}
@@ -150,7 +152,7 @@ function keys( object )
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
  * @param {Object} obj
  * @param {string} prop
@@ -161,7 +163,7 @@ function hasOwn( obj, prop ) {
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
  * @param {Array} array
@@ -188,7 +190,7 @@ function indexOf( array, item )
 }
 
 /**
- * @private
+ * @internal
  * @description Determines whether an object was created using "{}" or "new Object".
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
  * @param {Object} obj
@@ -225,6 +227,7 @@ function isPlainObject( obj )
 }
 
 /**
+ * @internal
  * @description
  * Executes a callback for each item in the set, producing a new array containing the return values.
  * @param {Array|Object} items
@@ -247,6 +250,7 @@ function map( items, callback, context )
 }
 
 /**
+ * @internal
  * @description Safely combines multiple path segments.
  * @param {...string} paths
  * @return {string}
@@ -256,18 +260,6 @@ function path()
     return map( arguments, function( path, index ) {
         return index === 0 ? path.replace( /\/$/, "" ) : path.replace( /(^\/|\/$)/g, "" );
     }).join( "/" );
-}
-
-function addFlag( mask, flag ) {
-    return mask |= flag;
-}
-
-function removeFlag( mask, flag ) {
-    return mask &= ~flag;
-}
-
-function hasFlag( mask, flag ) {
-    return ( mask & flag ) === flag;
 }
 
 function proxy( method, scope )
@@ -314,7 +306,7 @@ var setImmediate = ( function()
 } () );
 
 /**
- * @private
+ * @internal
  * @description Fakes execution in order to provide intellisense support for Visual Studio.
  */
 function fake( callback, run )
@@ -325,7 +317,7 @@ function fake( callback, run )
 }
 
 /**
- * @private
+ * @internal
  * @description
  * Adds a property to an object.
  * http://johndyer.name/native-browser-get-set-properties-in-javascript/

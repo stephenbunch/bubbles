@@ -47,7 +47,8 @@ var Chef = new Class({
         function done( result )
         {
             var bindings = {};
-            for ( var i = 0; i < box.missing.length; i++ )
+            var i = 0, len = box.missing.length;
+            for ( ; i < len; i++ )
             {
                 // Unbox the service value from Lazy and Factory objects.
                 var service = box.missing[ i ].value || box.missing[ i ];
@@ -117,7 +118,8 @@ var Chef = new Class({
             if ( cmp.recipe.lazy )
                 continue;
 
-            for ( var i = 0; i < cmp.children.length; i++ )
+            var i = 0, len = cmp.children.length;
+            for ( ; i < len; i++ )
                 pending.push( cmp.children[ i ] );
         }
 
@@ -126,7 +128,8 @@ var Chef = new Class({
 
         return function()
         {
-            for ( var i = 0; i < components.length; i++ )
+            var i = 0, len = components.length;
+            for ( ; i < len; i++ )
             {
                 var cmp = components[ i ];
 

@@ -30,6 +30,7 @@ var Property = new Class(
      */
     build: function( scope )
     {
+        var self = this;
         var _value = this.value;
         var accessors = {};
 
@@ -38,7 +39,7 @@ var Property = new Class(
             accessors.get = createAccessor(
                 this.get.method,
                 scope.parent === null ? null : function( value ) {
-                    return scope.parent.self[ this.name ];
+                    return scope.parent.self[ self.name ];
                 }
             );
         }
@@ -48,7 +49,7 @@ var Property = new Class(
             accessors.set = createAccessor(
                 this.set.method,
                 scope.parent === null ? null : function( value ) {
-                    scope.parent.self[ this.name ] = value;
+                    scope.parent.self[ self.name ] = value;
                 }
             );
         }

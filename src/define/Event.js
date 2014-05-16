@@ -21,12 +21,21 @@ var Event = new Class(
      */
     build: function( scope )
     {
+        var self = this;
         var handlers = [];
         var raise = new Delegate( function()
         {
             var i = 0, len = handlers.length;
             for ( ; i < len; i++ )
                 handlers[ i ].apply( undefined, arguments );
+        });
+
+        raise._pub = new Delegate( function()
+        {
+            throw error(
+                "InvalidOperationError",
+                "The event '" + self.name + "' can only be the target of an increment or decrement (+= or -=) except when used from within its own type."
+            );
         });
 
         defineProperty( scope.self, this.name,
@@ -37,7 +46,7 @@ var Event = new Class(
             set: function( value )
             {
                 // Make sure two delegates were added together, and that the left operand is ourself.
-                if ( Delegate.operands.length === 2 && Delegate.operands[0] === raise )
+                if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise._pub ) )
                 {
                     var handler = Delegate.operands[1];
 
@@ -49,6 +58,7 @@ var Event = new Class(
                     else if ( value === 0 )
                         remove( handler );
                 }
+                Delegate.operands = [];
             }
         });
 

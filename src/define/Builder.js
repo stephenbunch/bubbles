@@ -54,7 +54,8 @@ var Builder = new Class(
                 if ( scope.template.parent !== null )
                     run( scope.parent );
 
-                for ( var i = 0; i < scope.template.members.values.length; i++ )
+                var i = 0, len = scope.template.members.values.length;
+                for ( ; i < len; i++ )
                 {
                     if ( scope.template.members.values[ i ] instanceof Method )
                         scope.self[ template.members.keys[ i ] ]();
@@ -74,7 +75,8 @@ var Builder = new Class(
     _build: function( scope )
     {
         // Instantiate mixins and add proxies to their members.
-        for ( var i = 0; i < scope.template.mixins.length; i++ )
+        var i = 0, len = scope.template.mixins.length;
+        for ( ; i < len; i++ )
         {
             var mixin = this.init( scope.template.mixins[ i ], scope.self._pub, [], false );
             this._proxy( mixin, scope );
@@ -102,8 +104,9 @@ var Builder = new Class(
             this._proxy( scope.parent, scope );
 
         // Add our own members.
-        for ( var j = 0; j < scope.template.members.values.length; j++ )
-            scope.template.members.values[ j ].build( scope );
+        i = 0, len = scope.template.members.values.length;
+        for ( ; i < len; i++ )
+            scope.template.members.values[ i ].build( scope );
 
         // If a constructor isn't defined, create a default one.
         if ( !scope.self.ctor )
@@ -122,7 +125,8 @@ var Builder = new Class(
      */
     _proxy: function( source, target )
     {
-        for ( var i = 0; i < source.template.members.values.length; i++ )
+        var i = 0, len = source.template.members.values.length;
+        for ( ; i < len; i++ )
         {
             var member = source.template.members.values[ i ];
 
@@ -166,11 +170,10 @@ var Builder = new Class(
         if ( scope.template.parent !== null )
             this._expose( scope.parent, pub );
 
-        for ( var i = 0; i < scope.template.members.values.length; i++ )
+        forEach( scope.template.members.values, function( member )
         {
-            var member = scope.template.members.values[ i ];
             if ( member.access !== PUBLIC )
-                continue;
+                return;
 
             if ( member instanceof Method )
             {
@@ -181,7 +184,7 @@ var Builder = new Class(
                 defineProperty( pub, member.name,
                 {
                     get: function() {
-                        return scope.self[ member.name ];
+                        return scope.self[ member.name ]._pub;
                     },
                     set: function( value ) {
                         scope.self[ member.name ] = value;
@@ -205,6 +208,6 @@ var Builder = new Class(
                 }
                 defineProperty( pub, member.name, accessors );
             }
-        }
+        });
     }
 });

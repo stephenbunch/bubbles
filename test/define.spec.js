@@ -142,10 +142,14 @@ describe( "type.define()", function()
     {
         var A = type.define({ events: [ "foo", "bar" ] }, {});
         var a = new A();
-        expect( a.foo.addHandler ).to.be.a( "function" );
-        expect( a.foo.removeHandler ).to.be.a( "function" );
-        expect( a.bar.addHandler ).to.be.a( "function" );
-        expect( a.bar.removeHandler ).to.be.a( "function" );
+
+        expect( function() {
+            a.foo();
+        }).to.throw( type.error( "InvalidOperationError" ) );
+
+        expect( function() {
+            a.bar();
+        }).to.throw( type.error( "InvalidOperationError" ) );
     });
 
     it( "can define one or more mixins", function()

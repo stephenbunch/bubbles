@@ -51,7 +51,7 @@ var Kernel = new Type( function() {
          */
         bind: function( service )
         {
-            if ( !service || !isString( service ) )
+            if ( !service || typeOf( service ) !== "string" )
                 throw error( "ArgumentError", "Argument 'service' must have a value." );
             return new BindingSyntax( this, service );
         },
@@ -161,7 +161,7 @@ var Kernel = new Type( function() {
                     loader = config;
                 else
                 {
-                    if ( isString( config ) )
+                    if ( typeOf( config ) === "string" )
                         config = { baseUrl: config };
                     config =
                     {

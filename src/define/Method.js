@@ -70,7 +70,8 @@ var Method = new Class(
                 _super: scope.self._super
             };
 
-            for ( var i = 0; i < scope.template.mixins.length; i++ )
+            var i = 0, len = scope.template.mixins.length;
+            for ( ; i < len; i++ )
             {
                 var mixin = scope.template.mixins[ i ];
                 if ( mixin.members.contains( CTOR ) )
@@ -78,7 +79,7 @@ var Method = new Class(
                     if ( mixin.members.get( CTOR ).params.length > 0 )
                         queue.add( mixin.ctor, mixin );
                     else
-                        mixin.members.get( CTOR ).method.call( scope.mixins[ i ] );
+                        mixin.members.get( CTOR ).method.call( scope.mixins[ i ].self );
                 }
             }
 
@@ -127,7 +128,7 @@ var Method = new Class(
             else
                 scope.self._init = temp._init;
 
-            if ( queue.length > 0 )
+            if ( queue.keys.length > 0 )
             {
                 throw error( "InitializationError", "Some mixins were not initialized. Please make sure the constructor " +
                     "calls this._init() for each mixin having parameters in its constructor." );
