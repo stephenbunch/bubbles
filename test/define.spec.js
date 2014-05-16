@@ -152,36 +152,6 @@ describe( ".def()", function()
         }).to.throw( type.error( "InvalidOperationError" ) );
     });
 
-    it( "can define one or more mixins", function()
-    {
-        var A = type.def({
-            ctor: function() {
-                this.message = "hello";
-            },
-            foo: function() {
-                return this.message;
-            }
-        });
-        var B = type.def({
-            ctor: function() {
-                this.message = " world";
-            },
-            bar: function() {
-                return this.message;
-            }
-        });
-        var C = type.def({ include: [ A, B ] }, {
-            ctor: function() {
-                this.message = "!";
-            },
-            baz: function() {
-                return this.foo() + this.bar() + this.message;
-            }
-        });
-        var c = new C();
-        expect( c.baz() ).to.equal( "hello world!" );
-    });
-
     it( "should throw an error if mixin is not a type", function()
     {
         expect( function()

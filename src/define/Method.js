@@ -57,52 +57,10 @@ var Method = new Class(
         var self = this;
         scope.self.ctor = function()
         {
+            var _super = scope.self._super;
+
             // Hide the constructor because it should never be called again.
             delete scope.self.ctor;
-
-            // Run each mixin's constructor. If the constructor contains parameters, add it to the queue.
-            var queue = new Dictionary();
-            var temp = {
-                _init: scope.self._init,
-                _super: scope.self._super
-            };
-
-            var i = 0, len = scope.template.mixins.length;
-            for ( ; i < len; i++ )
-            {
-                var mixin = scope.template.mixins[ i ];
-                if ( mixin.members.contains( CTOR ) )
-                {
-                    if ( mixin.members.get( CTOR ).params.length > 0 )
-                        queue.add( mixin.ctor, mixin );
-                    else
-                        mixin.members.get( CTOR ).method.call( scope.mixins[ i ].self );
-                }
-            }
-
-            // If mixins need to be initialized explicitly, create an _init() method.
-            if ( queue.keys.length > 0 )
-            {
-                /**
-                 * @param {Function} mixin The mixin's constructor.
-                 */
-                scope.self._init = function( mixin )
-                {
-                    // Make sure we're initializing a valid mixin.
-                    if ( !queue.contains( mixin ) )
-                        throw error( "InitializationError", "Mixin is not defined for this type or has already been initialized." );
-
-                    var args = makeArray( arguments );
-                    args.shift();
-
-                    var mixinTemplate = queue.get( mixin );
-                    var mixinInstance = scope.mixins[ indexOf( scope.template.mixins, mixinTemplate ) ];
-                    mixinTemplate.members.get( CTOR ).method.apply( mixinInstance, args );
-
-                    // Remove mixin from the queue.
-                    queue.remove( mixin );
-                };
-            }
 
             // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
             if ( scope.template.parent !== null && scope.template.parent.members.contains( CTOR ) )
@@ -115,21 +73,10 @@ var Method = new Class(
 
             self.method.apply( scope.self, arguments );
 
-            if ( temp._super === undefined )
+            if ( _super === undefined )
                 delete scope.self._super;
             else
-                scope.self._super = temp._super;
-
-            if ( temp._init === undefined )
-                delete scope.self._init;
-            else
-                scope.self._init = temp._init;
-
-            if ( queue.keys.length > 0 )
-            {
-                throw error( "InitializationError", "Some mixins were not initialized. Please make sure the constructor " +
-                    "calls this._init() for each mixin having parameters in its constructor." );
-            }
+                scope.self._super = _super;
         };
     }
 });

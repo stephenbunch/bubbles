@@ -11,11 +11,6 @@ var Template = new Struct(
     parent: null,
 
     /**
-     * @type {Array.<Template>}
-     */
-    mixins: [],
-
-    /**
      * @type {Function}
      */
     ctor: null

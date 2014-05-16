@@ -136,31 +136,6 @@ var Descriptor = new Class( function()
                 member.access = info.access;
                 template.members.add( info.name, member );
             }
-        },
-
-        /**
-         * @descriptions Mixes other types in with the type.
-         * @param {Template} template
-         * @param {Array.<Function>} types
-         */
-        defineMixins: function( template, types )
-        {
-            if ( template.members.contains( CTOR ) )
-                throw error( "DefinitionError", "Mixins must be defined before the constructor." );
-
-            var i = 0, len = types.length;
-            for ( ; i < len; i++ )
-            {
-                if ( !this.controller.isTypeOurs( types[ i ] ) )
-                    throw error( "TypeError", "Mixin must be a type." );
-
-                var mixin = this.controller.getTemplate( types[ i ] );
-                if ( mixin === template )
-                    throw error( "DefinitionError", "Cannot include self." );
-
-                checkMixinForCircularReference( template, mixin );
-                template.mixins.push( mixin );
-            }
         }
     };
 
@@ -393,21 +368,5 @@ var Descriptor = new Class( function()
 
         if ( different === 2 )
             throw error( "DefinitionError", "Cannot set access modifers for both accessors of the property '" + property.name + "'." );
-    }
-
-    /**
-     * @private
-     * @description Checks mixin for circular references.
-     * @param {Template} type
-     * @param {Template} mixin
-     */
-    function checkMixinForCircularReference( type, mixin )
-    {
-        if ( type === mixin )
-            throw error( "DefinitionError", "Cannot include type that includes self." );
-
-        var i = 0, len = mixin.mixins.length;
-        for ( ; i < len; i++ )
-            checkMixinForCircularReference( type, mixin.mixins[ i ] );
     }
 });

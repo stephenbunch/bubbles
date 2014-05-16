@@ -24,19 +24,6 @@ describe( "type instantiation", function()
         var a = A( 1, 3, 5 );
         expect( result ).to.equal( 9 );
     });
-
-    it( "should throw an error if not all mixins are initialized", function()
-    {
-        var A = type.def();
-        var B = type.def({
-            ctor: function( a ) {}
-        });
-        var C = type.def({ include: [ A, B ] }, {} );
-        expect( function()
-        {
-            var c = new C();
-        }).to.throw( type.error( "InitializationError" ) );
-    });
 });
 
 describe( "`instanceof` operator", function()

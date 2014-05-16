@@ -86,38 +86,6 @@ describe( "this", function()
         });
     });
 
-    describe( "._init()", function()
-    {
-        it( "should call the mixin constructor", function()
-        {
-            var out = null;
-            var A = type.def({
-                ctor: function( x ) {
-                    out = x;
-                }
-            });
-            var B = type.def({ include: [ A ] }, {
-                ctor: function() {
-                    this._init( A, "foo" );
-                }
-            });
-            var b = new B();
-            expect( out ).to.equal( "foo" );
-        });
-
-        it( "should not be available if no mixins are defined", function()
-        {
-            var out = false;
-            var A = type.def({
-                ctor: function() {
-                    out = this._init === undefined;
-                }
-            });
-            var a = new A();
-            expect( out ).to.be.true;
-        });
-    });
-
     describe( ".children", function()
     {
         it( "[get] and [set] should work in IE8", function()

@@ -74,15 +74,6 @@ var Builder = new Class(
      */
     _build: function( scope )
     {
-        // Instantiate mixins and add proxies to their members.
-        var i = 0, len = scope.template.mixins.length;
-        for ( ; i < len; i++ )
-        {
-            var mixin = this.init( scope.template.mixins[ i ], scope.self._pub, [], false );
-            this._proxy( mixin, scope );
-            scope.mixins.push( mixin );
-        }
-
         // Instantiate the parent.
         if ( scope.template.parent !== null )
         {
@@ -104,8 +95,7 @@ var Builder = new Class(
             this._proxy( scope.parent, scope );
 
         // Add our own members.
-        i = 0;
-        len = scope.template.members.values.length;
+        var i = 0, len = scope.template.members.values.length;
         for ( ; i < len; i++ )
             scope.template.members.values[ i ].build( scope );
 
