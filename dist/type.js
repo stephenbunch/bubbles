@@ -2200,8 +2200,20 @@ var Type = ( function() {
     var define = function()
     {
         var template = controller.createTemplate();
-        var args = makeArray( arguments );
+        template.ctor.extend = function()
+        {
+            var derived = controller.createTemplate();
+            descriptor.defineParent( derived, template.ctor );
+            process( derived, makeArray( arguments ) );
+            return derived.ctor;
+        };
 
+        process( template, makeArray( arguments ) );
+        return template.ctor;
+    };
+
+    var process = function( template, args )
+    {
         if ( isFunc( args[0] ) )
         {
             var proxy = function( func, scope )
@@ -2241,7 +2253,6 @@ var Type = ( function() {
             onTypeDefined( template.ctor );
 
         fake( template.ctor );
-        return template.ctor;
     };
 
     return function() {

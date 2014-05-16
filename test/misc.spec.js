@@ -96,3 +96,24 @@ describe( ".__scope__", function()
         expect( a.__scope__ ).to.be.undefined;
     });
 });
+
+describe( "<type>.extend()", function()
+{
+    it( "should behave the same as .def({ extend: <type> })", function()
+    {
+        var Car = type.def({
+            $drive: function() {
+                return "vroom!";
+            }
+        });
+
+        var AutopiaCar = Car.extend({
+            $drive: function() {
+                return "I like to go " + this._super();
+            }
+        });
+
+        var car = new AutopiaCar();
+        expect( car.drive() ).to.equal( "I like to go vroom!" );
+    });
+});
