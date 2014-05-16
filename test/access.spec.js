@@ -61,7 +61,7 @@ describe( "__<name> (private members)", function()
                     scope.members({
                         __foo: function() {}
                     });
-                }).to.throw( type.error( "DefinitionError" ) );
+                }).to.throw( type.Error( "DefinitionError" ) );
             });
         });
     });
@@ -104,7 +104,7 @@ describe( "_<name> (protected members)", function()
             type.define({ extend: A }, {
                 _foo: function() { }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 });
 
@@ -142,7 +142,7 @@ describe( "_$<name> (protected virtual members)", function()
             type.define({ extend: B }, {
                 _foo: function() { }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 
     it( "cannot be made public", function()
@@ -155,7 +155,7 @@ describe( "_$<name> (protected virtual members)", function()
             type.define({ extend: A }, {
                 $foo: function() { }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 });
 
@@ -171,7 +171,7 @@ describe( "$<name> (public virtual members)", function()
             type.define({ extend: A }, {
                 _$foo: function() { }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 });
 
@@ -190,7 +190,7 @@ describe( "virtual members", function()
             type.define({ extend: B }, {
                 foo: function() { }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 });
 

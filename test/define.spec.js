@@ -1,16 +1,16 @@
-describe( "type.define()", function()
+describe( ".define()", function()
 {
     it( "should throw an error when overriding a method that is not virtual", function()
     {
         var A = type.define({
             bar: function() {}
-        }); 
+        });
         expect( function()
         {
             type.define({ extend: A }, {
                 bar: function() {}
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 
     it( "should support the array syntax for specifing constructor dependencies", function( done )
@@ -23,7 +23,7 @@ describe( "type.define()", function()
                 return this.foo;
             }
         });
-        var kernel = type.kernel();
+        var kernel = type.Kernel();
         kernel.bind( "bar" ).to( function() { return 2; } );
         kernel.resolve( A ).then( function( a )
         {
@@ -84,7 +84,7 @@ describe( "type.define()", function()
                     set: function() {}
                 }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 
     it( "should throw an error if access modifers are specified for both property accessors", function()
@@ -97,7 +97,7 @@ describe( "type.define()", function()
                     __set: null
                 }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 
     it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
@@ -110,7 +110,7 @@ describe( "type.define()", function()
             type.define({ extend: A }, {
                 ctor: function() {}
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throw( type.Error( "DefinitionError" ) );
     });
 
     it( "should throw an error if members have already been defined", function()
@@ -123,7 +123,7 @@ describe( "type.define()", function()
             expect( function()
             {
                 scope.extend( A );
-            }).to.throw( type.error( "DefinitionError" ) );
+            }).to.throw( type.Error( "DefinitionError" ) );
         });
     });
 
@@ -145,11 +145,11 @@ describe( "type.define()", function()
 
         expect( function() {
             a.foo();
-        }).to.throw( type.error( "InvalidOperationError" ) );
+        }).to.throw( type.Error( "InvalidOperationError" ) );
 
         expect( function() {
             a.bar();
-        }).to.throw( type.error( "InvalidOperationError" ) );
+        }).to.throw( type.Error( "InvalidOperationError" ) );
     });
 
     it( "can define one or more mixins", function()

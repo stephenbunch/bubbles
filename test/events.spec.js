@@ -67,7 +67,7 @@ describe( "event", function()
             var a = new A();
             expect( function() {
                 a.foo();
-            }).to.throw( type.error( "InvalidOperationError" ) );
+            }).to.throw( type.Error( "InvalidOperationError" ) );
         });
     });
 

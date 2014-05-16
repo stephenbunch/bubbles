@@ -15,11 +15,7 @@ var Type = ( function() {
 
     descriptor.controller = controller;
 
-    return function() {
-        return define.apply( undefined, arguments );
-    };
-
-    function define()
+    var define = function()
     {
         var template = controller.createTemplate();
         var args = makeArray( arguments );
@@ -64,6 +60,10 @@ var Type = ( function() {
 
         fake( template.ctor );
         return template.ctor;
-    }
+    };
+
+    return function() {
+        return define.apply( undefined, arguments );
+    };
 
 } () );

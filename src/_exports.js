@@ -7,9 +7,9 @@ var _exports = {
      * Pass a name and a message to get a new instance of the specified error.
      * @param {string} name
      * @param {string} [message]
-     * @return {function()|Error}
+     * @return {Function|Error}
      */
-    error: error,
+    Error: error,
 
     /**
      * @description Gets the internal JavaScript [[Class]] of an object.
@@ -18,12 +18,38 @@ var _exports = {
      */
     of: typeOf,
 
-    defer: Task,
+    /**
+     * @description Creates a new Task.
+     * @param {function(function(), function())} [callback] An optional callback that takes
+     * a resolve method and a reject method.
+     * @return {Task}
+     */
+    Task: Task,
 
-    kernel: Kernel,
-    factory: Factory,
-    lazy: Lazy,
+    /**
+     * @description Creates a new Kernel.
+     * @return {Kernel}
+     */
+    Kernel: Kernel,
 
+    /**
+     * @description Creates a new factory object.
+     * @return {Factory}
+     */
+    Factory: Factory,
+
+    /**
+     * @description Creates a new lazy object.
+     * @return {Lazy}
+     */
+    Lazy: Lazy,
+
+    /**
+     * @description Binds a method to the specified scope or undefined and returns the proxy.
+     * @param {Function} method
+     * @param {*} [scope]
+     * @return {Function}
+     */
     proxy: proxy,
 
     module: Module

@@ -4,7 +4,7 @@ describe( "Task", function()
     {
         it( "should return a read-only interface to the task that is also Promise/A+ compliant", function()
         {
-            var task = type.defer();
+            var task = type.Task();
             var promise = task.promise;
             expect( promise.then ).to.be.a( "function" );
             expect( promise.resolve ).to.be.undefined;
@@ -16,7 +16,7 @@ describe( "Task", function()
     {
         it( "should behave as .then(), but split the result into separate parameters", function()
         {
-            var def = type.defer();
+            var def = type.Task();
             def.splat( function( a, b, c )
             {
                 expect( a ).to.equal( 1 );
@@ -31,11 +31,11 @@ describe( "Task", function()
     {
         it( "should combine multiple promises into a single promise", function( done )
         {
-            var def1 = type.defer();
-            var def2 = type.defer();
-            var def3 = type.defer();
+            var def1 = type.Task();
+            var def2 = type.Task();
+            var def3 = type.Task();
             var out = null;
-            type.defer.when([ def1, def2, def3 ]).then( function( results )
+            type.Task.when([ def1, def2, def3 ]).then( function( results )
             {
                 expect( results ).to.deep.equal([ 1, 2, 3 ]);
                 done();

@@ -80,7 +80,7 @@ describe( "constructors", function()
             expect( function()
             {
                 scope.members({ ctor: function() {} });
-            }).to.throw( type.error( "DefinitionError" ) );
+            }).to.throw( type.Error( "DefinitionError" ) );
         });
     });
 

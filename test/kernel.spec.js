@@ -4,14 +4,14 @@ describe( "Kernel", function()
     {
         it( "should return a BindingSelector", function()
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             var selector = kernel.bind( "foo" );
             expect( selector.to ).to.be.a( "function" );
         });
 
         it( "should throw an error if 'service' is empty", function()
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             expect( function()
             {
                 kernel.bind();
@@ -24,10 +24,10 @@ describe( "Kernel", function()
         it( "should remove the binding for a service", function( done )
         {
             var e = new Error();
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function( module )
             {
-                return type.defer().reject( e );
+                return type.Task().reject( e );
             });
             kernel.bind( "foo" ).toConstant( 2 );
             kernel.resolve( "foo" ).then( function( foo )
@@ -45,10 +45,10 @@ describe( "Kernel", function()
         it( "can remove bindings of services with specific constraints", function( done )
         {
             var e = new Error();
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function( module )
             {
-                return type.defer().reject( e );
+                return type.Task().reject( e );
             });
             kernel.bind( "foo" ).toConstant( 2 ).whenFor([ "bar", "baz" ]);
             kernel.bind( "bar" ).to([ "foo", function( foo ) {} ]);
@@ -69,7 +69,7 @@ describe( "Kernel", function()
     {
         it( "should support the array syntax for listing dependencies", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.bind( "foo" ).toConstant( 2 );
             var out = 0;
             kernel.resolve( [ "foo", function( x )
@@ -84,7 +84,7 @@ describe( "Kernel", function()
 
         it( "should check the '$inject' property for an array listing dependencies", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.bind( "foo" ).to( function() {
                 return 2;
             });
@@ -109,10 +109,10 @@ describe( "Kernel", function()
         it( "should throw an error if any dependencies are missing", function( done )
         {
             var e = new Error();
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function()
             {
-                return type.defer().reject( e );
+                return type.Task().reject( e );
             });
             kernel.bind( "bar" ).to([ "foo", function() {} ]);
             kernel.resolve([ "bar", "baz", function() {} ]).then( null, function( reason )
@@ -124,10 +124,10 @@ describe( "Kernel", function()
 
         it( "should reject the promise if the service loads as an empty string", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function()
             {
-                var token = type.defer();
+                var token = type.Task();
                 setTimeout( function()
                 {
                     token.resolve( "" );
@@ -143,10 +143,10 @@ describe( "Kernel", function()
 
         it( "should reject the promise if the service loads as nothing", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function()
             {
-                var token = type.defer();
+                var token = type.Task();
                 setTimeout( function()
                 {
                     token.resolve();
@@ -162,10 +162,10 @@ describe( "Kernel", function()
 
         it( "should reject the promise if the service loads as an array, but the last element is not a function", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function()
             {
-                var token = type.defer();
+                var token = type.Task();
                 setTimeout( function()
                 {
                     token.resolve([ "bla" ]);
@@ -191,7 +191,7 @@ describe( "Kernel", function()
                     called += 1;
                 }
             });
-            var kernel = type.kernel().autoBind({ app: graph });
+            var kernel = type.Kernel().autoBind({ app: graph });
             kernel.resolve( "app.bar.Foo" ).then( function()
             {
                 expect( called ).to.equal( 1 );
@@ -205,7 +205,7 @@ describe( "Kernel", function()
         var browser = typeof window !== "undefined";
         it( "can specify a base path to load missing services", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( browser ? "test/stubs" : "../test/stubs" );
             kernel.resolve( "class1" ).then( function( class1 )
             {
@@ -216,7 +216,7 @@ describe( "Kernel", function()
 
         it( "should treat namespaces as path segments", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( browser ? "test/stubs" : "../test/stubs" );
             kernel.resolve( "ns1.ns2.class2" ).then( function( class2 )
             {
@@ -232,7 +232,7 @@ describe( "Kernel", function()
         {
             it( "should bind a service to a provider", function( done )
             {
-                var kernel = type.kernel();
+                var kernel = type.Kernel();
                 kernel.bind( "foo" ).to( function() {
                     return 2;
                 });
@@ -248,7 +248,7 @@ describe( "Kernel", function()
         {
             it( "should bind values as constants", function( done )
             {
-                var kernel = type.kernel();
+                var kernel = type.Kernel();
                 var obj = {};
                 kernel.bind( "foo" ).toConstant( obj );
                 kernel.resolve( "foo" ).then( function( foo )
@@ -266,7 +266,7 @@ describe( "Kernel", function()
         {
             it( "should cause binding to resolve to the same instance", function( done )
             {
-                var kernel = type.kernel();
+                var kernel = type.Kernel();
                 kernel.bind( "foo" ).to( function() { return {}; } ).asSingleton();
                 var out;
                 kernel.resolve( "foo" ).then( function( foo )
@@ -285,7 +285,7 @@ describe( "Kernel", function()
         {
             it( "should cause binding to resolve only when injected into one of the specified types", function( done )
             {
-                var kernel = type.kernel();
+                var kernel = type.Kernel();
                 var out = null;
                 kernel.bind( "foo" ).toConstant( 1 );
                 kernel.bind( "foo" ).toConstant( 2 ).whenFor([ "bar" ]);
@@ -326,9 +326,9 @@ describe( "Kernel", function()
     {
         it( "can be listed as a dependency", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.bind( "foo" ).toConstant( 2 );
-            kernel.resolve( type.factory( "foo" ) ).then( function( factory )
+            kernel.resolve( type.Factory( "foo" ) ).then( function( factory )
             {
                 expect( factory() ).to.equal( 2 );
                 done();
@@ -337,9 +337,9 @@ describe( "Kernel", function()
 
         it( "should forward additional arguments to the underlying service provider", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.bind( "foo" ).to( function( a ) { return a + 2; } );
-            kernel.resolve( type.factory( "foo" ) ).then( function( factory )
+            kernel.resolve( type.Factory( "foo" ) ).then( function( factory )
             {
                 expect( factory( 5 ) ).to.equal( 7 );
                 done();
@@ -351,12 +351,12 @@ describe( "Kernel", function()
             var foo = 0;
             var bar = function() {};
             bar.$inject = [ "foo" ];
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.bind( "foo" ).to( function() {
                 return ++foo;
             });
             kernel.bind( "bar" ).to( bar );
-            kernel.resolve( type.factory( "bar" ) ).then( function( factory )
+            kernel.resolve( type.Factory( "bar" ) ).then( function( factory )
             {
                 factory();
                 factory();
@@ -369,12 +369,12 @@ describe( "Kernel", function()
         {
             var calledA = 0;
             var calledB = 0;
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.bind( "foo" ).to( function() {
                 calledA++;
                 return 2;
             });
-            kernel.resolve( type.factory( "foo" ) ).then( function( factory )
+            kernel.resolve( type.Factory( "foo" ) ).then( function( factory )
             {
                 factory();
                 kernel.unbind( "foo" );
@@ -393,18 +393,18 @@ describe( "Kernel", function()
 
         it( "should get the underlying service when being fetched", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function( module )
             {
                 expect( module ).to.equal( "foo" );
-                var token = type.defer();
+                var token = type.Task();
                 setTimeout( function()
                 {
                     token.resolve( function() { return 2; } );
                 });
                 return token.promise;
             });
-            kernel.resolve( type.factory( "foo" ) ).then( function( fooFactory )
+            kernel.resolve( type.Factory( "foo" ) ).then( function( fooFactory )
             {
                 expect( fooFactory() ).to.equal( 2 );
                 done();
@@ -416,9 +416,9 @@ describe( "Kernel", function()
     {
         it( "should behave as a Factory, but should return a Promise of an instance", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.bind( "foo" ).toConstant( 2 );
-            kernel.resolve( type.lazy( "foo" ) ).then( function( lazy )
+            kernel.resolve( type.Lazy( "foo" ) ).then( function( lazy )
             {
                 return lazy();
             }).then( function( value )
@@ -430,17 +430,17 @@ describe( "Kernel", function()
 
         it( "should resolve its dependency graph on the first call", function( done )
         {
-            var kernel = type.kernel();
+            var kernel = type.Kernel();
             kernel.autoLoad( function()
             {
-                var token = type.defer();
+                var token = type.Task();
                 setTimeout( function()
                 {
                     token.resolve( function() { return 2; } );
                 });
                 return token.promise;
             });
-            kernel.resolve( type.lazy( "foo" ) ).then( function( lazy )
+            kernel.resolve( type.Lazy( "foo" ) ).then( function( lazy )
             {
                 lazy()
                     .then( function( result )
@@ -448,7 +448,7 @@ describe( "Kernel", function()
                         expect( result ).to.equal( 2 );
                         kernel.autoLoad( function()
                         {
-                            var token = type.defer();
+                            var token = type.Task();
                             setTimeout( function()
                             {
                                 token.resolve( function() { return 3; } );
