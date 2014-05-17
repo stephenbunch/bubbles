@@ -57,13 +57,16 @@ var _exports = {
 };
 
 if ( typeof module !== "undefined" && module.exports )
+{
     module.exports = _exports;
-else
-    window.type = _exports;
-
-if ( typeof define === "function" && define.amd )
+}
+else if ( typeof define === "function" && define.amd )
 {
     define( function() {
         return _exports;
     });
+}
+else
+{
+    window.type = _exports;
 }
