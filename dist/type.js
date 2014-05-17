@@ -2167,10 +2167,8 @@ var Box = new Class(
         {
             // The only time Chef#search would return null is if the idea
             // was a name (string) pointing to a recipe that hasn't been loaded yet.
-            this.missing.push( idea );
-
             var self = this;
-            this._onUpdate( idea, function( component ) {
+            this._need( idea, function( component ) {
                 self.component = component;
             });
         }
@@ -2218,8 +2216,7 @@ var Box = new Class(
                     }
                     else
                     {
-                        self.missing.push( service );
-                        self._onUpdate( service, function( child )
+                        self._need( service, function( child )
                         {
                             child.parent = component;
                             child.order = index;
@@ -2263,13 +2260,23 @@ var Box = new Class(
                 }
                 else
                 {
-                    self.missing.push( svc );
-                    self._onUpdate( svc, callback );
+                    self._need( svc, callback );
                 }
                 self._handlers.splice( indexOf( self._handlers, handler ), 1 );
             }
         };
         this._handlers.push( handler );
+    },
+
+    /**
+     * @param {string|Lazy|Factory} service
+     * @param {function( Component )} callback
+     */
+    _need: function( service, callback )
+    {
+        // Unbox the service value from Lazy and Factory objects.
+        this.missing.push( service.value || service );
+        this._onUpdate( service, callback );
     }
 });
 
@@ -2329,38 +2336,30 @@ var Chef = new Class(
             }
 
             var bindings = {};
-            var i = 0, len = box.missing.length;
-            for ( ; i < len; i++ )
+            forEach( box.missing, function( service, index )
             {
-                // Unbox the service value from Lazy and Factory objects.
-                var service = box.missing[ i ].value || box.missing[ i ];
-
-                // Validate the returned service. If there's no way we can turn it into a binding,
-                // we'll get ourselves into a never-ending loop trying to resolve it.
-                var svc = result[ i ];
-                if ( !svc || !( /(function|array)/ ).test( typeOf( svc ) ) )
+                // Validate the returned service.
+                var value = result[ index ];
+                if ( !value || !( /(function|array)/ ).test( typeOf( value ) ) )
                 {
-                    task.reject(
-                        error( "TypeError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
-                            service + "'. Expected service to be an array or function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
-                        )
-                    );
-                    return false;
+                    bindings[ service ] = function() {
+                        return value;
+                    };
                 }
-                if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
+                else if ( isArray( value ) && !isFunc( value[ value.length - 1 ] ) )
                 {
-                    svc = svc[ svc.length - 1 ];
+                    var last = value[ value.length - 1 ];
                     task.reject(
-                        error( "InvalidOperationError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                        error( "InvalidOperationError", "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
+                            ( last && last.toString ? last.toString() : typeOf( last ) ) + "' instead."
                         )
                     );
                     return false;
                 }
-                bindings[ service ] = result[ i ];
-            }
+                else
+                    bindings[ service ] = value;
+            });
 
             if ( task.state === "rejected" )
                 return;
@@ -2904,8 +2903,17 @@ function Lazy( service )
 var Recipe = new Struct(
 {
     create: function() {},
+
+    /**
+     * @type {Array.<string|Lazy|Factory>}
+     */
     ingredients: [],
+
+    /**
+     * @type {string}
+     */
     name: null,
+
     factory: false,
     lazy: false
 });

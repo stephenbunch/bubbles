@@ -119,25 +119,7 @@ describe( "Kernel", function()
             });
         });
 
-        it( "should reject the promise if the service loads as an empty string", function( done )
-        {
-            var kernel = type.Kernel();
-            kernel.require = function()
-            {
-                var task = type.Task();
-                setTimeout( function() {
-                    task.resolve( "" );
-                });
-                return task.promise;
-            };
-            kernel.get( "foo" ).then( null, function( e )
-            {
-                expect( e ).to.be.instanceof( TypeError );
-                done();
-            });
-        });
-
-        it( "should reject the promise if the service loads as nothing", function( done )
+        it( "should reject the promise if the require method does not return an array", function( done )
         {
             var kernel = type.Kernel();
             kernel.require = function()
@@ -155,20 +137,21 @@ describe( "Kernel", function()
             });
         });
 
-        it( "should reject the promise if the service does not load as a function or array", function( done )
+        it( "should wrap the loaded service in a function if it's not a function or array", function( done )
         {
+            var obj = { test: "bla" };
             var kernel = type.Kernel();
             kernel.require = function()
             {
                 var task = type.Task();
                 setTimeout( function() {
-                    task.resolve([ "bla" ]);
+                    task.resolve([ obj ]);
                 });
                 return task.promise;
             };
-            kernel.get( "foo" ).then( null, function( e )
+            kernel.get( "foo" ).then( function( foo )
             {
-                expect( e ).to.be.instanceof( TypeError );
+                expect( foo ).to.equal( obj );
                 done();
             });
         });

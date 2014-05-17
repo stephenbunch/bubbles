@@ -36,10 +36,8 @@ var Box = new Class(
         {
             // The only time Chef#search would return null is if the idea
             // was a name (string) pointing to a recipe that hasn't been loaded yet.
-            this.missing.push( idea );
-
             var self = this;
-            this._onUpdate( idea, function( component ) {
+            this._need( idea, function( component ) {
                 self.component = component;
             });
         }
@@ -87,8 +85,7 @@ var Box = new Class(
                     }
                     else
                     {
-                        self.missing.push( service );
-                        self._onUpdate( service, function( child )
+                        self._need( service, function( child )
                         {
                             child.parent = component;
                             child.order = index;
@@ -132,12 +129,22 @@ var Box = new Class(
                 }
                 else
                 {
-                    self.missing.push( svc );
-                    self._onUpdate( svc, callback );
+                    self._need( svc, callback );
                 }
                 self._handlers.splice( indexOf( self._handlers, handler ), 1 );
             }
         };
         this._handlers.push( handler );
+    },
+
+    /**
+     * @param {string|Lazy|Factory} service
+     * @param {function( Component )} callback
+     */
+    _need: function( service, callback )
+    {
+        // Unbox the service value from Lazy and Factory objects.
+        this.missing.push( service.value || service );
+        this._onUpdate( service, callback );
     }
 });

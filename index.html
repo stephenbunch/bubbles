@@ -10,24 +10,27 @@
     <script src="node_modules/mocha/mocha.js"></script>
     <script src="node_modules/chai/chai.js"></script>
     <script src="node_modules/requirejs/require.js"></script>
-
-    <script src="dist/type.js"></script>
     <script>
-        mocha.setup( "bdd" );
-        window.expect = chai.expect;
-     </script>
+        require([ "dist/type" ], function( type )
+        {
+            mocha.setup( "bdd" );
+            window.expect = chai.expect;
+            window.type = type;
 
-    <script src="test/browser/Descriptor.spec.js"></script>
-    <script src="test/browser/Class.spec.js"></script>
-    <script src="test/browser/Constructor.spec.js"></script>
-    <script src="test/browser/Property.spec.js"></script>
-    <script src="test/browser/Event.spec.js"></script>
-    <script src="test/browser/Task.spec.js"></script>
-    <script src="test/browser/kernel.spec.js"></script>
-
-    <script>
-        mocha.checkLeaks();
-        mocha.run();
+            require([
+                "test/browser/Descriptor.spec.js",
+                "test/browser/Class.spec.js",
+                "test/browser/Constructor.spec.js",
+                "test/browser/Property.spec.js",
+                "test/browser/Event.spec.js",
+                "test/browser/Task.spec.js",
+                "test/browser/kernel.spec.js"
+            ], function()
+            {
+                mocha.checkLeaks();
+                mocha.run();
+            });
+        });
     </script>
 </body>
 </html>

@@ -54,38 +54,30 @@ var Chef = new Class(
             }
 
             var bindings = {};
-            var i = 0, len = box.missing.length;
-            for ( ; i < len; i++ )
+            forEach( box.missing, function( service, index )
             {
-                // Unbox the service value from Lazy and Factory objects.
-                var service = box.missing[ i ].value || box.missing[ i ];
-
-                // Validate the returned service. If there's no way we can turn it into a binding,
-                // we'll get ourselves into a never-ending loop trying to resolve it.
-                var svc = result[ i ];
-                if ( !svc || !( /(function|array)/ ).test( typeOf( svc ) ) )
+                // Validate the returned service.
+                var value = result[ index ];
+                if ( !value || !( /(function|array)/ ).test( typeOf( value ) ) )
                 {
-                    task.reject(
-                        error( "TypeError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
-                            service + "'. Expected service to be an array or function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
-                        )
-                    );
-                    return false;
+                    bindings[ service ] = function() {
+                        return value;
+                    };
                 }
-                if ( isArray( svc ) && !isFunc( svc[ svc.length - 1 ] ) )
+                else if ( isArray( value ) && !isFunc( value[ value.length - 1 ] ) )
                 {
-                    svc = svc[ svc.length - 1 ];
+                    var last = value[ value.length - 1 ];
                     task.reject(
-                        error( "InvalidOperationError", "Module '" + modules[ i ] + "' loaded successfully. Failed to resolve service '" +
+                        error( "InvalidOperationError", "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
                             service + "'. Found array. Expected last element to be a function. Found '" +
-                            ( svc && svc.toString ? svc.toString() : typeOf( svc ) ) + "' instead."
+                            ( last && last.toString ? last.toString() : typeOf( last ) ) + "' instead."
                         )
                     );
                     return false;
                 }
-                bindings[ service ] = result[ i ];
-            }
+                else
+                    bindings[ service ] = value;
+            });
 
             if ( task.state === "rejected" )
                 return;
