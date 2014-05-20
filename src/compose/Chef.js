@@ -50,10 +50,11 @@ var Chef = new Class(
             if ( !isArray( result ) )
             {
                 task.reject( error( "TypeError", "Loaded successfully. Expected result to be an array." ) );
-                return false;
+                return;
             }
 
             var bindings = {};
+            var rejected = false;
             forEach( box.missing, function( service, index )
             {
                 // Validate the returned service.
@@ -73,13 +74,14 @@ var Chef = new Class(
                             ( last && last.toString ? last.toString() : typeOf( last ) ) + "' instead."
                         )
                     );
+                    rejected = true;
                     return false;
                 }
                 else
                     bindings[ service ] = value;
             });
 
-            if ( task.state === "rejected" )
+            if ( rejected )
                 return;
 
             box.update( bindings );

@@ -150,7 +150,7 @@ var Task = new Class( function()
                     queue.push( pipe );
                 else
                     pipe( state, value );
-                return task;
+                return task.promise;
             };
 
             this.resolve = function( result )

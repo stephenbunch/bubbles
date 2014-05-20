@@ -189,7 +189,7 @@ var System = new Class( function()
      */
     function createElement()
     {
-        var obj = document.createElement(), prop;
+        var obj = document.createElement( "div" ), prop;
         for ( prop in obj )
         {
             if ( hasOwn( obj, prop ) )

@@ -49,7 +49,7 @@ var Box = new Class(
     update: function( services )
     {
         // Reset the list of missing services.
-        this.missing.splice( 0 );
+        this.missing = [];
 
         var handlers = this._handlers.slice( 0 );
         var i = 0, len = handlers.length;

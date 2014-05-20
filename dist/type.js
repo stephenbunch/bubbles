@@ -99,10 +99,20 @@ function makeArray( obj )
 {
     if ( isArray( obj ) )
         return obj;
+
     var result = [];
-    forIn( obj, function( item ) {
-        result.push( item );
-    });
+    if ( isArrayLike( obj ) )
+    {
+        var i = 0, len = obj.length;
+        for ( ; i < len; i++ )
+            result.push( obj[ i ] );
+    }
+    else
+    {
+        forIn( obj, function( item ) {
+            result.push( item );
+        });
+    }
     return result;
 }
 
@@ -317,6 +327,7 @@ function map( items, callback, context )
         forEach( items, function( item, index ) {
             result.push( callback.call( context, item, index ) );
         });
+        return result;
     }
 }
 
@@ -363,15 +374,19 @@ var setImmediate = ( function()
 
         var handleMessage = function( e )
         {
-            if ( e.source === window && e.data === messageName )
+            // For some reason, `e.source === window` returns false in IE8.
+            if ( e.source == window && e.data === messageName )
             {
-                e.stopPropagation();
                 if ( timeouts.length > 0 )
                     timeouts.shift()();
             }
         };
 
-        window.addEventListener( "message", handleMessage, true );
+        if ( window.addEventListener )
+            window.addEventListener( "message", handleMessage );
+        else
+            window.attachEvent( "onmessage", handleMessage );
+
         return setImmediate;
     }
 } () );
@@ -794,7 +809,7 @@ var Task = new Class( function()
                     queue.push( pipe );
                 else
                     pipe( state, value );
-                return task;
+                return task.promise;
             };
 
             this.resolve = function( result )
@@ -1608,6 +1623,7 @@ var Method = new Class(
         scope.self.ctor = function()
         {
             var _super = scope.self._super;
+            var _superOverridden = false;
 
             // Hide the constructor because it should never be called again.
             delete scope.self.ctor;
@@ -1616,17 +1632,23 @@ var Method = new Class(
             if ( scope.template.parent !== null && scope.template.parent.members.contains( CTOR ) )
             {
                 if ( scope.template.parent.members.get( CTOR ).params.length > 0 )
+                {
                     scope.self._super = scope.parent.self.ctor;
+                    _superOverridden = true;
+                }
                 else
                     scope.parent.self.ctor();
             }
 
             self.method.apply( scope.self, arguments );
 
-            if ( _super === undefined )
-                delete scope.self._super;
-            else
-                scope.self._super = _super;
+            if ( _superOverridden )
+            {
+                if ( _super === undefined )
+                    delete scope.self._super;
+                else
+                    scope.self._super = _super;
+            }
         };
     }
 });
@@ -1930,7 +1952,7 @@ var System = new Class( function()
      */
     function createElement()
     {
-        var obj = document.createElement(), prop;
+        var obj = document.createElement( "div" ), prop;
         for ( prop in obj )
         {
             if ( hasOwn( obj, prop ) )
@@ -2180,7 +2202,7 @@ var Box = new Class(
     update: function( services )
     {
         // Reset the list of missing services.
-        this.missing.splice( 0 );
+        this.missing = [];
 
         var handlers = this._handlers.slice( 0 );
         var i = 0, len = handlers.length;
@@ -2332,10 +2354,11 @@ var Chef = new Class(
             if ( !isArray( result ) )
             {
                 task.reject( error( "TypeError", "Loaded successfully. Expected result to be an array." ) );
-                return false;
+                return;
             }
 
             var bindings = {};
+            var rejected = false;
             forEach( box.missing, function( service, index )
             {
                 // Validate the returned service.
@@ -2355,13 +2378,14 @@ var Chef = new Class(
                             ( last && last.toString ? last.toString() : typeOf( last ) ) + "' instead."
                         )
                     );
+                    rejected = true;
                     return false;
                 }
                 else
                     bindings[ service ] = value;
             });
 
-            if ( task.state === "rejected" )
+            if ( rejected )
                 return;
 
             box.update( bindings );

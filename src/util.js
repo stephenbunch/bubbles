@@ -36,10 +36,20 @@ function makeArray( obj )
 {
     if ( isArray( obj ) )
         return obj;
+
     var result = [];
-    forIn( obj, function( item ) {
-        result.push( item );
-    });
+    if ( isArrayLike( obj ) )
+    {
+        var i = 0, len = obj.length;
+        for ( ; i < len; i++ )
+            result.push( obj[ i ] );
+    }
+    else
+    {
+        forIn( obj, function( item ) {
+            result.push( item );
+        });
+    }
     return result;
 }
 
@@ -254,6 +264,7 @@ function map( items, callback, context )
         forEach( items, function( item, index ) {
             result.push( callback.call( context, item, index ) );
         });
+        return result;
     }
 }
 
@@ -300,15 +311,19 @@ var setImmediate = ( function()
 
         var handleMessage = function( e )
         {
-            if ( e.source === window && e.data === messageName )
+            // For some reason, `e.source === window` returns false in IE8.
+            if ( e.source == window && e.data === messageName )
             {
-                e.stopPropagation();
                 if ( timeouts.length > 0 )
                     timeouts.shift()();
             }
         };
 
-        window.addEventListener( "message", handleMessage, true );
+        if ( window.addEventListener )
+            window.addEventListener( "message", handleMessage );
+        else
+            window.attachEvent( "onmessage", handleMessage );
+
         return setImmediate;
     }
 } () );

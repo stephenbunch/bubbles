@@ -58,6 +58,7 @@ var Method = new Class(
         scope.self.ctor = function()
         {
             var _super = scope.self._super;
+            var _superOverridden = false;
 
             // Hide the constructor because it should never be called again.
             delete scope.self.ctor;
@@ -66,17 +67,23 @@ var Method = new Class(
             if ( scope.template.parent !== null && scope.template.parent.members.contains( CTOR ) )
             {
                 if ( scope.template.parent.members.get( CTOR ).params.length > 0 )
+                {
                     scope.self._super = scope.parent.self.ctor;
+                    _superOverridden = true;
+                }
                 else
                     scope.parent.self.ctor();
             }
 
             self.method.apply( scope.self, arguments );
 
-            if ( _super === undefined )
-                delete scope.self._super;
-            else
-                scope.self._super = _super;
+            if ( _superOverridden )
+            {
+                if ( _super === undefined )
+                    delete scope.self._super;
+                else
+                    scope.self._super = _super;
+            }
         };
     }
 });
