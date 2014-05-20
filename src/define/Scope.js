@@ -11,12 +11,18 @@ var Scope = new Struct(
     self: null,
 
     /**
-     * @type {Array.<Scope>}
+     * @type {Scope}
      */
-    mixins: [],
+    derived: null,
 
     /**
      * @type {Template}
      */
-    template: null
+    template: null,
+
+    /**
+     * @type {Object}
+     * @description The public interface.
+     */
+    pub: null
 });

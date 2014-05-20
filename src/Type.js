@@ -15,6 +15,36 @@ var Type = ( function() {
 
     describe.system = system;
 
+    var Disposable = system.createType();
+    describe.theMembers( Disposable,
+    {
+        $dispose: function()
+        {
+            if ( !IE8 )
+                return;
+
+            // All methods are proxied to scope.self. If scope.self is null,
+            // it means this object has already been disposed.
+            if ( this === null )
+                return;
+
+            tunnel.open( Disposable );
+            var scope = this._pub.__scope__;
+            tunnel.close();
+
+            while ( scope.parent !== null )
+                scope = scope.parent;
+
+            while ( scope !== null )
+            {
+                scope.pub = null;
+                scope.self = null;
+                scope = scope.derived;
+            }
+        }
+    });
+    Disposable = Disposable.ctor;
+
     /**
      * @param {Object} descriptor
      * @return {Function}
@@ -22,6 +52,7 @@ var Type = ( function() {
     var define = function( descriptor )
     {
         var type = system.createType();
+        describe.theParent( type, Disposable );
         process( type, descriptor );
         return type.ctor;
     };

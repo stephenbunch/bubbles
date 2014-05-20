@@ -159,7 +159,10 @@ var System = new Class( function()
                 self.tunnel.open( template.ctor );
                 var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
                 self.tunnel.close();
-                return scope || pub;
+                if ( scope !== null )
+                    return scope.self;
+                else
+                    return pub;
             };
 
             return Self;
@@ -189,12 +192,10 @@ var System = new Class( function()
      */
     function createElement()
     {
-        var obj = document.createElement( "div" ), prop;
-        for ( prop in obj )
-        {
-            if ( hasOwn( obj, prop ) )
-                resetProperty( obj, prop );
-        }
+        var obj = document.createElement( "div" );
+        var props = keys( obj ), i = 0, len = props.length;
+        for ( ; i < len; i++ )
+            resetProperty( obj, props[ i ] );
         return obj;
     }
 
@@ -216,5 +217,6 @@ var System = new Class( function()
                 _value = value;
             }
         });
+        obj = null;
     }
 });

@@ -17,28 +17,38 @@ var Builder = new Class(
     {
         var self = this;
         var scope = this.system.createScope( template );
+        scope.pub = pub;
 
         defineProperty( scope.self, "_pub",
         {
             get: function() {
-                return pub;
+                return scope.pub;
             }
         });
 
         this._build( scope );
-        this._expose( scope, pub );
+        this._expose( scope );
 
         /**
          * @internal
          * @description Used in conjunction with _pry to expose the private scope.
          */
-        defineProperty( pub, "__scope__",
+        defineProperty( scope.pub, "__scope__",
         {
             enumerable: false,
             get: function()
             {
-                if ( self.tunnel.value() === template.ctor )
-                    return scope.self;
+                var s = scope;
+                var id = self.tunnel.value();
+                if ( id !== null )
+                {
+                    while ( s !== null )
+                    {
+                        if ( id === s.template.ctor )
+                            return s;
+                        s = s.parent;
+                    }
+                }
             }
         });
 
@@ -64,6 +74,11 @@ var Builder = new Class(
             run( scope );
         });
 
+        template = null;
+        pub = null;
+        args = null;
+        ctor = null;
+
         return scope;
     },
 
@@ -86,7 +101,14 @@ var Builder = new Class(
             }
 
             scope.parent = this.system.createScope( scope.template.parent );
-            scope.parent.self._pub = scope.self._pub;
+            scope.parent.derived = scope;
+            scope.parent.pub = scope.pub;
+            defineProperty( scope.parent.self, "_pub",
+            {
+                get: function() {
+                    return scope.pub;
+                }
+            });
             this._build( scope.parent );
         }
 
@@ -151,12 +173,11 @@ var Builder = new Class(
      * @private
      * @description Creates references to the public members of the type on the public interface.
      * @param {Scope} scope The type instance.
-     * @param {Object} pub The public interface.
      */
-    _expose: function( scope, pub )
+    _expose: function( scope )
     {
         if ( scope.template.parent !== null )
-            this._expose( scope.parent, pub );
+            this._expose( scope.parent );
 
         forEach( scope.template.members.values, function( member )
         {
@@ -165,11 +186,11 @@ var Builder = new Class(
 
             if ( member instanceof Method )
             {
-                pub[ member.name ] = scope.self[ member.name ];
+                scope.pub[ member.name ] = scope.self[ member.name ];
             }
             else if ( member instanceof Event )
             {
-                defineProperty( pub, member.name,
+                defineProperty( scope.pub, member.name,
                 {
                     get: function() {
                         return scope.self[ member.name ]._pub;
@@ -194,7 +215,7 @@ var Builder = new Class(
                         scope.self[ member.name ] = value;
                     };
                 }
-                defineProperty( pub, member.name, accessors );
+                defineProperty( scope.pub, member.name, accessors );
             }
         });
     }
