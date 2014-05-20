@@ -17,11 +17,10 @@
     "grunt-cli": "~0.1.9",
     "promises-aplus-tests": "~2.0.2",
     "mocha": "~1.15.0",
-    "chai": "~1.8.1",
     "source-map": "~0.1.31",
-    "sinon": "~1.7.3",
     "requirejs": "~2.1.11",
-    "amdefine": "~0.1.0"
+    "amdefine": "~0.1.0",
+    "expect.js": "^0.3.1"
   },
   "scripts": {
     "test": "grunt"

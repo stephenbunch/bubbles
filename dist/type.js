@@ -673,7 +673,7 @@ var Task = new Class( function()
     function resolve( promise, x )
     {
         // 2.3.1
-        if ( x === promise )
+        if ( x === promise || x === promise.promise )
         {
             promise.reject( new TypeError( "2.3.1 A promise returned from onFulfilled cannot refer to itself." ) );
             return true;

@@ -178,7 +178,7 @@ module.exports = function( grunt )
         global.define = require( "amdefine" );
         global.require = require;
         global.type = require( "./dist/type.js" );
-        global.expect = require( "chai" ).expect;
+        global.expect = require( "expect.js" );
 
         mocha.run( function( failures ) {
             done( failures === 0 );
@@ -200,7 +200,7 @@ module.exports = function( grunt )
         });
 
         global.type = require( "./dist/type.js" );
-        global.expect = require( "chai" ).expect;
+        global.expect = require( "expect.js" );
 
         mocha.run( function( failures ) {
             done( failures === 0 );

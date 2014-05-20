@@ -143,7 +143,7 @@ describe( "Property", function()
         var A = type.Class({ foo: { get: null } });
         var a = new A();
         a.foo = 2;
-        expect( a.foo ).to.be.null;
+        expect( a.foo ).to.equal( null );
     });
 
     it( "can be protected with a private setter", function()
@@ -177,6 +177,6 @@ describe( "Property", function()
                 break;
             }
         }
-        expect( found ).to.be.true;
+        expect( found ).to.equal( true );
     });
 });

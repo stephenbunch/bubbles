@@ -15,7 +15,9 @@ describe( "Kernel", function()
             expect( function()
             {
                 kernel.bind();
-            }).to.throw( type.ArgumentError );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "ArgumentError" ) );
+            });
         });
     });
 
@@ -132,7 +134,7 @@ describe( "Kernel", function()
             };
             kernel.get( "foo" ).then( null, function( e )
             {
-                expect( e ).to.be.instanceof( TypeError );
+                expect( e ).to.be.a( TypeError );
                 done();
             });
         });
@@ -169,7 +171,7 @@ describe( "Kernel", function()
             };
             kernel.get( "foo" ).then( null, function( e )
             {
-                expect( e ).to.be.instanceof( type.error( "InvalidOperationError" ) );
+                expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
                 done();
             });
         });
@@ -376,7 +378,7 @@ describe( "Kernel", function()
             var kernel = type.Kernel();
             kernel.require = function( module )
             {
-                expect( module ).to.deep.equal([ "foo" ]);
+                expect( module ).to.eql([ "foo" ]);
                 var task = type.Task();
                 setTimeout( function() {
                     task.resolve([ function() { return 2; } ]);

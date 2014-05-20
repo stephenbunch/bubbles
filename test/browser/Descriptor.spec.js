@@ -10,7 +10,9 @@ describe( "Descriptor", function()
             A.extend({
                 bar: function() {}
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "DefinitionError" ) );
+        });
     });
 
     it( "should support the array syntax for specifing constructor dependencies", function( done )
@@ -37,11 +39,15 @@ describe( "Descriptor", function()
         expect( function()
         {
             type.Class({ ctor: null });
-        }).to.throw( TypeError );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( TypeError );
+        });
         expect( function()
         {
             type.Class({ ctor: [ "foo", "bar" ] });
-        }).to.throw( TypeError );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( TypeError );
+        });
     });
 
     it( "should throw an error if a property's get accessor is not a method or null", function()
@@ -54,7 +60,9 @@ describe( "Descriptor", function()
                     set: function() {}
                 }
             });
-        }).to.throw( TypeError );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( TypeError );
+        });
     });
 
     it( "should throw an error if a property's set accessor is not a method or null", function()
@@ -67,7 +75,9 @@ describe( "Descriptor", function()
                     set: "bar"
                 }
             });
-        }).to.throw( TypeError );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( TypeError );
+        });
     });
 
     it( "should throw an error if a property's read/write capabilities are redefined", function()
@@ -84,7 +94,9 @@ describe( "Descriptor", function()
                     set: function() {}
                 }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "DefinitionError" ) );
+        });
     });
 
     it( "should throw an error if access modifers are specified for both property accessors", function()
@@ -97,7 +109,9 @@ describe( "Descriptor", function()
                     __set: null
                 }
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "DefinitionError" ) );
+        });
     });
 
     it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
@@ -110,7 +124,9 @@ describe( "Descriptor", function()
             A.extend({
                 ctor: function() {}
             });
-        }).to.throw( type.error( "DefinitionError" ) );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "DefinitionError" ) );
+        });
     });
 
     it( "can extend native javascript types", function()
@@ -131,11 +147,28 @@ describe( "Descriptor", function()
 
         expect( function() {
             a.foo();
-        }).to.throw( type.error( "InvalidOperationError" ) );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+        });
 
         expect( function() {
             a.bar();
-        }).to.throw( type.error( "InvalidOperationError" ) );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+        });
+    });
+
+    it( "should throw an error if a member is defined twice", function()
+    {
+        expect( function()
+        {
+            type.Class({
+                __foo: function() {},
+                foo: null
+            });
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "DefinitionError" ) );
+        });
     });
 
     describe( "__<name> (private members)", function()
@@ -146,7 +179,7 @@ describe( "Descriptor", function()
                 __bar: function() { }
             });
             var a = new A();
-            expect( a.bar ).to.be.undefined;
+            expect( a.bar ).to.equal( undefined );
         });
 
         it( "can be accessible from the inside", function()
@@ -184,27 +217,6 @@ describe( "Descriptor", function()
             var b = new B();
             expect( b.baz() ).to.equal( "hello world!" );
         });
-
-        it( "cannot be defined twice", function()
-        {
-            expect( function()
-            {
-                type.Class( function()
-                {
-                    var scope = this;
-                    this.members({
-                        __foo: function() {}
-                    });
-
-                    expect( function()
-                    {
-                        scope.members({
-                            __foo: function() {}
-                        });
-                    }).to.throw( type.error( "DefinitionError" ) );
-                });
-            });
-        });
     });
 
     describe( "_<name> (protected members)", function()
@@ -231,7 +243,7 @@ describe( "Descriptor", function()
                 _foo: function() { }
             });
             var a = new A();
-            expect( a.foo ).to.be.undefined;
+            expect( a.foo ).to.equal( undefined );
         });
 
         it( "should not be overridable by default", function()
@@ -244,7 +256,9 @@ describe( "Descriptor", function()
                 A.extend({
                     _foo: function() { }
                 });
-            }).to.throw( type.error( "DefinitionError" ) );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "DefinitionError" ) );
+            });
         });
     });
 
@@ -282,7 +296,9 @@ describe( "Descriptor", function()
                 B.extend({
                     _foo: function() { }
                 });
-            }).to.throw( type.error( "DefinitionError" ) );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "DefinitionError" ) );
+            });
         });
 
         it( "cannot be made public", function()
@@ -295,7 +311,9 @@ describe( "Descriptor", function()
                 A.extend({
                     $foo: function() { }
                 });
-            }).to.throw( type.error( "DefinitionError" ) );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "DefinitionError" ) );
+            });
         });
     });
 
@@ -311,7 +329,9 @@ describe( "Descriptor", function()
                 A.extend({
                     _$foo: function() { }
                 });
-            }).to.throw( type.error( "DefinitionError" ) );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "DefinitionError" ) );
+            });
         });
 
         it( "can be sealed", function()
@@ -327,7 +347,9 @@ describe( "Descriptor", function()
                 B.extend({
                     foo: function() { }
                 });
-            }).to.throw( type.error( "DefinitionError" ) );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "DefinitionError" ) );
+            });
         });
     });
 

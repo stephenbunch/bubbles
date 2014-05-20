@@ -11,14 +11,15 @@ describe( "Class", function()
             expect( function()
             {
                 var b = new B();
-            }).to.throw( type.error( "InitializationError" ) );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "InitializationError" ) );
+            });
         });
 
         it( "should work without the 'new' operator", function()
         {
             var A = type.Class({
-                ctor: function( a, b, c )
-                {
+                ctor: function( a, b, c ) {
                     result = a + b + c;
                 }
             });
@@ -37,13 +38,13 @@ describe( "Class", function()
             var C = B.extend();
 
             var a = new A();
-            expect( a ).to.be.instanceof( A );
+            expect( a ).to.be.a( A );
 
             var b = new B();
-            expect( b ).to.be.instanceof( A );
+            expect( b ).to.be.a( A );
 
             var c = new C();
-            expect( c ).to.be.instanceof( A );
+            expect( c ).to.be.a( A );
         });
 
         it( "should work on the private scope (except in IE8)", function()
@@ -52,19 +53,19 @@ describe( "Class", function()
             var A = type.Class({
                 ctor: function() {
                     out += "a";
-                    expect( this ).to.be.instanceof( A );
+                    expect( this ).to.be.a( A );
                 }
             });
             var B = A.extend({
                 ctor: function() {
                     out += "b";
-                    expect( this ).to.be.instanceof( A );
+                    expect( this ).to.be.a( A );
                 }
             });
             var C = B.extend({
                 ctor: function() {
                     out += "c";
-                    expect( this ).to.be.instanceof( A );
+                    expect( this ).to.be.a( A );
                 }
             });
 

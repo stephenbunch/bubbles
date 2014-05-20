@@ -9,13 +9,12 @@
     <div id="mocha"></div>
 
     <script src="node_modules/mocha/mocha.js"></script>
-    <script src="node_modules/chai/chai.js"></script>
+    <script src="node_modules/expect.js/index.js"></script>
     <script src="node_modules/requirejs/require.js"></script>
     <script>
         require([ "dist/type" ], function( type )
         {
             mocha.setup( "bdd" );
-            window.expect = chai.expect;
             window.type = type;
 
             require([

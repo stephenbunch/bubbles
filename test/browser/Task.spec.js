@@ -37,7 +37,7 @@ describe( "Task", function()
             var out = null;
             type.Task.when([ def1, def2, def3 ]).then( function( results )
             {
-                expect( results ).to.deep.equal([ 1, 2, 3 ]);
+                expect( results ).to.eql([ 1, 2, 3 ]);
                 done();
             });
             def2.resolve( 2 );

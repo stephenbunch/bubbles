@@ -16,7 +16,7 @@ describe( "Event", function()
                 called = true;
             };
             a.onFoo();
-            expect( called ).to.be.true;
+            expect( called ).to.equal( true );
         });
 
         it( "should work even if handler.valueOf() has been called", function()
@@ -35,7 +35,7 @@ describe( "Event", function()
             handler.valueOf();
             a.foo += handler;
             a.onFoo();
-            expect( called ).to.be.true;
+            expect( called ).to.equal( true );
         });
     });
 
@@ -64,7 +64,9 @@ describe( "Event", function()
             var a = new A();
             expect( function() {
                 a.foo();
-            }).to.throw( type.error( "InvalidOperationError" ) );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+            });
         });
     });
 
