@@ -131,22 +131,59 @@ describe( "Constructor", function()
         expect( b.bar() ).to.equal( 8 );
     });
 
+    it( "can transclude specific members from another object", function()
+    {
+        var A = type.Class({
+            ctor: function() {
+                this.foo = 2;
+                this.bar = 4;
+                this.baz = 8;
+            },
+            foo: null,
+            bar: null,
+            baz: null
+        });
+        var B = type.Class({
+            ctor: function( a ) {
+                this._include( a, [ "bar", "baz" ] );
+            }
+        });
+        var b = new B( new A() );
+        expect( b.foo ).to.equal( undefined );
+        expect( b.bar ).to.equal( 4 );
+        expect( b.baz ).to.equal( 8 );
+    });
+
     it( "can transclude a member from another object with a custom name", function()
     {
         var A = type.Class({
             ctor: function() {
                 this.foo = 2;
+                this.bar = 4;
             },
-            foo: null
+            foo: null,
+            bar: null
         });
         var B = type.Class({
             ctor: function( a ) {
                 this._include( a, "foo", "bar" );
             }
         });
+        var C = type.Class({
+            ctor: function( a )
+            {
+                this._include( a, {
+                    "foo": "baz",
+                    "bar": "qux"
+                });
+            }
+        });
         var b = new B( new A() );
         expect( b.foo ).to.equal( undefined );
         expect( b.bar ).to.equal( 2 );
+        var c = new C( new A() );
+        expect( c.baz ).to.equal( 2 );
+        expect( c.qux ).to.equal( 4 );
     });
 
     it( "can transclude events", function()

@@ -76,15 +76,37 @@ var Method = new Class(
             }
 
             var _include = scope.self._include;
+
+            /**
+             * @description Transcludes the members of another object.
+             * @param {Object} obj
+             * @param {string|Array.<string>|Object} [member] The member {string} or members {Array.<string>} to
+             * transclude. Or a key/value pair of members and the names to use.
+             * @param {string} [name] The name to transclude the member as.
+             */
             scope.self._include = function( obj, member, name )
             {
+                var i = 0, prop, len;
                 if ( !member )
                 {
-                    for ( var prop in obj )
+                    for ( prop in obj )
                         self._transclude( scope, obj, prop, prop );
                 }
-                else
+                else if ( isString( member ) )
                     self._transclude( scope, obj, member, name || member );
+                else if ( isArray( member ) )
+                {
+                    len = member.length;
+                    for ( ; i < len; i++ )
+                        self._transclude( scope, obj, member[ i ], member[ i ] );
+                }
+                else
+                {
+                    var props = keys( member );
+                    len = props.length;
+                    for ( ; i < len; i++ )
+                        self._transclude( scope, obj, props[ i ], member[ props[ i ] ] );
+                }
             };
 
             self.method.apply( scope.self, arguments );
