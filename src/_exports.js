@@ -1,6 +1,8 @@
 var _exports = {
     Class: Type,
     Event: Descriptor.Event,
+    Simple: Class,
+    Struct: Struct,
 
     extend: Type.extend,
 
@@ -45,15 +47,7 @@ var _exports = {
      * @description Creates a new lazy object.
      * @return {Lazy}
      */
-    Lazy: Lazy,
-
-    /**
-     * @description Binds a method to the specified scope or undefined and returns the proxy.
-     * @param {Function} method
-     * @param {*} [scope]
-     * @return {Function}
-     */
-    proxy: proxy
+    Lazy: Lazy
 };
 
 if ( typeof module !== "undefined" && module.exports )

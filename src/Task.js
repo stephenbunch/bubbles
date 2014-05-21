@@ -5,6 +5,73 @@ var Task = new Class( function()
     var FULFILLED = "fulfilled";
     var REJECTED = "rejected";
 
+    return {
+        ctor: function( action )
+        {
+            var self = this;
+            var state = PENDING;
+            var queue = [];
+            var value = null;
+
+            function done( status, response )
+            {
+                if ( state !== PENDING )
+                    return;
+
+                state = status;
+                value = response;
+
+                var i = 0, len = queue.length;
+                for ( ; i < len; i++ )
+                    queue[ i ]( state, value );
+                queue = [];
+            }
+
+            this.then = function( onFulfilled, onRejected )
+            {
+                var task = new Task();
+                var pipe = bind( task, onFulfilled, onRejected );
+                if ( state === PENDING )
+                    queue.push( pipe );
+                else
+                    pipe( state, value );
+                return task.promise;
+            };
+
+            this.resolve = function( result )
+            {
+                done( FULFILLED, result );
+                return this;
+            };
+
+            this.reject = function( reason )
+            {
+                done( REJECTED, reason );
+                return this;
+            };
+
+            this.promise = {
+                then: this.then
+            };
+
+            if ( action )
+            {
+                setImmediate( function() {
+                    action.call( undefined, self.resolve, self.reject );
+                });
+            }
+        },
+
+        splat: function( onFulfilled, onRejected )
+        {
+            return this.then( function( result ) {
+                return onFulfilled.apply( undefined, result );
+            }, onRejected );
+        }
+    };
+
+// Private ____________________________________________________________________
+
     /**
      * @description Satisfies 2.3 of the Promise/A+ spec.
      * @param {Task} promise
@@ -119,71 +186,6 @@ var Task = new Class( function()
             });
         };
     }
-
-    return {
-        ctor: function( action )
-        {
-            var self = this;
-            var state = PENDING;
-            var queue = [];
-            var value = null;
-
-            function done( status, response )
-            {
-                if ( state !== PENDING )
-                    return;
-
-                state = status;
-                value = response;
-
-                var i = 0, len = queue.length;
-                for ( ; i < len; i++ )
-                    queue[ i ]( state, value );
-                queue = [];
-            }
-
-            this.then = function( onFulfilled, onRejected )
-            {
-                var task = new Task();
-                var pipe = bind( task, onFulfilled, onRejected );
-                if ( state === PENDING )
-                    queue.push( pipe );
-                else
-                    pipe( state, value );
-                return task.promise;
-            };
-
-            this.resolve = function( result )
-            {
-                done( FULFILLED, result );
-                return this;
-            };
-
-            this.reject = function( reason )
-            {
-                done( REJECTED, reason );
-                return this;
-            };
-
-            this.promise = {
-                then: this.then
-            };
-
-            if ( action )
-            {
-                setImmediate( function() {
-                    action.call( undefined, self.resolve, self.reject );
-                });
-            }
-        },
-
-        splat: function( onFulfilled, onRejected )
-        {
-            return this.then( function( result ) {
-                return onFulfilled.apply( undefined, result );
-            }, onRejected );
-        }
-    };
 });
 
 Task.when = function( promises )

@@ -30,6 +30,8 @@ describe( "Descriptor", function()
         kernel.get( A ).then( function( a )
         {
             expect( a.value() ).to.equal( 2 );
+            a.dispose();
+            kernel.dispose();
             done();
         });
     });
@@ -138,6 +140,7 @@ describe( "Descriptor", function()
         var B = type.extend( A );
         var b = new B();
         expect( b.foo() ).to.equal( 2 );
+        b.dispose();
     });
 
     it( "can define one or more events", function()
@@ -156,6 +159,8 @@ describe( "Descriptor", function()
         }).to.throwException( function( e ) {
             expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
         });
+
+        a.dispose();
     });
 
     it( "should throw an error if a member is defined twice", function()
@@ -180,6 +185,7 @@ describe( "Descriptor", function()
             });
             var a = new A();
             expect( a.bar ).to.equal( undefined );
+            a.dispose();
         });
 
         it( "can be accessible from the inside", function()
@@ -194,6 +200,7 @@ describe( "Descriptor", function()
             });
             var a = new A();
             expect( a.bar( "hello" ) ).to.equal( "hello world!" );
+            a.dispose();
         });
 
         it( "should not overwrite private parent methods with the same name", function()
@@ -216,6 +223,7 @@ describe( "Descriptor", function()
             });
             var b = new B();
             expect( b.baz() ).to.equal( "hello world!" );
+            b.dispose();
         });
     });
 
@@ -235,6 +243,7 @@ describe( "Descriptor", function()
             });
             var b = new B();
             expect( b.bar() ).to.equal( "hello" );
+            b.dispose();
         });
 
         it( "should be hidden from the outside", function()
@@ -244,6 +253,7 @@ describe( "Descriptor", function()
             });
             var a = new A();
             expect( a.foo ).to.equal( undefined );
+            a.dispose();
         });
 
         it( "should not be overridable by default", function()
@@ -281,6 +291,7 @@ describe( "Descriptor", function()
             });
             var b = new B();
             expect( b.bar() ).to.equal( "hello world" );
+            b.dispose();
         });
 
         it( "can be sealed", function()
@@ -369,6 +380,7 @@ describe( "Descriptor", function()
             });
             var b = new B();
             expect( b.foo() + b.bar() ).to.equal( "hello world!" );
+            b.dispose();
         });
     });
 });

@@ -127,6 +127,8 @@ var Descriptor = new Class( function()
         }
     };
 
+// Private ____________________________________________________________________
+
     /**
      * @private
      * @description Gets the member info by parsing the member name.

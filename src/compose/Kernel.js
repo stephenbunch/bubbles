@@ -1,6 +1,6 @@
 var Kernel = new Type( function()
 {
-    var BindingSyntax = new Type({
+    var BindingSyntax = new Class({
         /**
          * @constructor
          * @param {Kernel} kernel
@@ -8,8 +8,8 @@ var Kernel = new Type( function()
          */
         ctor: function( kernel, service )
         {
-            this.kernel = kernel;
-            this.service = service;
+            this._kernel = kernel;
+            this._service = service;
         },
 
         /**
@@ -18,12 +18,12 @@ var Kernel = new Type( function()
          * @return {BindingConfiguration}
          */
         to: function( provider ) {
-            return new BindingConfiguration( this.kernel.registerProvider( this.service, provider ) );
+            return new BindingConfiguration( this._kernel.registerProvider( this._service, provider ) );
         },
 
         toConstant: function( value )
         {
-            return new BindingConfiguration( this.kernel.registerProvider( this.service, function() {
+            return new BindingConfiguration( this._kernel.registerProvider( this._service, function() {
                 return value;
             }));
         }

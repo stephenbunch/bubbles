@@ -1,4 +1,4 @@
-var BindingConfiguration = new Type(
+var BindingConfiguration = new Class(
 {
     /**
      * @constructor
@@ -6,7 +6,7 @@ var BindingConfiguration = new Type(
      */
     ctor: function( binding )
     {
-        this.binding = binding;
+        this._binding = binding;
     },
 
     /**
@@ -17,10 +17,10 @@ var BindingConfiguration = new Type(
      */
     asSingleton: function()
     {
-        var _create = this.binding.create;
+        var _create = this._binding.create;
         var created = false;
         var result;
-        this.binding.create = function()
+        this._binding.create = function()
         {
             if ( !created )
             {
@@ -29,7 +29,7 @@ var BindingConfiguration = new Type(
             }
             return result;
         };
-        return this._pub;
+        return this;
     },
 
     /**
@@ -42,9 +42,9 @@ var BindingConfiguration = new Type(
     whenFor: function( services )
     {
         if ( isArray( services ) && services.length )
-            this.binding.filter = services.slice( 0 );
+            this._binding.filter = services.slice( 0 );
         else
             throw error( "ArgumentError", "Expected 'services' to be an array of string." );
-        return this._pub;
+        return this;
     }
 });

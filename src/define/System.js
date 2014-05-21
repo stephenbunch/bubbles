@@ -8,6 +8,8 @@ var System = new Class( function()
         };
     };
 
+    var elementKeys;
+
     return {
         ctor: function()
         {
@@ -169,6 +171,8 @@ var System = new Class( function()
         }
     };
 
+// Private ____________________________________________________________________
+
     /**
      * @private
      * @param {Function} ctor
@@ -193,9 +197,13 @@ var System = new Class( function()
     function createElement()
     {
         var obj = document.createElement( "div" );
-        var props = keys( obj ), i = 0, len = props.length;
+
+        if ( !elementKeys )
+            elementKeys = keys( obj );
+
+        var i = 0, len = elementKeys.length;
         for ( ; i < len; i++ )
-            resetProperty( obj, props[ i ] );
+            resetProperty( obj, elementKeys[ i ] );
         return obj;
     }
 

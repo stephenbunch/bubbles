@@ -664,6 +664,73 @@ var Task = new Class( function()
     var FULFILLED = "fulfilled";
     var REJECTED = "rejected";
 
+    return {
+        ctor: function( action )
+        {
+            var self = this;
+            var state = PENDING;
+            var queue = [];
+            var value = null;
+
+            function done( status, response )
+            {
+                if ( state !== PENDING )
+                    return;
+
+                state = status;
+                value = response;
+
+                var i = 0, len = queue.length;
+                for ( ; i < len; i++ )
+                    queue[ i ]( state, value );
+                queue = [];
+            }
+
+            this.then = function( onFulfilled, onRejected )
+            {
+                var task = new Task();
+                var pipe = bind( task, onFulfilled, onRejected );
+                if ( state === PENDING )
+                    queue.push( pipe );
+                else
+                    pipe( state, value );
+                return task.promise;
+            };
+
+            this.resolve = function( result )
+            {
+                done( FULFILLED, result );
+                return this;
+            };
+
+            this.reject = function( reason )
+            {
+                done( REJECTED, reason );
+                return this;
+            };
+
+            this.promise = {
+                then: this.then
+            };
+
+            if ( action )
+            {
+                setImmediate( function() {
+                    action.call( undefined, self.resolve, self.reject );
+                });
+            }
+        },
+
+        splat: function( onFulfilled, onRejected )
+        {
+            return this.then( function( result ) {
+                return onFulfilled.apply( undefined, result );
+            }, onRejected );
+        }
+    };
+
+// Private ____________________________________________________________________
+
     /**
      * @description Satisfies 2.3 of the Promise/A+ spec.
      * @param {Task} promise
@@ -778,71 +845,6 @@ var Task = new Class( function()
             });
         };
     }
-
-    return {
-        ctor: function( action )
-        {
-            var self = this;
-            var state = PENDING;
-            var queue = [];
-            var value = null;
-
-            function done( status, response )
-            {
-                if ( state !== PENDING )
-                    return;
-
-                state = status;
-                value = response;
-
-                var i = 0, len = queue.length;
-                for ( ; i < len; i++ )
-                    queue[ i ]( state, value );
-                queue = [];
-            }
-
-            this.then = function( onFulfilled, onRejected )
-            {
-                var task = new Task();
-                var pipe = bind( task, onFulfilled, onRejected );
-                if ( state === PENDING )
-                    queue.push( pipe );
-                else
-                    pipe( state, value );
-                return task.promise;
-            };
-
-            this.resolve = function( result )
-            {
-                done( FULFILLED, result );
-                return this;
-            };
-
-            this.reject = function( reason )
-            {
-                done( REJECTED, reason );
-                return this;
-            };
-
-            this.promise = {
-                then: this.then
-            };
-
-            if ( action )
-            {
-                setImmediate( function() {
-                    action.call( undefined, self.resolve, self.reject );
-                });
-            }
-        },
-
-        splat: function( onFulfilled, onRejected )
-        {
-            return this.then( function( result ) {
-                return onFulfilled.apply( undefined, result );
-            }, onRejected );
-        }
-    };
 });
 
 Task.when = function( promises )
@@ -1226,6 +1228,8 @@ var Descriptor = new Class( function()
             });
         }
     };
+
+// Private ____________________________________________________________________
 
     /**
      * @private
@@ -1798,6 +1802,8 @@ var System = new Class( function()
         };
     };
 
+    var elementKeys;
+
     return {
         ctor: function()
         {
@@ -1959,6 +1965,8 @@ var System = new Class( function()
         }
     };
 
+// Private ____________________________________________________________________
+
     /**
      * @private
      * @param {Function} ctor
@@ -1983,9 +1991,13 @@ var System = new Class( function()
     function createElement()
     {
         var obj = document.createElement( "div" );
-        var props = keys( obj ), i = 0, len = props.length;
+
+        if ( !elementKeys )
+            elementKeys = keys( obj );
+
+        var i = 0, len = elementKeys.length;
         for ( ; i < len; i++ )
-            resetProperty( obj, props[ i ] );
+            resetProperty( obj, elementKeys[ i ] );
         return obj;
     }
 
@@ -2048,8 +2060,6 @@ var Tunnel = new Class(
     }
 });
 
-var onTypeDefined;
-
 var Type = ( function() {
 
     var system = new System();
@@ -2066,52 +2076,58 @@ var Type = ( function() {
     describe.system = system;
 
     var Disposable = system.createType();
-    describe.theMembers( Disposable,
-    {
-        $dispose: function()
-        {
-            if ( !IE8 )
-                return;
-
-            // All methods are proxied to scope.self. If scope.self is null,
-            // it means this object has already been disposed.
-            if ( this === null )
-                return;
-
-            tunnel.open( Disposable );
-            var scope = this._pub.__scope__;
-            tunnel.close();
-
-            while ( scope.parent !== null )
-                scope = scope.parent;
-
-            while ( scope !== null )
-            {
-                scope.pub = null;
-                scope.self = null;
-                scope = scope.derived;
-            }
-        }
+    describe.theMembers( Disposable, {
+        $dispose: theDisposeMethod( Disposable.ctor )
     });
     Disposable = Disposable.ctor;
+
+    var exports = function() {
+        return define.apply( undefined, arguments );
+    };
+
+    /**
+     * @param {Function} type
+     * @param {Object} descriptor
+     * @return {Function}
+     */
+    exports.extend = function( type, descriptor )
+    {
+        if ( !system.isTypeOurs( type ) )
+        {
+            var disposable = system.createType();
+            describe.theParent( disposable, type );
+            describe.theMembers( disposable, {
+                $dispose: theDisposeMethod( disposable.ctor )
+            });
+            type = disposable.ctor;
+        }
+        var derived = system.createType();
+        describe.theParent( derived, type );
+        process( derived, descriptor );
+        return derived.ctor;
+    };
+
+    return exports;
+
+// Private ____________________________________________________________________
 
     /**
      * @param {Object} descriptor
      * @return {Function}
      */
-    var define = function( descriptor )
+    function define( descriptor )
     {
         var type = system.createType();
         describe.theParent( type, Disposable );
         process( type, descriptor );
         return type.ctor;
-    };
+    }
 
     /**
      * @param {Template} type
      * @param {Object} descriptor
      */
-    var process = function( type, descriptor )
+    function process( type, descriptor )
     {
         type.ctor.extend = function( descriptor )
         {
@@ -2126,30 +2142,39 @@ var Type = ( function() {
         else if ( isObject( descriptor ) )
             describe.theMembers( type, descriptor );
 
-        if ( onTypeDefined )
-            onTypeDefined( type.ctor );
-
         fake( type.ctor );
-    };
-
-    var exports = function() {
-        return define.apply( undefined, arguments );
-    };
+    }
 
     /**
-     * @param {Function} type
-     * @param {Object} descriptor
-     * @return {Function}
+     * @param {Function} ctor
      */
-    exports.extend = function( type, descriptor )
+    function theDisposeMethod( ctor )
     {
-        var derived = system.createType();
-        describe.theParent( derived, type );
-        process( derived, descriptor );
-        return derived.ctor;
-    };
+        return function()
+        {
+            if ( !IE8 )
+                return;
 
-    return exports;
+            // All methods are proxied to scope.self. If scope.self is null,
+            // it means this object has already been disposed.
+            if ( this === null )
+                return;
+
+            tunnel.open( ctor );
+            var scope = this._pub.__scope__;
+            tunnel.close();
+
+            while ( scope.parent !== null )
+                scope = scope.parent;
+
+            while ( scope !== null )
+            {
+                scope.pub = null;
+                scope.self = null;
+                scope = scope.derived;
+            }
+        };
+    }
 
 } () );
 
@@ -2160,7 +2185,7 @@ var Binding = new Struct(
     filter: []
 });
 
-var BindingConfiguration = new Type(
+var BindingConfiguration = new Class(
 {
     /**
      * @constructor
@@ -2168,7 +2193,7 @@ var BindingConfiguration = new Type(
      */
     ctor: function( binding )
     {
-        this.binding = binding;
+        this._binding = binding;
     },
 
     /**
@@ -2179,10 +2204,10 @@ var BindingConfiguration = new Type(
      */
     asSingleton: function()
     {
-        var _create = this.binding.create;
+        var _create = this._binding.create;
         var created = false;
         var result;
-        this.binding.create = function()
+        this._binding.create = function()
         {
             if ( !created )
             {
@@ -2191,7 +2216,7 @@ var BindingConfiguration = new Type(
             }
             return result;
         };
-        return this._pub;
+        return this;
     },
 
     /**
@@ -2204,10 +2229,10 @@ var BindingConfiguration = new Type(
     whenFor: function( services )
     {
         if ( isArray( services ) && services.length )
-            this.binding.filter = services.slice( 0 );
+            this._binding.filter = services.slice( 0 );
         else
             throw error( "ArgumentError", "Expected 'services' to be an array of string." );
-        return this._pub;
+        return this;
     }
 });
 
@@ -2707,7 +2732,7 @@ function Factory( service )
 
 var Kernel = new Type( function()
 {
-    var BindingSyntax = new Type({
+    var BindingSyntax = new Class({
         /**
          * @constructor
          * @param {Kernel} kernel
@@ -2715,8 +2740,8 @@ var Kernel = new Type( function()
          */
         ctor: function( kernel, service )
         {
-            this.kernel = kernel;
-            this.service = service;
+            this._kernel = kernel;
+            this._service = service;
         },
 
         /**
@@ -2725,12 +2750,12 @@ var Kernel = new Type( function()
          * @return {BindingConfiguration}
          */
         to: function( provider ) {
-            return new BindingConfiguration( this.kernel.registerProvider( this.service, provider ) );
+            return new BindingConfiguration( this._kernel.registerProvider( this._service, provider ) );
         },
 
         toConstant: function( value )
         {
-            return new BindingConfiguration( this.kernel.registerProvider( this.service, function() {
+            return new BindingConfiguration( this._kernel.registerProvider( this._service, function() {
                 return value;
             }));
         }
@@ -3005,6 +3030,8 @@ var Recipe = new Struct(
 var _exports = {
     Class: Type,
     Event: Descriptor.Event,
+    Simple: Class,
+    Struct: Struct,
 
     extend: Type.extend,
 
@@ -3049,15 +3076,7 @@ var _exports = {
      * @description Creates a new lazy object.
      * @return {Lazy}
      */
-    Lazy: Lazy,
-
-    /**
-     * @description Binds a method to the specified scope or undefined and returns the proxy.
-     * @param {Function} method
-     * @param {*} [scope]
-     * @return {Function}
-     */
-    proxy: proxy
+    Lazy: Lazy
 };
 
 if ( typeof module !== "undefined" && module.exports )

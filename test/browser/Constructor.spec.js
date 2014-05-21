@@ -16,6 +16,7 @@ describe( "Constructor", function()
         var out = "";
         var b = new B();
         expect( out ).to.equal( "hello world" );
+        b.dispose();
 
         out = "";
         var C = type.Class({
@@ -26,6 +27,7 @@ describe( "Constructor", function()
         var D = C.extend();
         var d = new D();
         expect( out ).to.equal( "foo" );
+        d.dispose();
     });
 
     it( "should not call the parent constructor if it contains parameters", function()
@@ -45,6 +47,7 @@ describe( "Constructor", function()
         var message = "";
         var b = new B();
         expect( message ).to.equal( "hello world!" );
+        b.dispose();
     });
 
     it( "should call the grandparent constructor when the parent constructor is called if it is parameterless", function()
@@ -69,6 +72,7 @@ describe( "Constructor", function()
         var message = "";
         var c = new C();
         expect( message ).to.equal( "hello world!" );
+        c.dispose();
     });
 
     it( "should not show up on the private scope or the public interface", function()
@@ -77,16 +81,17 @@ describe( "Constructor", function()
         var A = type.Class({
             ctor: function() {
                 out += "ctor";
-                expect( this.ctor ).to.be.undefined;
+                expect( this.ctor ).to.equal( undefined );
             },
             foo: function() {
                 out += "foo";
-                expect( this.ctor ).to.be.undefined;
+                expect( this.ctor ).to.equal( undefined );
             }
         });
         var a = new A();
         a.foo();
         expect( out ).to.equal( "ctorfoo" );
-        expect( a.ctor ).to.be.undefined;
+        expect( a.ctor ).to.equal( undefined );
+        a.dispose();
     });
 });

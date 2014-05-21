@@ -7,6 +7,7 @@ describe( "Property", function()
         var a = new A();
         a.foo = "hello";
         expect( a.foo ).to.equal( "hello" );
+        a.dispose();
     });
 
     it( "should support custom get and set accessors", function()
@@ -24,6 +25,7 @@ describe( "Property", function()
         var a = new A();
         a.foo = 2;
         expect( a.foo ).to.equal( 8 );
+        a.dispose();
     });
 
     it( "can be extended", function()
@@ -51,6 +53,7 @@ describe( "Property", function()
         var b = new B();
         b.foo = "world";
         expect( b.foo ).to.equal( "hello world!" );
+        b.dispose();
     });
 
     it( "can specify a default value", function()
@@ -70,6 +73,8 @@ describe( "Property", function()
         var b = new B();
         expect( a.foo ).to.equal( 2 );
         expect( b.foo ).to.equal( 3 );
+        a.dispose();
+        b.dispose();
     });
 
     it( "can be read immediately after being set without leaving the execution context of the set accessor", function()
@@ -88,6 +93,7 @@ describe( "Property", function()
         var a = new A();
         a.foo = "hello";
         expect( out ).to.equal( "hello" );
+        a.dispose();
     });
 
     it( "can be read within a setter", function()
@@ -110,6 +116,7 @@ describe( "Property", function()
         a.foo = "world";
         expect( out1 ).to.equal( "hello" );
         expect( out2 ).to.equal( "world" );
+        a.dispose();
     });
 
     it( "should use default accessor implementation when null is given instead of a function", function()
@@ -122,6 +129,7 @@ describe( "Property", function()
         });
         var a = new A();
         expect( a.foo ).to.equal( 1 );
+        a.dispose();
     });
 
     it( "can specify separate access modifers for 'get' and 'set'", function()
@@ -136,6 +144,7 @@ describe( "Property", function()
         expect( a.foo ).to.equal( 1 );
         a.foo = 2;
         expect( a.foo ).to.equal( 1 );
+        a.dispose();
     });
 
     it( "should throw an error if writing to a read-only property or reading from a write-only property", function()
@@ -144,6 +153,7 @@ describe( "Property", function()
         var a = new A();
         a.foo = 2;
         expect( a.foo ).to.equal( null );
+        a.dispose();
     });
 
     it( "can be protected with a private setter", function()
@@ -162,6 +172,7 @@ describe( "Property", function()
         expect( b.read() ).to.equal( "hello" );
         b.write( "test" );
         expect( b.read() ).to.equal( "hello" );
+        b.dispose();
     });
 
     it( "should be enumerable (except in IE8)", function()
@@ -178,5 +189,6 @@ describe( "Property", function()
             }
         }
         expect( found ).to.equal( true );
+        a.dispose();
     });
 });

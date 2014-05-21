@@ -17,6 +17,7 @@ describe( "Event", function()
             };
             a.onFoo();
             expect( called ).to.equal( true );
+            a.dispose();
         });
 
         it( "should work even if handler.valueOf() has been called", function()
@@ -36,6 +37,7 @@ describe( "Event", function()
             a.foo += handler;
             a.onFoo();
             expect( called ).to.equal( true );
+            a.dispose();
         });
     });
 
@@ -56,6 +58,7 @@ describe( "Event", function()
             };
             a.onFoo( 2 );
             expect( out ).to.equal( 2 );
+            a.dispose();
         });
 
         it( "should be hidden from the outside", function()
@@ -67,6 +70,7 @@ describe( "Event", function()
             }).to.throwException( function( e ) {
                 expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
             });
+            a.dispose();
         });
     });
 
@@ -90,6 +94,7 @@ describe( "Event", function()
             a.foo -= handler;
             a.onFoo();
             expect( called ).to.equal( 1 );
+            a.dispose();
         });
 
         it( "should only remove one event handler", function()
@@ -114,6 +119,7 @@ describe( "Event", function()
             a.foo -= handler;
             a.onFoo();
             expect( called ).to.equal( 3 );
+            a.dispose();
         });
     });
 });

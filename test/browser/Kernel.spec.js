@@ -7,6 +7,7 @@ describe( "Kernel", function()
             var kernel = type.Kernel();
             var selector = kernel.bind( "foo" );
             expect( selector.to ).to.be.a( "function" );
+            kernel.dispose();
         });
 
         it( "should throw an error if 'service' is empty", function()
@@ -18,6 +19,7 @@ describe( "Kernel", function()
             }).to.throwException( function( e ) {
                 expect( e ).to.be.a( type.error( "ArgumentError" ) );
             });
+            kernel.dispose();
         });
     });
 
@@ -39,6 +41,7 @@ describe( "Kernel", function()
             }).then( null, function( reason )
             {
                 expect( reason ).to.equal( e );
+                kernel.dispose();
                 done();
             });
         });
@@ -61,7 +64,11 @@ describe( "Kernel", function()
             {
                 expect( reason ).to.equal( e );
                 return kernel.get( "baz" );
-            }).then( done );
+            }).then( function()
+            {
+                kernel.dispose();
+                done();
+            });
         });
     });
 
@@ -78,6 +85,7 @@ describe( "Kernel", function()
             }]).then( function()
             {
                 expect( out ).to.equal( 2 );
+                kernel.dispose();
                 done();
             });
         });
@@ -102,6 +110,7 @@ describe( "Kernel", function()
             }).then( function( bar )
             {
                 expect( bar.foo ).to.equal( 2 );
+                kernel.dispose();
                 done();
             });
         });
@@ -117,6 +126,7 @@ describe( "Kernel", function()
             kernel.get([ "bar", "baz", function() {} ]).then( null, function( reason )
             {
                 expect( reason ).to.equal( e );
+                kernel.dispose();
                 done();
             });
         });
@@ -135,6 +145,7 @@ describe( "Kernel", function()
             kernel.get( "foo" ).then( null, function( e )
             {
                 expect( e ).to.be.a( TypeError );
+                kernel.dispose();
                 done();
             });
         });
@@ -154,6 +165,7 @@ describe( "Kernel", function()
             kernel.get( "foo" ).then( function( foo )
             {
                 expect( foo ).to.equal( obj );
+                kernel.dispose();
                 done();
             });
         });
@@ -172,6 +184,7 @@ describe( "Kernel", function()
             kernel.get( "foo" ).then( null, function( e )
             {
                 expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+                kernel.dispose();
                 done();
             });
         });
@@ -183,6 +196,7 @@ describe( "Kernel", function()
             kernel.get( "ns1.ns2.amd" ).then( function( amd )
             {
                 expect( amd.foo() ).to.equal( 2 );
+                kernel.dispose();
                 done();
             });
         });
@@ -200,9 +214,11 @@ describe( "Kernel", function()
                 }
             });
             var kernel = type.Kernel().register({ app: graph });
-            kernel.get( "app.bar.Foo" ).then( function()
+            kernel.get( "app.bar.Foo" ).then( function( foo )
             {
                 expect( called ).to.equal( 1 );
+                foo.dispose();
+                kernel.dispose();
                 done();
             });
         });
@@ -221,6 +237,7 @@ describe( "Kernel", function()
                 kernel.get( "foo" ).then( function( foo )
                 {
                     expect( foo ).to.equal( 2 );
+                    kernel.dispose();
                     done();
                 });
             });
@@ -236,6 +253,7 @@ describe( "Kernel", function()
                 kernel.get( "foo" ).then( function( foo )
                 {
                     expect( foo ).to.equal( obj );
+                    kernel.dispose();
                     done();
                 });
             });
@@ -258,6 +276,7 @@ describe( "Kernel", function()
                 }).then( function( foo )
                 {
                     expect( foo ).to.equal( out );
+                    kernel.dispose();
                     done();
                 });
             });
@@ -298,6 +317,7 @@ describe( "Kernel", function()
                 }).then( function()
                 {
                     expect( out ).to.equal( 1 );
+                    kernel.dispose();
                     done();
                 });
             });
@@ -313,6 +333,7 @@ describe( "Kernel", function()
             kernel.get( type.Factory( "foo" ) ).then( function( factory )
             {
                 expect( factory() ).to.equal( 2 );
+                kernel.dispose();
                 done();
             });
         });
@@ -324,6 +345,7 @@ describe( "Kernel", function()
             kernel.get( type.Factory( "foo" ) ).then( function( factory )
             {
                 expect( factory( 5 ) ).to.equal( 7 );
+                kernel.dispose();
                 done();
             });
         });
@@ -343,6 +365,7 @@ describe( "Kernel", function()
                 factory();
                 factory();
                 expect( foo ).to.equal( 2 );
+                kernel.dispose();
                 done();
             });
         });
@@ -369,6 +392,7 @@ describe( "Kernel", function()
                 factory();
                 expect( calledA ).to.equal( 3 );
                 expect( calledB ).to.equal( 0 );
+                kernel.dispose();
                 done();
             });
         });
@@ -388,6 +412,7 @@ describe( "Kernel", function()
             kernel.get( type.Factory( "foo" ) ).then( function( fooFactory )
             {
                 expect( fooFactory() ).to.equal( 2 );
+                kernel.dispose();
                 done();
             });
         });
@@ -404,6 +429,7 @@ describe( "Kernel", function()
             }).then( function( value )
             {
                 expect( value ).to.equal( 2 );
+                kernel.dispose();
                 done();
             });
         });
@@ -444,6 +470,7 @@ describe( "Kernel", function()
                     .then( function( result )
                     {
                         expect( result ).to.equal( 2 );
+                        kernel.dispose();
                         done();
                     });
             });
