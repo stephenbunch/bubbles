@@ -38,19 +38,6 @@ var error = ( function()
     }
 } () );
 
-// IE8 only supports Object.defineProperty on DOM objects.
-// http://msdn.microsoft.com/en-us/library/dd548687(VS.85).aspx
-// http://stackoverflow.com/a/4867755/740996
-var IE8 = ( function() {
-    try
-    {
-        Object.defineProperty( {}, "x", {} );
-        return false;
-    } catch ( e ) {
-        return true;
-    }
-} () );
-
 var BROWSER = !!( typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document );
 
 // member access levels
@@ -164,11 +151,6 @@ function forIn( obj, callback )
  */
 function typeOf( object )
 {
-    // In IE8, Object.toString on null and undefined returns "object".
-    if ( object === null )
-        return "null";
-    if ( object === undefined )
-        return "undefined";
     return Object.prototype.toString.call( object )
         .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
 }
@@ -374,8 +356,7 @@ var setImmediate = ( function()
 
         var handleMessage = function( e )
         {
-            // For some reason, `e.source === window` returns false in IE8.
-            if ( e.source == window && e.data === messageName )
+            if ( e.source === window && e.data === messageName )
             {
                 if ( timeouts.length > 0 )
                     timeouts.shift()();
@@ -418,25 +399,10 @@ function defineProperty( obj, prop, descriptor )
     if ( descriptor.enumerable === undefined )
         descriptor.enumerable = true;
 
-    // IE8 apparently doesn't support this configuration option.
-    if ( IE8 )
-        delete descriptor.enumerable;
-
     if ( descriptor.configurable === undefined )
         descriptor.configurable = true;
 
-    // IE8 requires that we delete the property first before reconfiguring it.
-    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( IE8 && hasOwn( obj, prop ) )
-        delete obj[ prop ];
-
-    if ( Object.defineProperty )
-    {
-        // obj must be a DOM object in IE8
-        Object.defineProperty( obj, prop, descriptor );
-    }
-    else
-        throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
+    Object.defineProperty( obj, prop, descriptor );
 }
 
 function loop( callback )
@@ -1792,234 +1758,149 @@ var Scope = new Struct(
     pub: null
 });
 
-var System = new Class( function()
+var System = new Class(
 {
-    // Makes the constructor look clean in the console.
-    var Type = function( ctor )
+    ctor: function()
     {
-        return function() {
-            return ctor.apply( undefined, arguments );
-        };
-    };
+        this.tunnel = null;
+        this.builder = null;
 
-    var elementKeys;
-
-    return {
-        ctor: function()
-        {
-            this.tunnel = null;
-            this.builder = null;
-
-            this._checkTypeOurs = false;
-            this._typeCheckResult = false;
-            this._returnScope = false;
-            this._returnBase = false;
-            this._returnTemplate = false;
-        },
-
-        /**
-         * @param {Function} ctor
-         * @return {boolean}
-         */
-        isTypeOurs: function( ctor )
-        {
-            this._checkTypeOurs = true;
-            ctor();
-            var result = this._typeCheckResult;
-            this._typeCheckResult = false;
-            this._checkTypeOurs = false;
-            return result;
-        },
-
-        /**
-         * @param {Template} ctor
-         * @return {Scope}
-         */
-        createScope: function( template )
-        {
-            this._returnScope = true;
-            var scope = template.ctor();
-            this._returnScope = false;
-            return scope;
-        },
-
-        /**
-         * @param {Template} template
-         * @return {Object}
-         */
-        createEmpty: function( template )
-        {
-            this._returnBase = true;
-            var instance = new template.ctor();
-            this._returnBase = false;
-            return instance;
-        },
-
-        /**
-         * @param {Function} ctor
-         * @return {Template}
-         */
-        getTemplate: function( ctor )
-        {
-            this._returnTemplate = true;
-            var template = ctor();
-            this._returnTemplate = false;
-            return template;
-        },
-
-        /**
-         * @return {Template}
-         */
-        createType: function()
-        {
-            var me = this;
-            var Self = null;
-            var template = new Template();
-            var run = true;
-
-            var ctor = function()
-            {
-                if ( me._returnBase )
-                    return;
-
-                if ( me._checkTypeOurs )
-                {
-                    me._typeCheckResult = true;
-                    return;
-                }
-
-                if ( me._returnScope )
-                {
-                    if ( Self === null )
-                        Self = me._createSelf( template );
-
-                    var scope = new Scope();
-                    scope.template = template;
-
-                    if ( IE8 )
-                    {
-                        scope.self = createElement();
-                        applyPrototype( Self, scope.self );
-                    }
-                    else
-                        scope.self = new Self();
-
-                    return scope;
-                }
-
-                if ( me._returnTemplate )
-                    return template;
-
-                if ( run )
-                {
-                    var pub;
-                    run = false;
-
-                    if ( IE8 )
-                    {
-                        pub = createElement();
-                        applyPrototype( template.ctor, pub );
-                    }
-                    else
-                        pub = new template.ctor();
-
-                    me.builder.init( template, pub, arguments, true );
-                    run = true;
-                    return pub;
-                }
-            };
-
-            template.ctor = Type( ctor );
-            template.members = new Dictionary();
-            return template;
-        },
-
-        /**
-         * @private
-         * @description Creates a new private scope type.
-         * @param {Template} template
-         * @return {Function}
-         */
-        _createSelf: function( template )
-        {
-            var self = this;
-            var Self = function() {};
-            Self.prototype = this.createEmpty( template );
-
-            /**
-             * Gets the private scope of the type instance.
-             * @return {?}
-             */
-            Self.prototype._pry = function( pub )
-            {
-                self.tunnel.open( template.ctor );
-                var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
-                self.tunnel.close();
-                if ( scope !== null )
-                    return scope.self;
-                else
-                    return pub;
-            };
-
-            return Self;
-        }
-    };
-
-// Private ____________________________________________________________________
+        this._checkTypeOurs = false;
+        this._typeCheckResult = false;
+        this._returnScope = false;
+        this._returnBase = false;
+        this._returnTemplate = false;
+    },
 
     /**
-     * @private
      * @param {Function} ctor
-     * @param {Object} obj
+     * @return {boolean}
      */
-    function applyPrototype( ctor, obj )
+    isTypeOurs: function( ctor )
     {
-        var proto = ctor.prototype;
-        if ( proto.constructor.prototype !== proto )
-            applyPrototype( proto.constructor, obj );
-        for ( var prop in proto )
-        {
-            if ( hasOwn( proto, prop ) )
-                obj[ prop ] = proto[ prop ];
-        }
-    }
+        this._checkTypeOurs = true;
+        ctor();
+        var result = this._typeCheckResult;
+        this._typeCheckResult = false;
+        this._checkTypeOurs = false;
+        return result;
+    },
 
     /**
-     * @private
-     * @return {HTMLElement}
+     * @param {Template} ctor
+     * @return {Scope}
      */
-    function createElement()
+    createScope: function( template )
     {
-        var obj = document.createElement( "div" );
-
-        if ( !elementKeys )
-            elementKeys = keys( obj );
-
-        var i = 0, len = elementKeys.length;
-        for ( ; i < len; i++ )
-            resetProperty( obj, elementKeys[ i ] );
-        return obj;
-    }
+        this._returnScope = true;
+        var scope = template.ctor();
+        this._returnScope = false;
+        return scope;
+    },
 
     /**
-     * @private
-     * @param {Object|Function|Array} obj
-     * @param {string} propertyName
+     * @param {Template} template
+     * @return {Object}
      */
-    function resetProperty( obj, propertyName )
+    createEmpty: function( template )
     {
-        var _value;
-        Object.defineProperty( obj, propertyName,
+        this._returnBase = true;
+        var instance = new template.ctor();
+        this._returnBase = false;
+        return instance;
+    },
+
+    /**
+     * @param {Function} ctor
+     * @return {Template}
+     */
+    getTemplate: function( ctor )
+    {
+        this._returnTemplate = true;
+        var template = ctor();
+        this._returnTemplate = false;
+        return template;
+    },
+
+    /**
+     * @return {Template}
+     */
+    createType: function()
+    {
+        var me = this;
+        var Self = null;
+        var template = new Template();
+        var run = true;
+
+        var ctor = function()
         {
-            configurable: true,
-            get: function() {
-                return _value;
-            },
-            set: function( value ) {
-                _value = value;
+            if ( me._returnBase )
+                return;
+
+            if ( me._checkTypeOurs )
+            {
+                me._typeCheckResult = true;
+                return;
             }
-        });
-        obj = null;
+
+            if ( me._returnScope )
+            {
+                if ( Self === null )
+                    Self = me._createSelf( template );
+
+                var scope = new Scope();
+                scope.template = template;
+                scope.self = new Self();
+                return scope;
+            }
+
+            if ( me._returnTemplate )
+                return template;
+
+            if ( run )
+            {
+                var pub;
+                run = false;
+                pub = new template.ctor();
+                me.builder.init( template, pub, arguments, true );
+                run = true;
+                return pub;
+            }
+        };
+
+        template.ctor = ctor;
+        template.members = new Dictionary();
+        return template;
+    },
+
+    /**
+     * @private
+     * @description Creates a new private scope type.
+     * @param {Template} template
+     * @return {Function}
+     */
+    _createSelf: function( template )
+    {
+        var self = this;
+        var Self = function() {};
+        Self.prototype = this.createEmpty( template );
+
+        /**
+         * Gets the private scope of the type instance.
+         * @return {?}
+         */
+        Self.prototype._pry = function( pub )
+        {
+            self.tunnel.open( template.ctor );
+            var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
+            self.tunnel.close();
+            if ( scope !== null )
+                return scope.self;
+            else
+                return pub;
+        };
+
+        return Self;
     }
 });
 
@@ -2075,12 +1956,6 @@ var Type = ( function() {
 
     describe.system = system;
 
-    var Disposable = system.createType();
-    describe.theMembers( Disposable, {
-        $dispose: theDisposeMethod( Disposable.ctor )
-    });
-    Disposable = Disposable.ctor;
-
     var exports = function() {
         return define.apply( undefined, arguments );
     };
@@ -2092,15 +1967,6 @@ var Type = ( function() {
      */
     exports.extend = function( type, descriptor )
     {
-        if ( !system.isTypeOurs( type ) )
-        {
-            var disposable = system.createType();
-            describe.theParent( disposable, type );
-            describe.theMembers( disposable, {
-                $dispose: theDisposeMethod( disposable.ctor )
-            });
-            type = disposable.ctor;
-        }
         var derived = system.createType();
         describe.theParent( derived, type );
         process( derived, descriptor );
@@ -2118,7 +1984,6 @@ var Type = ( function() {
     function define( descriptor )
     {
         var type = system.createType();
-        describe.theParent( type, Disposable );
         process( type, descriptor );
         return type.ctor;
     }
@@ -2143,37 +2008,6 @@ var Type = ( function() {
             describe.theMembers( type, descriptor );
 
         fake( type.ctor );
-    }
-
-    /**
-     * @param {Function} ctor
-     */
-    function theDisposeMethod( ctor )
-    {
-        return function()
-        {
-            if ( !IE8 )
-                return;
-
-            // All methods are proxied to scope.self. If scope.self is null,
-            // it means this object has already been disposed.
-            if ( this === null )
-                return;
-
-            tunnel.open( ctor );
-            var scope = this._pub.__scope__;
-            tunnel.close();
-
-            while ( scope.parent !== null )
-                scope = scope.parent;
-
-            while ( scope !== null )
-            {
-                scope.pub = null;
-                scope.self = null;
-                scope = scope.derived;
-            }
-        };
     }
 
 } () );

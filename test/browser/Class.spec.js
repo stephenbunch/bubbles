@@ -45,10 +45,6 @@ describe( "Class", function()
 
             var c = new C();
             expect( c ).to.be.a( A );
-
-            a.dispose();
-            b.dispose();
-            c.dispose();
         });
 
         it( "should work on the private scope (except in IE8)", function()
@@ -78,10 +74,6 @@ describe( "Class", function()
             var c = new C();
 
             expect( out ).to.equal( "aababc" );
-
-            a.dispose();
-            b.dispose();
-            c.dispose();
         });
     });
 
@@ -92,7 +84,6 @@ describe( "Class", function()
             var A = type.Class();
             var a = new A();
             expect( a.__scope__ ).to.equal( undefined );
-            a.dispose();
         });
     });
 
@@ -114,8 +105,6 @@ describe( "Class", function()
 
             var car = new AutopiaCar();
             expect( car.drive() ).to.equal( "I like to go vroom!" );
-
-            car.dispose();
         });
     });
 
@@ -136,9 +125,6 @@ describe( "Class", function()
                 var a1 = new A();
                 var a2 = new A();
                 expect( a2.bar( a1 ) ).to.equal( "hello" );
-
-                a1.dispose();
-                a2.dispose();
             });
 
             it( "should not be accessible on the public interface", function()
@@ -146,7 +132,6 @@ describe( "Class", function()
                 var A = type.Class();
                 var a = new A();
                 expect( a._pry ).to.equal( undefined );
-                a.dispose();
             });
 
             it( "should return input if failed", function()
@@ -163,8 +148,6 @@ describe( "Class", function()
 
                 a.foo( "hello" );
                 expect( out ).to.equal( "hello" );
-
-                a.dispose();
             });
         });
 
@@ -179,7 +162,6 @@ describe( "Class", function()
                 });
                 var a = new A();
                 expect( a.bar() ).to.equal( a );
-                a.dispose();
             });
 
             it( "should return the public interface of the child", function()
@@ -192,7 +174,6 @@ describe( "Class", function()
                 var B = A.extend();
                 var b = new B();
                 expect( b.bar() ).to.equal( b );
-                b.dispose();
             });
         });
 
@@ -212,7 +193,6 @@ describe( "Class", function()
                 });
                 var b = new B();
                 expect( b.foo( "hello" ) ).to.equal( "hello world!" );
-                b.dispose();
             });
         });
 
@@ -233,7 +213,6 @@ describe( "Class", function()
                 expect( a.get() ).to.be.undefined;
                 a.set( 2 );
                 expect( a.get() ).to.equal( 2 );
-                a.dispose();
             });
         });
 
@@ -253,7 +232,6 @@ describe( "Class", function()
                 var a = new A();
                 a.foo = 2;
                 expect( out ).to.equal( 2 );
-                a.dispose();
             });
         });
     });

@@ -101,11 +101,6 @@ function forIn( obj, callback )
  */
 function typeOf( object )
 {
-    // In IE8, Object.toString on null and undefined returns "object".
-    if ( object === null )
-        return "null";
-    if ( object === undefined )
-        return "undefined";
     return Object.prototype.toString.call( object )
         .match( /^\[object\s(.*)\]$/ )[1].toLowerCase();
 }
@@ -311,8 +306,7 @@ var setImmediate = ( function()
 
         var handleMessage = function( e )
         {
-            // For some reason, `e.source === window` returns false in IE8.
-            if ( e.source == window && e.data === messageName )
+            if ( e.source === window && e.data === messageName )
             {
                 if ( timeouts.length > 0 )
                     timeouts.shift()();
@@ -355,25 +349,10 @@ function defineProperty( obj, prop, descriptor )
     if ( descriptor.enumerable === undefined )
         descriptor.enumerable = true;
 
-    // IE8 apparently doesn't support this configuration option.
-    if ( IE8 )
-        delete descriptor.enumerable;
-
     if ( descriptor.configurable === undefined )
         descriptor.configurable = true;
 
-    // IE8 requires that we delete the property first before reconfiguring it.
-    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
-    if ( IE8 && hasOwn( obj, prop ) )
-        delete obj[ prop ];
-
-    if ( Object.defineProperty )
-    {
-        // obj must be a DOM object in IE8
-        Object.defineProperty( obj, prop, descriptor );
-    }
-    else
-        throw error( "InitializationError", "JavaScript properties are not supported by this browser." );
+    Object.defineProperty( obj, prop, descriptor );
 }
 
 function loop( callback )
