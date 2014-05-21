@@ -92,14 +92,6 @@ var Builder = new Class(
         // Instantiate the parent.
         if ( scope.template.parent !== null )
         {
-            var base = scope.template.parent.members.get( CTOR );
-            if ( base !== null && base.params.length > 0 )
-            {
-                var ctor = scope.template.members.get( CTOR );
-                if ( ctor === null || ctor.callsuper === false )
-                    throw error( "InitializationError", "Base constructor contains parameters and must be called explicitly." );
-            }
-
             scope.parent = this.system.createScope( scope.template.parent );
             scope.parent.derived = scope;
             scope.parent.pub = scope.pub;

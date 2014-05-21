@@ -2,21 +2,7 @@ describe( "Class", function()
 {
     describe( "type instantiation", function()
     {
-        it( "should throw an error if the parent constructor contains parameters and the child constructor does not explicitly call it", function()
-        {
-            var A = type.Class({
-                ctor: function( arg ) { }
-            });
-            var B = A.extend();
-            expect( function()
-            {
-                var b = new B();
-            }).to.throwException( function( e ) {
-                expect( e ).to.be.a( type.error( "InitializationError" ) );
-            });
-        });
-
-        it( "should work without the 'new' operator", function()
+        it( "should work without the `new` operator", function()
         {
             var A = type.Class({
                 ctor: function( a, b, c ) {

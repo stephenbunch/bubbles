@@ -121,9 +121,7 @@ describe( "Descriptor", function()
         });
         expect( function()
         {
-            A.extend({
-                ctor: function() {}
-            });
+            A.extend();
         }).to.throwException( function( e ) {
             expect( e ).to.be.a( type.error( "DefinitionError" ) );
         });

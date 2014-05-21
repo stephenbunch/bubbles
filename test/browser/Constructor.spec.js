@@ -89,4 +89,94 @@ describe( "Constructor", function()
         expect( out ).to.equal( "ctorfoo" );
         expect( a.ctor ).to.equal( undefined );
     });
+
+    it( "can transclude members from other objects", function()
+    {
+        var A = function() {
+            this._foo = 2;
+        };
+        A.prototype.foo = function() {
+            return this._foo;
+        };
+
+        var B = type.Class({
+            ctor: function( a ) {
+                this._include( a );
+            }
+        });
+        var b = new B( new A() );
+        expect( b.foo() ).to.equal( 2 );
+    });
+
+    it( "should not transclude members that are already defined by the type", function()
+    {
+        var A = type.Class({
+            foo: function() {
+                return 2;
+            },
+            bar: function() {
+                return 4;
+            }
+        });
+        var B = type.Class({
+            ctor: function( a ) {
+                this._include( a );
+            },
+            bar: function() {
+                return 8;
+            }
+        });
+        var b = new B( new A() );
+        expect( b.foo() ).to.equal( 2 );
+        expect( b.bar() ).to.equal( 8 );
+    });
+
+    it( "can transclude a member from another object with a custom name", function()
+    {
+        var A = type.Class({
+            ctor: function() {
+                this.foo = 2;
+            },
+            foo: null
+        });
+        var B = type.Class({
+            ctor: function( a ) {
+                this._include( a, "foo", "bar" );
+            }
+        });
+        var b = new B( new A() );
+        expect( b.foo ).to.equal( undefined );
+        expect( b.bar ).to.equal( 2 );
+    });
+
+    it( "can transclude events", function()
+    {
+        var A = type.Class({
+            click: type.Event,
+            test: function() {
+                this.click( "hello" );
+            }
+        });
+        var B = type.Class({
+            ctor: function( a ) {
+                this._include( a, "click" );
+            },
+            test: function() {
+                this.click( "hello" );
+            }
+        });
+        var a = new A();
+        var b = new B( a );
+        var out;
+        b.click += function( message ) {
+            out = message;
+        };
+        a.test();
+        expect( out ).to.equal( "hello" );
+        expect( function() {
+            b.test();
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+        });
+    });
 });

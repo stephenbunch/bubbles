@@ -71,7 +71,10 @@ var Descriptor = new Class( function()
 
         theMembers: function( template, members )
         {
-            forEach( keys( members || {} ), function( key )
+            var ctorValidated = false;
+            members = isObject( members ) ? members : {};
+
+            forEach( keys( members ), function( key )
             {
                 var info = parse( key );
                 var descriptor = members[ key ];
@@ -111,12 +114,8 @@ var Descriptor = new Class( function()
 
                 if ( info.name === CTOR )
                 {
-                    if ( !member.callsuper && template.parent !== null )
-                    {
-                        var base = template.parent.members.get( CTOR );
-                        if ( base !== null && base.params.length > 0 )
-                            throw error( "DefinitionError", "Constructor must call the parent constructor explicitly because it contains parameters." );    
-                    }
+                    validateConstructor( template, member );
+                    ctorValidated = true;
                 }
 
                 member.name = info.name;
@@ -124,6 +123,9 @@ var Descriptor = new Class( function()
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
             });
+
+            if ( !ctorValidated )
+                validateConstructor( template, new Method() );
         }
     };
 
@@ -183,6 +185,22 @@ var Descriptor = new Class( function()
                 throw error( "DefinitionError", "Cannot change access modifier of member '" + info.name + "' from " +
                     base.access + " to " + info.access + "." );
             }
+        }
+    }
+
+    /**
+     * @private
+     * @description Checks whether the constructor calls its parent if required.
+     * @param {Template} template
+     * @param {Method} method
+     */
+    function validateConstructor( template, method )
+    {
+        if ( !method.callsuper && template.parent !== null )
+        {
+            var base = template.parent.members.get( CTOR );
+            if ( base !== null && base.params.length > 0 )
+                throw error( "DefinitionError", "Constructor must call the parent constructor explicitly because it contains parameters." );    
         }
     }
 

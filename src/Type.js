@@ -61,7 +61,7 @@ var Type = ( function() {
 
         if ( isFunc( descriptor ) )
             describe.theMembers( type, descriptor.call( undefined ) );
-        else if ( isObject( descriptor ) )
+        else
             describe.theMembers( type, descriptor );
 
         fake( type.ctor );

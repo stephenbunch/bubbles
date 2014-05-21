@@ -937,14 +937,6 @@ var Builder = new Class(
         // Instantiate the parent.
         if ( scope.template.parent !== null )
         {
-            var base = scope.template.parent.members.get( CTOR );
-            if ( base !== null && base.params.length > 0 )
-            {
-                var ctor = scope.template.members.get( CTOR );
-                if ( ctor === null || ctor.callsuper === false )
-                    throw error( "InitializationError", "Base constructor contains parameters and must be called explicitly." );
-            }
-
             scope.parent = this.system.createScope( scope.template.parent );
             scope.parent.derived = scope;
             scope.parent.pub = scope.pub;
@@ -1139,7 +1131,10 @@ var Descriptor = new Class( function()
 
         theMembers: function( template, members )
         {
-            forEach( keys( members || {} ), function( key )
+            var ctorValidated = false;
+            members = isObject( members ) ? members : {};
+
+            forEach( keys( members ), function( key )
             {
                 var info = parse( key );
                 var descriptor = members[ key ];
@@ -1179,12 +1174,8 @@ var Descriptor = new Class( function()
 
                 if ( info.name === CTOR )
                 {
-                    if ( !member.callsuper && template.parent !== null )
-                    {
-                        var base = template.parent.members.get( CTOR );
-                        if ( base !== null && base.params.length > 0 )
-                            throw error( "DefinitionError", "Constructor must call the parent constructor explicitly because it contains parameters." );    
-                    }
+                    validateConstructor( template, member );
+                    ctorValidated = true;
                 }
 
                 member.name = info.name;
@@ -1192,6 +1183,9 @@ var Descriptor = new Class( function()
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
             });
+
+            if ( !ctorValidated )
+                validateConstructor( template, new Method() );
         }
     };
 
@@ -1251,6 +1245,22 @@ var Descriptor = new Class( function()
                 throw error( "DefinitionError", "Cannot change access modifier of member '" + info.name + "' from " +
                     base.access + " to " + info.access + "." );
             }
+        }
+    }
+
+    /**
+     * @private
+     * @description Checks whether the constructor calls its parent if required.
+     * @param {Template} template
+     * @param {Method} method
+     */
+    function validateConstructor( template, method )
+    {
+        if ( !method.callsuper && template.parent !== null )
+        {
+            var base = template.parent.members.get( CTOR );
+            if ( base !== null && base.params.length > 0 )
+                throw error( "DefinitionError", "Constructor must call the parent constructor explicitly because it contains parameters." );    
         }
     }
 
@@ -1631,6 +1641,18 @@ var Method = new Class(
                     scope.parent.self.ctor();
             }
 
+            var _include = scope.self._include;
+            scope.self._include = function( obj, member, name )
+            {
+                if ( !member )
+                {
+                    for ( var prop in obj )
+                        self._transclude( scope, obj, prop, prop );
+                }
+                else
+                    self._transclude( scope, obj, member, name || member );
+            };
+
             self.method.apply( scope.self, arguments );
 
             if ( _superOverridden )
@@ -1640,7 +1662,59 @@ var Method = new Class(
                 else
                     scope.self._super = _super;
             }
+
+            if ( _include === undefined )
+                delete scope.self._include;
+            else
+                scope.self._include = _include;
         };
+    },
+
+    /**
+     * @param {Scope} scope
+     * @param {Object} obj
+     * @param {string} member
+     * @param {string} name
+     */
+    _transclude: function( scope, obj, member, name )
+    {
+        if ( scope.template.members.get( name ) !== null )
+            return;
+
+        var descriptor = Object.getOwnPropertyDescriptor( obj, member );
+        var usesValue = false;
+
+        // Prototype members won't have a property descriptor.
+        if ( descriptor === undefined || "value" in descriptor )
+        {
+            if ( isFunc( obj[ member ] ) )
+            {
+                scope.self[ name ] = proxy( obj[ member ], obj );
+                scope.pub[ name ] = scope.self[ name ];
+                return;
+            }
+            usesValue = true;
+        }
+
+        var get;
+        var set;
+
+        if ( usesValue || descriptor.get !== undefined )
+        {
+            get = function() {
+                return obj[ member ];
+            };
+        }
+
+        if ( usesValue || descriptor.set !== undefined )
+        {
+            set = function( value ) {
+                obj[ member ] = value;
+            };
+        }
+
+        defineProperty( scope.self, name, { get: get, set: set });
+        defineProperty( scope.pub, name, { get: get, set: set });
     }
 });
 
@@ -2004,7 +2078,7 @@ var Type = ( function() {
 
         if ( isFunc( descriptor ) )
             describe.theMembers( type, descriptor.call( undefined ) );
-        else if ( isObject( descriptor ) )
+        else
             describe.theMembers( type, descriptor );
 
         fake( type.ctor );

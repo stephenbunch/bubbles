@@ -75,6 +75,18 @@ var Method = new Class(
                     scope.parent.self.ctor();
             }
 
+            var _include = scope.self._include;
+            scope.self._include = function( obj, member, name )
+            {
+                if ( !member )
+                {
+                    for ( var prop in obj )
+                        self._transclude( scope, obj, prop, prop );
+                }
+                else
+                    self._transclude( scope, obj, member, name || member );
+            };
+
             self.method.apply( scope.self, arguments );
 
             if ( _superOverridden )
@@ -84,6 +96,58 @@ var Method = new Class(
                 else
                     scope.self._super = _super;
             }
+
+            if ( _include === undefined )
+                delete scope.self._include;
+            else
+                scope.self._include = _include;
         };
+    },
+
+    /**
+     * @param {Scope} scope
+     * @param {Object} obj
+     * @param {string} member
+     * @param {string} name
+     */
+    _transclude: function( scope, obj, member, name )
+    {
+        if ( scope.template.members.get( name ) !== null )
+            return;
+
+        var descriptor = Object.getOwnPropertyDescriptor( obj, member );
+        var usesValue = false;
+
+        // Prototype members won't have a property descriptor.
+        if ( descriptor === undefined || "value" in descriptor )
+        {
+            if ( isFunc( obj[ member ] ) )
+            {
+                scope.self[ name ] = proxy( obj[ member ], obj );
+                scope.pub[ name ] = scope.self[ name ];
+                return;
+            }
+            usesValue = true;
+        }
+
+        var get;
+        var set;
+
+        if ( usesValue || descriptor.get !== undefined )
+        {
+            get = function() {
+                return obj[ member ];
+            };
+        }
+
+        if ( usesValue || descriptor.set !== undefined )
+        {
+            set = function( value ) {
+                obj[ member ] = value;
+            };
+        }
+
+        defineProperty( scope.self, name, { get: get, set: set });
+        defineProperty( scope.pub, name, { get: get, set: set });
     }
 });
