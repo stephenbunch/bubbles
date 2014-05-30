@@ -210,3 +210,18 @@ Task.when = function( promises )
         task.resolve( [] );
     return task.promise;
 };
+
+Task.chain = function( segments )
+{
+    segments = isArray( segments ) ? segments : makeArray( arguments );
+    var task = new Task();
+    task.resolve();
+    var promise = task.promise;
+    forEach( segments, function( segment )
+    {
+        promise = promise.then( isFunc( segment ) ? segment : function() {
+            return segment;
+        });
+    });
+    return promise;
+};

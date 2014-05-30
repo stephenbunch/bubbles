@@ -84,7 +84,15 @@ var Chef = new Class(
             if ( rejected )
                 return;
 
-            box.update( bindings );
+            try
+            {
+                box.update( bindings );
+            }
+            catch ( e )
+            {
+                task.reject( e );
+                return;
+            }
 
             if ( box.missing.length )
                 load();

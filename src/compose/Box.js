@@ -111,6 +111,11 @@ var Box = new Class(
         var factory = lazy || service instanceof Factory;
         if ( lazy || factory )
             service = service.value;
+        else if ( !isString( service ) )
+        {
+            throw error( "InvalidOperationError", "Expected 'service' to be a Lazy, Factory, or string. " +
+                "Perhaps there are multiple instances of this library running concurrently?" );
+        }
 
         /**
          * @param {Object.<string, *>} services

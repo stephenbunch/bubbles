@@ -33,6 +33,19 @@ var Kernel = new Type( function()
         ctor: function()
         {
             this.container = {};
+
+            /**
+             * @type {function(Array.<string>): Promise}
+             */
+            this.load = null;
+
+            /**
+             * @description The RequireJS context.
+             * http://requirejs.org/docs/api.html#multiversion
+             * @type {Function}
+             */
+            this.context = null;
+
             this.detectModuleSupport();
 
             var self = this;
@@ -40,28 +53,18 @@ var Kernel = new Type( function()
 
             this.chef = new Chef( cookbook, function()
             {
-                if ( self.require === null )
+                if ( self.load === null )
                     return null;
 
                 return function( modules )
                 {
-                    return self.require(
+                    return self.load(
                         map( modules, function( module ) {
                             return self.resolvePath( module );
                         })
                     );
                 };
             });
-        },
-
-        require: {
-            get: null,
-            set: function( value )
-            {
-                if ( value !== null && !isFunc( value ) )
-                    throw error( "ArgumentError", "Value must be a function or `null`." );
-                this._value( value );
-            }
         },
 
         pathPrefix: {
@@ -72,6 +75,15 @@ var Kernel = new Type( function()
                     throw error( "ArgumentError", "Value must be a string or `null`." );
                 this._value( value );
             }
+        },
+
+        config: function( options )
+        {
+            if ( isFunc( options.load ) )
+                this.load = options.load;
+            if ( isFunc( options.context ) )
+                this.context = options.context;
+            return this._pub;
         },
 
         /**
@@ -182,13 +194,16 @@ var Kernel = new Type( function()
 
         __detectModuleSupport: function()
         {
+            var self = this;
+
             // AMD modules with RequireJS.
             if ( global.requirejs !== undefined )
             {
-                this.require = function( modules )
+                this.context = global.requirejs;
+                this.load = function( modules )
                 {
                     var task = new Task();
-                    global.requirejs( modules, function() {
+                    self.context( modules, function() {
                         task.resolve( makeArray( arguments ) );
                     });
                     return task.promise;
@@ -198,7 +213,7 @@ var Kernel = new Type( function()
             // CommonJS with Node.
             else if ( !BROWSER )
             {
-                this.require = function( modules )
+                this.load = function( modules )
                 {
                     return new Task().resolve(
                         map( modules, function( module ) {

@@ -27,9 +27,11 @@ describe( "Kernel", function()
         {
             var e = new Error();
             var kernel = type.Kernel();
-            kernel.require = function( module ) {
-                return type.Task().reject( e );
-            };
+            kernel.config({
+                load: function() {
+                    return type.Task().reject( e );
+                }
+            });
             kernel.bind( "foo" ).toConstant( 2 );
             kernel.get( "foo" ).then( function( foo )
             {
@@ -47,9 +49,11 @@ describe( "Kernel", function()
         {
             var e = new Error();
             var kernel = type.Kernel();
-            kernel.require = function( module ) {
-                return type.Task().reject( e );
-            };
+            kernel.config({
+                load: function() {
+                    return type.Task().reject( e );
+                }
+            });
             kernel.bind( "foo" ).toConstant( 2 ).whenFor([ "bar", "baz" ]);
             kernel.bind( "bar" ).to([ "foo", function( foo ) {} ]);
             kernel.bind( "baz" ).to([ "foo", function( foo ) {} ]);
@@ -113,9 +117,11 @@ describe( "Kernel", function()
         {
             var e = new Error();
             var kernel = type.Kernel();
-            kernel.require = function() {
-                return type.Task().reject( e );
-            };
+            kernel.config({
+                load: function() {
+                    return type.Task().reject( e );
+                }
+            });
             kernel.bind( "bar" ).to([ "foo", function() {} ]);
             kernel.get([ "bar", "baz", function() {} ]).then( null, function( reason )
             {
@@ -127,14 +133,16 @@ describe( "Kernel", function()
         it( "should reject the promise if the require method does not return an array", function( done )
         {
             var kernel = type.Kernel();
-            kernel.require = function()
-            {
-                var task = type.Task();
-                setTimeout( function() {
-                    task.resolve();
-                });
-                return task.promise;
-            };
+            kernel.config({
+                load: function()
+                {
+                    var task = type.Task();
+                    setTimeout( function() {
+                        task.resolve();
+                    });
+                    return task.promise;
+                }
+            });
             kernel.get( "foo" ).then( null, function( e )
             {
                 expect( e ).to.be.a( TypeError );
@@ -146,14 +154,16 @@ describe( "Kernel", function()
         {
             var obj = { test: "bla" };
             var kernel = type.Kernel();
-            kernel.require = function()
-            {
-                var task = type.Task();
-                setTimeout( function() {
-                    task.resolve([ obj ]);
-                });
-                return task.promise;
-            };
+            kernel.config({
+                load: function()
+                {
+                    var task = type.Task();
+                    setTimeout( function() {
+                        task.resolve([ obj ]);
+                    });
+                    return task.promise;
+                }
+            });
             kernel.get( "foo" ).then( function( foo )
             {
                 expect( foo ).to.equal( obj );
@@ -164,14 +174,16 @@ describe( "Kernel", function()
         it( "should reject the promise if the service loads as an array, but the last element is not a function", function( done )
         {
             var kernel = type.Kernel();
-            kernel.require = function()
-            {
-                var task = type.Task();
-                setTimeout( function() {
-                    task.resolve([[ "bla" ]]);
-                });
-                return task.promise;
-            };
+            kernel.config({
+                load: function()
+                {
+                    var task = type.Task();
+                    setTimeout( function() {
+                        task.resolve([[ "bla" ]]);
+                    });
+                    return task.promise;
+                }
+            });
             kernel.get( "foo" ).then( null, function( e )
             {
                 expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
@@ -379,15 +391,17 @@ describe( "Kernel", function()
         it( "should get the underlying service when being fetched", function( done )
         {
             var kernel = type.Kernel();
-            kernel.require = function( module )
-            {
-                expect( module ).to.eql([ "foo" ]);
-                var task = type.Task();
-                setTimeout( function() {
-                    task.resolve([ function() { return 2; } ]);
-                });
-                return task.promise;
-            };
+            kernel.config({
+                load: function( modules )
+                {
+                    expect( modules ).to.eql([ "foo" ]);
+                    var task = type.Task();
+                    setTimeout( function() {
+                        task.resolve([ function() { return 2; } ]);
+                    });
+                    return task.promise;
+                }
+            });
             kernel.get( type.Factory( "foo" ) ).then( function( fooFactory )
             {
                 expect( fooFactory() ).to.equal( 2 );
@@ -414,28 +428,32 @@ describe( "Kernel", function()
         it( "should resolve its dependency graph on the first call", function( done )
         {
             var kernel = type.Kernel();
-            kernel.require = function()
-            {
-                var task = type.Task();
-                setTimeout( function() {
-                    task.resolve([ function() { return 2; } ]);
-                });
-                return task.promise;
-            };
+            kernel.config({
+                load: function()
+                {
+                    var task = type.Task();
+                    setTimeout( function() {
+                        task.resolve([ function() { return 2; } ]);
+                    });
+                    return task.promise;
+                }
+            });
             kernel.get( type.Lazy( "foo" ) ).then( function( lazy )
             {
                 lazy()
                     .then( function( result )
                     {
                         expect( result ).to.equal( 2 );
-                        kernel.require = function()
-                        {
-                            var task = type.Task();
-                            setTimeout( function() {
-                                task.resolve([ function() { return 3; } ]);
-                            });
-                            return task.promise;
-                        };
+                        kernel.config({
+                            load: function()
+                            {
+                                var task = type.Task();
+                                setTimeout( function() {
+                                    task.resolve([ function() { return 3; } ]);
+                                });
+                                return task.promise;
+                            }
+                        });
                         return lazy();
                     })
                     .then( function( result )

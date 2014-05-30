@@ -836,6 +836,21 @@ Task.when = function( promises )
     return task.promise;
 };
 
+Task.chain = function( segments )
+{
+    segments = isArray( segments ) ? segments : makeArray( arguments );
+    var task = new Task();
+    task.resolve();
+    var promise = task.promise;
+    forEach( segments, function( segment )
+    {
+        promise = promise.then( isFunc( segment ) ? segment : function() {
+            return segment;
+        });
+    });
+    return promise;
+};
+
 var Accessor = new Struct(
 {
     access: null,
@@ -2279,6 +2294,11 @@ var Box = new Class(
         var factory = lazy || service instanceof Factory;
         if ( lazy || factory )
             service = service.value;
+        else if ( !isString( service ) )
+        {
+            throw error( "InvalidOperationError", "Expected 'service' to be a Lazy, Factory, or string. " +
+                "Perhaps there are multiple instances of this library running concurrently?" );
+        }
 
         /**
          * @param {Object.<string, *>} services
@@ -2403,7 +2423,15 @@ var Chef = new Class(
             if ( rejected )
                 return;
 
-            box.update( bindings );
+            try
+            {
+                box.update( bindings );
+            }
+            catch ( e )
+            {
+                task.reject( e );
+                return;
+            }
 
             if ( box.missing.length )
                 load();
@@ -2695,6 +2723,19 @@ var Kernel = new Type( function()
         ctor: function()
         {
             this.container = {};
+
+            /**
+             * @type {function(Array.<string>): Promise}
+             */
+            this.load = null;
+
+            /**
+             * @description The RequireJS context.
+             * http://requirejs.org/docs/api.html#multiversion
+             * @type {Function}
+             */
+            this.context = null;
+
             this.detectModuleSupport();
 
             var self = this;
@@ -2702,28 +2743,18 @@ var Kernel = new Type( function()
 
             this.chef = new Chef( cookbook, function()
             {
-                if ( self.require === null )
+                if ( self.load === null )
                     return null;
 
                 return function( modules )
                 {
-                    return self.require(
+                    return self.load(
                         map( modules, function( module ) {
                             return self.resolvePath( module );
                         })
                     );
                 };
             });
-        },
-
-        require: {
-            get: null,
-            set: function( value )
-            {
-                if ( value !== null && !isFunc( value ) )
-                    throw error( "ArgumentError", "Value must be a function or `null`." );
-                this._value( value );
-            }
         },
 
         pathPrefix: {
@@ -2734,6 +2765,15 @@ var Kernel = new Type( function()
                     throw error( "ArgumentError", "Value must be a string or `null`." );
                 this._value( value );
             }
+        },
+
+        config: function( options )
+        {
+            if ( isFunc( options.load ) )
+                this.load = options.load;
+            if ( isFunc( options.context ) )
+                this.context = options.context;
+            return this._pub;
         },
 
         /**
@@ -2844,13 +2884,16 @@ var Kernel = new Type( function()
 
         __detectModuleSupport: function()
         {
+            var self = this;
+
             // AMD modules with RequireJS.
             if ( global.requirejs !== undefined )
             {
-                this.require = function( modules )
+                this.context = global.requirejs;
+                this.load = function( modules )
                 {
                     var task = new Task();
-                    global.requirejs( modules, function() {
+                    self.context( modules, function() {
                         task.resolve( makeArray( arguments ) );
                     });
                     return task.promise;
@@ -2860,7 +2903,7 @@ var Kernel = new Type( function()
             // CommonJS with Node.
             else if ( !BROWSER )
             {
-                this.require = function( modules )
+                this.load = function( modules )
                 {
                     return new Task().resolve(
                         map( modules, function( module ) {
