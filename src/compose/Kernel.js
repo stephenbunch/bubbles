@@ -33,38 +33,14 @@ var Kernel = new Type( function()
         ctor: function()
         {
             this.container = {};
+            this.delegatingHandlers = [];
 
-            /**
-             * @type {function(Array.<string>): Promise}
-             */
-            this.load = null;
-
-            /**
-             * @description The RequireJS context.
-             * http://requirejs.org/docs/api.html#multiversion
-             * @type {Function}
-             */
-            this.context = null;
+            this.moduleLoader = null;
+            this.requireContext = null;
 
             this.detectModuleSupport();
 
-            var self = this;
-            var cookbook = new Cookbook( this.container );
-
-            this.chef = new Chef( cookbook, function()
-            {
-                if ( self.load === null )
-                    return null;
-
-                return function( modules )
-                {
-                    return self.load(
-                        map( modules, function( module ) {
-                            return self.resolvePath( module );
-                        })
-                    );
-                };
-            });
+            this.chef = new Chef( new Cookbook( this.container ), this.chef_onLoad );
         },
 
         pathPrefix: {
@@ -77,12 +53,14 @@ var Kernel = new Type( function()
             }
         },
 
-        config: function( options )
+        /**
+         * @description The RequireJS context.
+         * http://requirejs.org/docs/api.html#multiversion
+         * @param {Function} context
+         */
+        useRequire: function( context )
         {
-            if ( isFunc( options.load ) )
-                this.load = options.load;
-            if ( isFunc( options.context ) )
-                this.context = options.context;
+            this.requireContext = context;
             return this._pub;
         },
 
@@ -192,6 +170,26 @@ var Kernel = new Type( function()
             return this._pub;
         },
 
+        /**
+         * @description Adds a delegating handler for resolving unregistered services.
+         * @param {RegExp|string} pattern Service matcher.
+         * @param {function(string): Promise.<Function>} handler Handler should return a promise that
+         * resolves to a factory, or undefined to pass through.
+         * @return {Kernel}
+         */
+        delegate: function( pattern, handler )
+        {
+            if ( isString( pattern ) )
+                pattern = new RegExp( pattern.replace( ".", "\\." ).replace( "*", ".*" ) );
+
+            this.delegatingHandlers.push({
+                pattern: pattern,
+                handler: handler
+            });
+
+            return this._pub;
+        },
+
         __detectModuleSupport: function()
         {
             var self = this;
@@ -199,12 +197,12 @@ var Kernel = new Type( function()
             // AMD modules with RequireJS.
             if ( global.requirejs !== undefined )
             {
-                this.context = global.requirejs;
-                this.load = function( modules )
+                this.requireContext = global.requirejs;
+                this.moduleLoader = function( module )
                 {
                     var task = new Task();
-                    self.context( modules, function() {
-                        task.resolve( makeArray( arguments ) );
+                    self.requireContext( [ module ], function( result ) {
+                        task.resolve( result );
                     });
                     return task.promise;
                 };
@@ -213,13 +211,8 @@ var Kernel = new Type( function()
             // CommonJS with Node.
             else if ( !BROWSER )
             {
-                this.load = function( modules )
-                {
-                    return new Task().resolve(
-                        map( modules, function( module ) {
-                            return global.require( module );
-                        })
-                    );
+                this.moduleLoader = function( module ) {
+                    return new Task().resolve( global.require( module ) ).promise;
                 };
             }
         },
@@ -281,6 +274,39 @@ var Kernel = new Type( function()
             if ( this.pathPrefix )
                 return pathCombine( this.pathPrefix, path );
             return path;
+        },
+
+        __chef_onLoad: function( services )
+        {
+            var self = this;
+            var promises = [];
+            forEach( services, function( service )
+            {
+                var handled = false;
+                forEach( self.delegatingHandlers, function( delegate )
+                {
+                    if ( delegate.pattern.test( service ) )
+                    {
+                        var promise = delegate.handler( service );
+                        if ( promise )
+                        {
+                            promises.push( promise );
+                            handled = true;
+                            return false;
+                        }
+                    }
+                });
+                if ( !handled )
+                {
+                    if ( self.moduleLoader === null )
+                    {
+                        promises.push( new Task().reject( new error( "InvalidOperationError", "The service '" + service + "' has not been registered." ) ).promise );
+                        return false;
+                    }
+                    promises.push( self.moduleLoader( self.resolvePath( service.replace( /\./g, "/" ) ) ) );
+                }
+            });
+            return Task.when( promises );
         }
     };
 });

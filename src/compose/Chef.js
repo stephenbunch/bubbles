@@ -2,12 +2,12 @@ var Chef = new Class(
 {
     /**
      * @param {Cookbook} cookbook
-     * @param {function(): function(Array.<string>): Promise} loader
+     * @param {function(Array.<string>): Promise} load
      */
-    ctor: function( cookbook, loader )
+    ctor: function( cookbook, load )
     {
         this._cookbook = cookbook;
-        this._loader = loader;
+        this._load = load;
     },
 
     /**
@@ -19,30 +19,17 @@ var Chef = new Class(
     {
         var self = this;
         var task = new Task();
-        var modules;
         var box = new Box( this._cookbook, idea );
 
         if ( box.missing.length )
-        {
-            if ( this._loader() )
-                load();
-            else
-            {
-                task.reject( new error(
-                    "InvalidOperationError",
-                    "Service(s) " + map( box.missing, function( x ) { return "'" + x + "'"; }).join( ", " ) + " have not been registered."
-                ));
-            }
-        }
+            load();
         else
             task.resolve( box.component );
 
         return task.promise;
 
-        function load()
-        {
-            modules = self._getRelativePaths( box.missing );
-            self._loader()( modules ).then( done, fail, false );
+        function load() {
+            self._load( self._getNames( box.missing ) ).then( done, fail, false );
         }
 
         function done( result )
@@ -59,23 +46,11 @@ var Chef = new Class(
             {
                 // Validate the returned service.
                 var value = result[ index ];
-                if ( !value || !( /(function|array)/ ).test( typeOf( value ) ) )
+                if ( !value || !( /(function|array)/ ).test( typeOf( value ) ) || isArray( value ) && !isFunc( value[ value.length - 1 ] ) )
                 {
                     bindings[ service ] = function() {
                         return value;
                     };
-                }
-                else if ( isArray( value ) && !isFunc( value[ value.length - 1 ] ) )
-                {
-                    var last = value[ value.length - 1 ];
-                    task.reject(
-                        error( "InvalidOperationError", "Module '" + modules[ index ] + "' loaded successfully. Failed to resolve service '" +
-                            service + "'. Found array. Expected last element to be a function. Found '" +
-                            ( last && last.toString ? last.toString() : typeOf( last ) ) + "' instead."
-                        )
-                    );
-                    rejected = true;
-                    return false;
                 }
                 else
                     bindings[ service ] = value;
@@ -193,7 +168,7 @@ var Chef = new Class(
      * @param {Array.<string|Factory|Lazy>} services
      * @return {Array.<string>}
      */
-    _getRelativePaths: function( services )
+    _getNames: function( services )
     {
         return map( services, function( service )
         {
@@ -201,7 +176,7 @@ var Chef = new Class(
                 service = service.value;
             else if ( service instanceof Lazy )
                 service = service.value;
-            return service.replace( /\./g, "/" );
+            return service;
         });
     }
 });
