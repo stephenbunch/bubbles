@@ -887,6 +887,7 @@ var Builder = new Class(
         });
 
         this._build( scope );
+        this._morph( scope );
         this._expose( scope );
 
         /**
@@ -985,21 +986,22 @@ var Builder = new Class(
     },
 
     /**
-     * @param {Scope} source
-     * @param {Scope} target
+     * @private
+     * @description Adds references to parent members on the child.
+     * @param {Scope} parent
+     * @param {Scope} child
      */
-    _proxy: function( source, target )
+    _proxy: function( parent, child )
     {
-        forEach( source.template.members.values, function( member )
+        forEach( parent.template.members.values, function( member )
         {
-            // If the member is private or if it's been overridden by the child, don't make
-            // a reference to the parent implementation.
-            if ( member.access === PRIVATE || target.template.members.get( member.name ) )
+            // If the parent member is private or if it's been overridden by the child, don't make a reference.
+            if ( member.access === PRIVATE || child.template.members.get( member.name ) )
                 return;
 
             if ( member instanceof Method || member instanceof Event )
             {
-                target.self[ member.name ] = source.self[ member.name ];
+                child.self[ member.name ] = parent.self[ member.name ];
             }
             else if ( member instanceof Property )
             {
@@ -1007,18 +1009,84 @@ var Builder = new Class(
                 if ( member.get && member.get.access !== PRIVATE )
                 {
                     accessors.get = function() {
-                        return source.self[ member.name ];
+                        return parent.self[ member.name ];
                     };
                 }
                 if ( member.set && member.set.access !== PRIVATE )
                 {
                     accessors.set = function( value ) {
-                        source.self[ member.name ] = value;
+                        parent.self[ member.name ] = value;
                     };
                 }
-                defineProperty( target.self, member.name, accessors );
+                defineProperty( child.self, member.name, accessors );
             }
         });
+    },
+
+    _morph: function( scope )
+    {
+        var generation = scope;
+        while ( generation.template.parent !== null )
+        {
+            var i = 0, len = generation.template.parent.members.values.length;
+            for ( ; i < len; i++ )
+            {
+                var member = generation.template.parent.members.values[ i ];
+
+                // If the parent member is not virtual, then don't propagate anything.
+                if ( !member.virtual )
+                    continue;
+
+                var current = generation.template.members.get( member.name );
+
+                // If the member on the current generation is virtual, and if the current generation
+                // is not the youngest (i.e. scope), then we've already propagated the youngest method
+                // to the older generations.
+                if ( current !== null && current.virtual && generation !== scope )
+                    continue;
+
+                // If the parent member is virtual, but it was not overridden by the child, then propagate
+                // the parent's member implementation.
+                this._reverseProxy( member, current === null ? generation.parent : generation, generation.parent );
+            }
+            generation = generation.parent;
+        }
+    },
+
+    /**
+     * @private
+     * @description Updates the member reference of all older generations to that of the child.
+     * @param {Method|Property} member
+     * @param {Scope} child
+     * @param {Scope} parent
+     */
+    _reverseProxy: function( member, child, parent )
+    {
+        var accessors;
+        if ( member instanceof Property )
+        {
+            accessors = {};
+            if ( member.get && member.get.access !== PRIVATE )
+            {
+                accessors.get = function() {
+                    return child.self[ member.name ];
+                };
+            }
+            if ( member.set && member.set.access !== PRIVATE )
+            {
+                accessors.set = function( value ) {
+                    child.self[ member.name ] = value;
+                };
+            }
+        }
+        while ( parent !== null )
+        {
+            if ( member instanceof Method )
+                parent.self[ member.name ] = child.self[ member.name ];
+            else if ( member instanceof Property )
+                defineProperty( parent.self, member.name, accessors );
+            parent = parent.parent;
+        }
     },
 
     /**
@@ -1781,34 +1849,18 @@ var Property = new Class(
     /**
      * @private
      * @description Creates the property on the specified scope.
+     * @param {Scope} scope
      */
     build: function( scope )
     {
-        var self = this;
         var _value = this.value;
-        var accessors = {};
+        var _super = scope.parent !== null ? Object.getOwnPropertyDescriptor( scope.parent.self, this.name ) : null;
 
-        if ( this.get )
+        defineProperty( scope.self, this.name,
         {
-            accessors.get = createAccessor(
-                this.get.method,
-                scope.parent === null ? null : function( value ) {
-                    return scope.parent.self[ self.name ];
-                }
-            );
-        }
-
-        if ( this.set )
-        {
-            accessors.set = createAccessor(
-                this.set.method,
-                scope.parent === null ? null : function( value ) {
-                    scope.parent.self[ self.name ] = value;
-                }
-            );
-        }
-
-        defineProperty( scope.self, this.name, accessors );
+            get: this.get ? createAccessor( this.get.method, _super && _super.get ? _super.get : undefined ) : undefined,
+            set: this.set ? createAccessor( this.set.method, _super && _super.set ? _super.set : undefined ) : undefined
+        });
 
         function createAccessor( method, _super )
         {

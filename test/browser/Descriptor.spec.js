@@ -267,18 +267,19 @@ describe( "Descriptor", function()
             var A = type.Class({
                 _$foo: function() {
                     return "hello";
-                }
-            });
-            var B = A.extend({
-                _foo: function() {
-                    return this._super() + " world";
                 },
                 bar: function() {
                     return this.foo();
                 }
             });
-            var b = new B();
-            expect( b.bar() ).to.equal( "hello world" );
+            var B = A.extend({
+                _$foo: function() {
+                    return this._super() + " world";
+                }
+            });
+            var C = B.extend();
+            var c = new C();
+            expect( c.bar() ).to.equal( "hello world" );
         });
 
         it( "can be sealed", function()

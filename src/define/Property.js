@@ -24,34 +24,18 @@ var Property = new Class(
     /**
      * @private
      * @description Creates the property on the specified scope.
+     * @param {Scope} scope
      */
     build: function( scope )
     {
-        var self = this;
         var _value = this.value;
-        var accessors = {};
+        var _super = scope.parent !== null ? Object.getOwnPropertyDescriptor( scope.parent.self, this.name ) : null;
 
-        if ( this.get )
+        defineProperty( scope.self, this.name,
         {
-            accessors.get = createAccessor(
-                this.get.method,
-                scope.parent === null ? null : function( value ) {
-                    return scope.parent.self[ self.name ];
-                }
-            );
-        }
-
-        if ( this.set )
-        {
-            accessors.set = createAccessor(
-                this.set.method,
-                scope.parent === null ? null : function( value ) {
-                    scope.parent.self[ self.name ] = value;
-                }
-            );
-        }
-
-        defineProperty( scope.self, this.name, accessors );
+            get: this.get ? createAccessor( this.get.method, _super && _super.get ? _super.get : undefined ) : undefined,
+            set: this.set ? createAccessor( this.set.method, _super && _super.set ? _super.set : undefined ) : undefined
+        });
 
         function createAccessor( method, _super )
         {
