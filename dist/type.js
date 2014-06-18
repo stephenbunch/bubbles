@@ -2725,6 +2725,10 @@ var Kernel = new Type( function()
          */
         useRequire: function( context )
         {
+            // Force the defines above to go on the scoped context.
+            // https://github.com/jrburke/requirejs/issues/237#issuecomment-45161111
+            context( [], function() {} );
+
             this.requireContext = context;
             return this._pub;
         },
@@ -2853,6 +2857,15 @@ var Kernel = new Type( function()
             });
 
             return this._pub;
+        },
+
+        /**
+         * @description Uses the kernel's module loader to load a module.
+         * @param {string} module
+         * @return Promise
+         */
+        require: function( module ) {
+            return this.moduleLoader( module );
         },
 
         __detectModuleSupport: function()
