@@ -42,11 +42,11 @@ var Property = new Class(
             return function()
             {
                 var temp = {
-                    _super: scope.self._super,
-                    _value: scope.self._value
+                    _super: scope.self.$super,
+                    _value: scope.self.$value
                 };
-                scope.self._super = _super;
-                scope.self._value = function( value )
+                scope.self.$super = _super;
+                scope.self.$value = function( value )
                 {
                     if ( arguments.length )
                         _value = value;
@@ -54,13 +54,13 @@ var Property = new Class(
                 };
                 var result = method.apply( scope.self, arguments );
                 if ( temp._super === undefined )
-                    delete scope.self._super;
+                    delete scope.self.$super;
                 else
-                    scope.self._super = temp._super;
+                    scope.self.$super = temp._super;
                 if ( temp._value === undefined )
-                    delete scope.self._value;
+                    delete scope.self.$value;
                 else
-                    scope.self._value = temp._value;
+                    scope.self.$value = temp._value;
                 return result;
             };
         }

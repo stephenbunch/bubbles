@@ -38,7 +38,7 @@ describe( "Constructor", function()
         var B = A.extend({
             ctor: function() {
                 message += "hello";
-                this._super( "!" );
+                this.$super( "!" );
             }
         });
 
@@ -62,7 +62,7 @@ describe( "Constructor", function()
         var C = B.extend({
             ctor: function() {
                 message += "hello";
-                this._super( "!" );
+                this.$super( "!" );
             }
         });
 
@@ -90,130 +90,184 @@ describe( "Constructor", function()
         expect( a.ctor ).to.equal( undefined );
     });
 
-    it( "can transclude members from other objects", function()
-    {
-        var A = function() {
-            this._foo = 2;
-        };
-        A.prototype.foo = function() {
-            return this._foo;
-        };
-
-        var B = type.Class({
-            ctor: function( a ) {
-                this._include( a );
-            }
-        });
-        var b = new B( new A() );
-        expect( b.foo() ).to.equal( 2 );
-    });
-
-    it( "should not transclude members that are already defined by the type", function()
+    it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
     {
         var A = type.Class({
-            foo: function() {
-                return 2;
-            },
-            bar: function() {
-                return 4;
-            }
+            ctor: function( a ) {}
         });
-        var B = type.Class({
-            ctor: function( a ) {
-                this._include( a );
-            },
-            bar: function() {
-                return 8;
-            }
-        });
-        var b = new B( new A() );
-        expect( b.foo() ).to.equal( 2 );
-        expect( b.bar() ).to.equal( 8 );
-    });
-
-    it( "can transclude specific members from another object", function()
-    {
-        var A = type.Class({
-            ctor: function() {
-                this.foo = 2;
-                this.bar = 4;
-                this.baz = 8;
-            },
-            foo: null,
-            bar: null,
-            baz: null
-        });
-        var B = type.Class({
-            ctor: function( a ) {
-                this._include( a, [ "bar", "baz" ] );
-            }
-        });
-        var b = new B( new A() );
-        expect( b.foo ).to.equal( undefined );
-        expect( b.bar ).to.equal( 4 );
-        expect( b.baz ).to.equal( 8 );
-    });
-
-    it( "can transclude a member from another object with a custom name", function()
-    {
-        var A = type.Class({
-            ctor: function() {
-                this.foo = 2;
-                this.bar = 4;
-            },
-            foo: null,
-            bar: null
-        });
-        var B = type.Class({
-            ctor: function( a ) {
-                this._include( a, "foo", "bar" );
-            }
-        });
-        var C = type.Class({
-            ctor: function( a )
-            {
-                this._include( a, {
-                    "foo": "baz",
-                    "bar": "qux"
-                });
-            }
-        });
-        var b = new B( new A() );
-        expect( b.foo ).to.equal( undefined );
-        expect( b.bar ).to.equal( 2 );
-        var c = new C( new A() );
-        expect( c.baz ).to.equal( 2 );
-        expect( c.qux ).to.equal( 4 );
-    });
-
-    it( "can transclude events", function()
-    {
-        var A = type.Class({
-            click: type.Event,
-            test: function() {
-                this.click( "hello" );
-            }
-        });
-        var B = type.Class({
-            ctor: function( a ) {
-                this._include( a, "click" );
-            },
-            test: function() {
-                this.click( "hello" );
-            }
-        });
-        var a = new A();
-        var b = new B( a );
-        var out;
-        b.click += function( message ) {
-            out = message;
-        };
-        a.test();
-        expect( out ).to.equal( "hello" );
-        expect( function() {
-            b.test();
+        var B = A.extend();
+        expect( function()
+        {
+            new B();
         }).to.throwException( function( e ) {
             expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+        });
+    });
+
+    describe( "this.$include()", function()
+    {
+        it( "can transclude members from other objects", function()
+        {
+            var A = function() {
+                this._foo = 2;
+            };
+            A.prototype.foo = function() {
+                return this._foo;
+            };
+
+            var B = type.Class({
+                ctor: function( a ) {
+                    this.$include( a );
+                }
+            });
+            var b = new B( new A() );
+            expect( b.foo() ).to.equal( 2 );
+        });
+
+        it( "should not transclude members that are already defined by the type", function()
+        {
+            var A = type.Class({
+                foo: function() {
+                    return 2;
+                },
+                bar: function() {
+                    return 4;
+                }
+            });
+            var B = type.Class({
+                ctor: function( a ) {
+                    this.$include( a );
+                },
+                bar: function() {
+                    return 8;
+                }
+            });
+            var b = new B( new A() );
+            expect( b.foo() ).to.equal( 2 );
+            expect( b.bar() ).to.equal( 8 );
+        });
+
+        it( "can transclude specific members from another object", function()
+        {
+            var A = type.Class({
+                ctor: function() {
+                    this.foo = 2;
+                    this.bar = 4;
+                    this.baz = 8;
+                },
+                foo: null,
+                bar: null,
+                baz: null
+            });
+            var B = type.Class({
+                ctor: function( a ) {
+                    this.$include( a, [ "bar", "baz" ] );
+                }
+            });
+            var b = new B( new A() );
+            expect( b.foo ).to.equal( undefined );
+            expect( b.bar ).to.equal( 4 );
+            expect( b.baz ).to.equal( 8 );
+        });
+
+        it( "can transclude a member from another object with a custom name", function()
+        {
+            var A = type.Class({
+                ctor: function() {
+                    this.foo = 2;
+                    this.bar = 4;
+                },
+                foo: null,
+                bar: null
+            });
+            var B = type.Class({
+                ctor: function( a ) {
+                    this.$include( a, "foo", "bar" );
+                }
+            });
+            var C = type.Class({
+                ctor: function( a )
+                {
+                    this.$include( a, {
+                        "foo": "baz",
+                        "bar": "qux"
+                    });
+                }
+            });
+            var b = new B( new A() );
+            expect( b.foo ).to.equal( undefined );
+            expect( b.bar ).to.equal( 2 );
+            var c = new C( new A() );
+            expect( c.baz ).to.equal( 2 );
+            expect( c.qux ).to.equal( 4 );
+        });
+
+        it( "can transclude events", function()
+        {
+            var A = type.Class({
+                click: type.Event,
+                test: function() {
+                    this.click( "hello" );
+                }
+            });
+            var B = type.Class({
+                ctor: function( a ) {
+                    this.$include( a, "click" );
+                },
+                test: function() {
+                    this.click( "hello" );
+                }
+            });
+            var a = new A();
+            var b = new B( a );
+            var out;
+            b.click += function( message ) {
+                out = message;
+            };
+            a.test();
+            expect( out ).to.equal( "hello" );
+            expect( function() {
+                b.test();
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+            });
+        });
+
+        it( "should transclude members into the child types where appropriate", function()
+        {
+            var A = type.Class({
+                foo: function() {
+                    return "hello";
+                }
+            });
+            var B = type.Class({
+                ctor: function( a ) {
+                    this.$include( a );
+                }
+            });
+            var C = B.extend({
+                ctor: function( a ) {
+                    this.$super( a );
+                },
+                bar: function() {
+                    return this.foo();
+                }
+            });
+            var D = C.extend({
+                ctor: function( a ) {
+                    this.$super( a );
+                },
+                foo: function() {
+                    return "world";
+                }
+            });
+
+            var c = new C( new A() );
+            expect( c.bar() ).to.equal( "hello" );
+
+            var d = new D( new A() );
+            expect( d.bar() ).to.equal( "hello" );
+            expect( d.foo() ).to.equal( "world" );
         });
     });
 });

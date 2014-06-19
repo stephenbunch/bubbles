@@ -54,7 +54,7 @@ var CTOR = "ctor";
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
  * @param {*} obj
- * @return {boolean}
+ * @return {Boolean}
  */
 function isArrayLike( obj )
 {
@@ -108,7 +108,7 @@ function makeArray( obj )
  * @description
  * Iterates of an array, passing in the item and index.
  * @param {Array} arr
- * @param {function()} callback
+ * @param {Function} callback
  */
 function forEach( arr, callback )
 {
@@ -130,7 +130,7 @@ function forEach( arr, callback )
  * @description
  * Iterates of an object, passing in the item and key.
  * @param {Object} obj
- * @param {function()} callback
+ * @param {Function} callback
  */
 function forIn( obj, callback )
 {
@@ -147,7 +147,7 @@ function forIn( obj, callback )
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
  * @param {*} object
- * @return {string}
+ * @return {String}
  */
 function typeOf( object )
 {
@@ -159,7 +159,7 @@ function typeOf( object )
  * @internal
  * @description Determines whether an object is a function.
  * @param {*} object
- * @return {boolean}
+ * @return {Boolean}
  */
 function isFunc( object ) {
     return typeOf( object ) === "function";
@@ -169,7 +169,7 @@ function isFunc( object ) {
  * @internal
  * @description Determines whether an object is an array.
  * @param {*} object
- * @return {boolean}
+ * @return {Boolean}
  */
 function isArray( object ) {
     return typeOf( object ) === "array";
@@ -188,8 +188,8 @@ function isString( object ) {
  * @description
  * Removes trailing whitespace from a string.
  * http://stackoverflow.com/a/2308157/740996
- * @param {string} value
- * @return {string}
+ * @param {String} value
+ * @return {String}
  */
 function trim( value ) {
     return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
@@ -218,8 +218,8 @@ function keys( object )
  * @internal
  * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
  * @param {Object} obj
- * @param {string} prop
- * @return {boolean}
+ * @param {String} prop
+ * @return {Boolean}
  */
 function hasOwn( obj, prop ) {
     return Object.prototype.hasOwnProperty.call( obj, prop );
@@ -231,7 +231,7 @@ function hasOwn( obj, prop ) {
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
  * @param {Array} array
  * @param {*} item
- * @return {number}
+ * @return {Number}
  */
 function indexOf( array, item )
 {
@@ -257,7 +257,7 @@ function indexOf( array, item )
  * @description Determines whether an object was created using "{}" or "new Object".
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
  * @param {Object} obj
- * @return {boolean}
+ * @return {Boolean}
  */
 function isPlainObject( obj )
 {
@@ -294,7 +294,7 @@ function isPlainObject( obj )
  * @description
  * Executes a callback for each item in the set, producing a new array containing the return values.
  * @param {Array|Object} items
- * @param {function()} callback
+ * @param {Function} callback
  * @param {*} context
  * @return {Array}
  */
@@ -316,8 +316,8 @@ function map( items, callback, context )
 /**
  * @internal
  * @description Safely combines multiple path segments.
- * @param {...string} paths
- * @return {string}
+ * @param {...String} paths
+ * @return {String}
  */
 function pathCombine()
 {
@@ -391,7 +391,7 @@ function fake( callback, run )
  * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
  *
  * @param {Object} obj The object on which to define the property.
- * @param {string} prop The name of the property to be defined or modified.
+ * @param {String} prop The name of the property to be defined or modified.
  * @param {Object} descriptor The descriptor for the property being defined or modified.
  */
 function defineProperty( obj, prop, descriptor )
@@ -616,7 +616,7 @@ var Dictionary = new Class(
 
     /**
      * @param {TKey} key
-     * @return {boolean}
+     * @return {Boolean}
      */
     contains: function( key ) {
         return indexOf( this.keys, key ) > -1;
@@ -701,7 +701,7 @@ var Task = new Class( function()
      * @description Satisfies 2.3 of the Promise/A+ spec.
      * @param {Task} promise
      * @param {*} x
-     * @return {boolean}
+     * @return {Boolean}
      */
     function resolve( promise, x )
     {
@@ -871,7 +871,7 @@ var Builder = new Class(
      * @param {Function} type The type to initialize.
      * @param {Object} pub The public interface to initialize on.
      * @param {Array} args Arguments for the constructor.
-     * @param {boolean} ctor Run the constructor.
+     * @param {Boolean} ctor Run the constructor.
      */
     init: function( template, pub, args, ctor )
     {
@@ -879,20 +879,13 @@ var Builder = new Class(
         var scope = this.system.createScope( template );
         scope.pub = pub;
 
-        defineProperty( scope.self, "_pub",
-        {
-            get: function() {
-                return scope.pub;
-            }
-        });
-
         this._build( scope );
         this._morph( scope );
         this._expose( scope );
 
         /**
          * @internal
-         * @description Used in conjunction with _pry to expose the private scope.
+         * @description Used in conjunction with $pry to expose the private scope.
          */
         defineProperty( scope.pub, "__scope__",
         {
@@ -956,14 +949,15 @@ var Builder = new Class(
             scope.parent = this.system.createScope( scope.template.parent );
             scope.parent.derived = scope;
             scope.parent.pub = scope.pub;
-            defineProperty( scope.parent.self, "_pub",
-            {
-                get: function() {
-                    return scope.pub;
-                }
-            });
             this._build( scope.parent );
         }
+
+        defineProperty( scope.self, "$pub",
+        {
+            get: function() {
+                return scope.pub;
+            }
+        });
 
         // Add proxies to parent members.
         if ( scope.template.parent !== null )
@@ -1113,7 +1107,7 @@ var Builder = new Class(
                 defineProperty( scope.pub, member.name,
                 {
                     get: function() {
-                        return scope.self[ member.name ]._pub;
+                        return scope.self[ member.name ].$pub;
                     },
                     set: function( value ) {
                         scope.self[ member.name ] = value;
@@ -1165,10 +1159,6 @@ var Descriptor = new Class( function()
     ACCESS[ PROTECTED ] = 2;
     ACCESS[ PRIVATE ] = 3;
 
-    // A regex for testing the use of _super inside a function.
-    // http://ejohn.org/blog/simple-javascript-inheritance/
-    var CALL_SUPER = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
-
     return {
         /**
          * @constructor
@@ -1214,7 +1204,6 @@ var Descriptor = new Class( function()
 
         theMembers: function( template, members )
         {
-            var ctorValidated = false;
             members = isObject( members ) ? members : {};
 
             forEach( keys( members ), function( key )
@@ -1255,20 +1244,11 @@ var Descriptor = new Class( function()
                     member.virtual = info.virtual;
                 }
 
-                if ( info.name === CTOR )
-                {
-                    validateConstructor( template, member );
-                    ctorValidated = true;
-                }
-
                 member.name = info.name;
                 member.access = info.access;
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
             });
-
-            if ( !ctorValidated )
-                validateConstructor( template, new Method() );
         }
     };
 
@@ -1277,7 +1257,7 @@ var Descriptor = new Class( function()
     /**
      * @private
      * @description Gets the member info by parsing the member name.
-     * @param {string} name
+     * @param {String} name
      * @return {MemberInfo}
      */
     function parse( name )
@@ -1333,27 +1313,11 @@ var Descriptor = new Class( function()
 
     /**
      * @private
-     * @description Checks whether the constructor calls its parent if required.
-     * @param {Template} template
-     * @param {Method} method
-     */
-    function validateConstructor( template, method )
-    {
-        if ( !method.callsuper && template.parent !== null )
-        {
-            var base = template.parent.members.get( CTOR );
-            if ( base !== null && base.params.length > 0 )
-                throw error( "DefinitionError", "Constructor must call the parent constructor explicitly because it contains parameters." );    
-        }
-    }
-
-    /**
-     * @private
      * @description Checks if member name collides with another member.
      * @param {Template} template The type to check.
-     * @param {string} name The member name.
-     * @param {bool} [base] True if the type being checked is a base type.
-     * @return {bool}
+     * @param {String} name The member name.
+     * @param {Boolean} [base] True if the type being checked is a base type.
+     * @return {Boolean}
      */
     function alreadyDefined( template, name, base )
     {
@@ -1391,7 +1355,6 @@ var Descriptor = new Class( function()
         var member = new Method();
         member.method = method;
         member.params = params;
-        member.callsuper = CALL_SUPER.test( method );
         return member;
     }
 
@@ -1458,10 +1421,9 @@ var Descriptor = new Class( function()
             if ( member.get.method === null )
             {
                 member.get.method = function() {
-                    return this._value();
+                    return this.$value();
                 };
             }
-            member.get.callsuper = CALL_SUPER.test( member.get.method );
         }
 
         if ( member.set !== null )
@@ -1470,10 +1432,9 @@ var Descriptor = new Class( function()
             if ( member.set.method === null )
             {
                 member.set.method = function( value ) {
-                    this._value( value );
+                    this.$value( value );
                 };
             }
-            member.set.callsuper = CALL_SUPER.test( member.set.method );
         }
 
         validateProperty( template, member );
@@ -1598,7 +1559,7 @@ var Event = new Class( function()
                     handlers[ i ].apply( undefined, arguments );
             });
 
-            raise._pub = new Delegate( function() {
+            raise.$pub = new Delegate( function() {
                 throw error( "InvalidOperationError", "The event '" + self.name + "' cannot be raised except from within its own type." );
             });
 
@@ -1610,7 +1571,7 @@ var Event = new Class( function()
                 set: function( value )
                 {
                     // Make sure two delegates were added together, and that the left operand is ourself.
-                    if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise._pub ) )
+                    if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise.$pub ) )
                     {
                         var handler = Delegate.operands[1];
 
@@ -1654,7 +1615,6 @@ var Method = new Class(
      */
     ctor: function()
     {
-        this.callsuper = false;
         this.params = [];
         this.access = null;
         this.virtual = false;
@@ -1678,13 +1638,13 @@ var Method = new Class(
                 var _super = scope.parent.self[ this.name ];
                 scope.self[ this.name ] = function()
                 {
-                    var temp = scope.self._super;
-                    scope.self._super = _super;
+                    var temp = scope.self.$super;
+                    scope.self.$super = _super;
                     var result = self.method.apply( scope.self, arguments );
                     if ( temp === undefined )
-                        delete scope.self._super;
+                        delete scope.self.$super;
                     else
-                        scope.self._super = temp;
+                        scope.self.$super = temp;
                     return result;
                 };
             }
@@ -1706,34 +1666,39 @@ var Method = new Class(
         var self = this;
         scope.self.ctor = function()
         {
-            var _super = scope.self._super;
+            var _super = scope.self.$super;
             var _superOverridden = false;
+            var _superCalled = false;
 
             // Hide the constructor because it should never be called again.
             delete scope.self.ctor;
 
-            // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
+            // Call the parent constructor if it is parameterless. Otherwise, assign it to this.$super.
             if ( scope.template.parent !== null && scope.template.parent.members.contains( CTOR ) )
             {
                 if ( scope.template.parent.members.get( CTOR ).params.length > 0 )
                 {
-                    scope.self._super = scope.parent.self.ctor;
+                    scope.self.$super = function()
+                    {
+                        _superCalled = true;
+                        scope.parent.self.ctor.apply( undefined, arguments );
+                    };
                     _superOverridden = true;
                 }
                 else
                     scope.parent.self.ctor();
             }
 
-            var _include = scope.self._include;
+            var _include = scope.self.$include;
 
             /**
              * @description Transcludes the members of another object.
              * @param {Object} obj
-             * @param {string|Array.<string>|Object} [member] The member {string} or members {Array.<string>} to
+             * @param {String|Array.<string>|Object} [member] The member {string} or members {Array.<string>} to
              * transclude. Or a key/value pair of members and the names to use.
-             * @param {string} [name] The name to transclude the member as.
+             * @param {String} [name] The name to transclude the member as.
              */
-            scope.self._include = function( obj, member, name )
+            scope.self.$include = function( obj, member, name )
             {
                 var i = 0, prop, len;
                 if ( !member )
@@ -1762,64 +1727,87 @@ var Method = new Class(
 
             if ( _superOverridden )
             {
+                if ( !_superCalled )
+                    throw error( "InvalidOperationError", "Constructor must call the parent constructor explicitly because it contains parameters." );
+
                 if ( _super === undefined )
-                    delete scope.self._super;
+                    delete scope.self.$super;
                 else
-                    scope.self._super = _super;
+                    scope.self.$super = _super;
             }
 
             if ( _include === undefined )
-                delete scope.self._include;
+                delete scope.self.$include;
             else
-                scope.self._include = _include;
+                scope.self.$include = _include;
         };
     },
 
     /**
-     * @param {Scope} scope
-     * @param {Object} obj
-     * @param {string} member
-     * @param {string} name
+     * @private
+     * @description Transcludes a given member and returns true if the member is already defined.
+     * @param {Scope} scope The scope with which to transclude the member.
+     * @param {Object} obj The object containing the member to transclude.
+     * @param {String} member The member to transclude.
+     * @param {String} name The name to transclude the member as.
+     * @return {Boolean}
      */
     _transclude: function( scope, obj, member, name )
     {
-        if ( scope.template.members.get( name ) !== null )
-            return;
+        // Indicates whether the member has been defined by a derived type. The implication is that the
+        // member should not be transcluded on the public interface since all type instances share the
+        // same public interface.
+        var defined = false;
 
-        var descriptor = Object.getOwnPropertyDescriptor( obj, member );
-        var usesValue = false;
+        if ( scope.derived )
+            defined = this._transclude( scope.derived, obj, member, name );
 
-        // Prototype members won't have a property descriptor.
-        if ( descriptor === undefined || "value" in descriptor )
+        if ( scope.template.members.get( name ) === null )
         {
-            if ( isFunc( obj[ member ] ) )
+            var descriptor = Object.getOwnPropertyDescriptor( obj, member );
+            var usesValue = false;
+            var isMethod = false;
+
+            // Prototype members won't have a property descriptor.
+            if ( descriptor === undefined || "value" in descriptor )
             {
-                scope.self[ name ] = proxy( obj[ member ], obj );
-                scope.pub[ name ] = scope.self[ name ];
-                return;
+                if ( isFunc( obj[ member ] ) )
+                {
+                    scope.self[ name ] = proxy( obj[ member ], obj );
+                    if ( !defined )
+                        scope.pub[ name ] = scope.self[ name ];
+                    isMethod = true;
+                }
+                usesValue = true;
             }
-            usesValue = true;
+
+            if ( !isMethod )
+            {
+                var get;
+                var set;
+
+                if ( usesValue || descriptor.get !== undefined )
+                {
+                    get = function() {
+                        return obj[ member ];
+                    };
+                }
+
+                if ( usesValue || descriptor.set !== undefined )
+                {
+                    set = function( value ) {
+                        obj[ member ] = value;
+                    };
+                }
+
+                defineProperty( scope.self, name, { get: get, set: set });
+                if ( !defined )
+                    defineProperty( scope.pub, name, { get: get, set: set });
+            }
         }
-
-        var get;
-        var set;
-
-        if ( usesValue || descriptor.get !== undefined )
-        {
-            get = function() {
-                return obj[ member ];
-            };
-        }
-
-        if ( usesValue || descriptor.set !== undefined )
-        {
-            set = function( value ) {
-                obj[ member ] = value;
-            };
-        }
-
-        defineProperty( scope.self, name, { get: get, set: set });
-        defineProperty( scope.pub, name, { get: get, set: set });
+        else
+            defined = true;
+        return defined;
     }
 });
 
@@ -1867,11 +1855,11 @@ var Property = new Class(
             return function()
             {
                 var temp = {
-                    _super: scope.self._super,
-                    _value: scope.self._value
+                    _super: scope.self.$super,
+                    _value: scope.self.$value
                 };
-                scope.self._super = _super;
-                scope.self._value = function( value )
+                scope.self.$super = _super;
+                scope.self.$value = function( value )
                 {
                     if ( arguments.length )
                         _value = value;
@@ -1879,13 +1867,13 @@ var Property = new Class(
                 };
                 var result = method.apply( scope.self, arguments );
                 if ( temp._super === undefined )
-                    delete scope.self._super;
+                    delete scope.self.$super;
                 else
-                    scope.self._super = temp._super;
+                    scope.self.$super = temp._super;
                 if ( temp._value === undefined )
-                    delete scope.self._value;
+                    delete scope.self.$value;
                 else
-                    scope.self._value = temp._value;
+                    scope.self.$value = temp._value;
                 return result;
             };
         }
@@ -1937,7 +1925,7 @@ var System = new Class(
 
     /**
      * @param {Function} ctor
-     * @return {boolean}
+     * @return {Boolean}
      */
     isTypeOurs: function( ctor )
     {
@@ -2052,7 +2040,7 @@ var System = new Class(
          * Gets the private scope of the type instance.
          * @return {?}
          */
-        Self.prototype._pry = function( pub )
+        Self.prototype.$pry = function( pub )
         {
             self.tunnel.open( template.ctor );
             var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;
@@ -2070,7 +2058,7 @@ var System = new Class(
 var Template = new Struct(
 {
     /**
-     * @type {Dictionary.<string, Event|Method|Property>}
+     * @type {Dictionary.<String, Event|Method|Property>}
      */
     members: null,
 
@@ -2766,7 +2754,7 @@ var Kernel = new Type( function()
             {
                 if ( value !== null && !isString( value ) )
                     throw error( "ArgumentError", "Value must be a string or `null`." );
-                this._value( value );
+                this.$value( value );
             }
         },
 
@@ -2782,7 +2770,7 @@ var Kernel = new Type( function()
             context( [], function() {} );
 
             this.requireContext = context;
-            return this._pub;
+            return this.$pub;
         },
 
         /**
@@ -2841,7 +2829,7 @@ var Kernel = new Type( function()
             }
             else
                 delete this.container[ service ];
-            return this._pub;
+            return this.$pub;
         },
 
         /**
@@ -2888,7 +2876,7 @@ var Kernel = new Type( function()
         register: function( graph )
         {
             this.registerGraph( "", graph );
-            return this._pub;
+            return this.$pub;
         },
 
         /**
@@ -2908,7 +2896,7 @@ var Kernel = new Type( function()
                 handler: handler
             });
 
-            return this._pub;
+            return this.$pub;
         },
 
         /**

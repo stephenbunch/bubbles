@@ -14,7 +14,7 @@ var System = new Class(
 
     /**
      * @param {Function} ctor
-     * @return {boolean}
+     * @return {Boolean}
      */
     isTypeOurs: function( ctor )
     {
@@ -129,7 +129,7 @@ var System = new Class(
          * Gets the private scope of the type instance.
          * @return {?}
          */
-        Self.prototype._pry = function( pub )
+        Self.prototype.$pry = function( pub )
         {
             self.tunnel.open( template.ctor );
             var scope = !!pub && !!pub.__scope__ ? pub.__scope__ : null;

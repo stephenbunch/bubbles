@@ -64,7 +64,7 @@ var Dictionary = new Class(
 
     /**
      * @param {TKey} key
-     * @return {boolean}
+     * @return {Boolean}
      */
     contains: function( key ) {
         return indexOf( this.keys, key ) > -1;

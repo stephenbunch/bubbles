@@ -33,7 +33,7 @@ describe( "Class", function()
             expect( c ).to.be.a( A );
         });
 
-        it( "should work on the private scope (except in IE8)", function()
+        it( "should work on the private scope", function()
         {
             var out = "";
             var A = type.Class({
@@ -85,7 +85,7 @@ describe( "Class", function()
 
             var AutopiaCar = Car.extend({
                 $drive: function() {
-                    return "I like to go " + this._super();
+                    return "I like to go " + this.$super();
                 }
             });
 
@@ -96,13 +96,13 @@ describe( "Class", function()
 
     describe( "this", function()
     {
-        describe( "._pry()", function()
+        describe( ".$pry()", function()
         {
             it( "should return the private scope of the given instance", function()
             {
                 var A = type.Class({
                     bar: function( a ) {
-                        return this._pry( a ).foo();
+                        return this.$pry( a ).foo();
                     },
                     __foo: function() {
                         return "hello";
@@ -117,7 +117,7 @@ describe( "Class", function()
             {
                 var A = type.Class();
                 var a = new A();
-                expect( a._pry ).to.equal( undefined );
+                expect( a.$pry ).to.equal( undefined );
             });
 
             it( "should return input if failed", function()
@@ -125,7 +125,7 @@ describe( "Class", function()
                 var out = 0;
                 var A = type.Class({
                     foo: function( test ) {
-                        out = this._pry( test );
+                        out = this.$pry( test );
                     }
                 });
                 var a = new A();
@@ -137,13 +137,13 @@ describe( "Class", function()
             });
         });
 
-        describe( "._pub", function()
+        describe( ".$pub", function()
         {
             it( "should return the public interface", function()
             {
                 var A = type.Class({
                     bar: function() {
-                        return this._pub;
+                        return this.$pub;
                     }
                 });
                 var a = new A();
@@ -154,7 +154,7 @@ describe( "Class", function()
             {
                 var A = type.Class({
                     bar: function() {
-                        return this._pub;
+                        return this.$pub;
                     }
                 });
                 var B = A.extend();
@@ -163,7 +163,7 @@ describe( "Class", function()
             });
         });
 
-        describe( "._super()", function()
+        describe( ".$super()", function()
         {
             it( "should call the parent method", function()
             {
@@ -174,7 +174,7 @@ describe( "Class", function()
                 });
                 var B = A.extend({
                     $foo: function( message ) {
-                        return this._super( message ) + "!";
+                        return this.$super( message ) + "!";
                     }
                 });
                 var b = new B();
@@ -182,27 +182,7 @@ describe( "Class", function()
             });
         });
 
-        describe( ".children", function()
-        {
-            it( "[get] and [set] should work in IE8", function()
-            {
-                var A = type.Class(
-                {
-                    get: function() {
-                        return this.children;
-                    },
-                    set: function( value ) {
-                        this.children = value;
-                    }
-                });
-                var a = new A();
-                expect( a.get() ).to.be.undefined;
-                a.set( 2 );
-                expect( a.get() ).to.equal( 2 );
-            });
-        });
-
-        describe( "._value()", function()
+        describe( ".$value()", function()
         {
             it( "[set] should return the new value", function()
             {
@@ -211,7 +191,7 @@ describe( "Class", function()
                     foo: {
                         get: null,
                         set: function( value ) {
-                            out = this._value( value );
+                            out = this.$value( value );
                         }
                     }
                 });

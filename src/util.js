@@ -4,7 +4,7 @@
  * Determines whether an object can be iterated over like an array.
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L501
  * @param {*} obj
- * @return {boolean}
+ * @return {Boolean}
  */
 function isArrayLike( obj )
 {
@@ -58,7 +58,7 @@ function makeArray( obj )
  * @description
  * Iterates of an array, passing in the item and index.
  * @param {Array} arr
- * @param {function()} callback
+ * @param {Function} callback
  */
 function forEach( arr, callback )
 {
@@ -80,7 +80,7 @@ function forEach( arr, callback )
  * @description
  * Iterates of an object, passing in the item and key.
  * @param {Object} obj
- * @param {function()} callback
+ * @param {Function} callback
  */
 function forIn( obj, callback )
 {
@@ -97,7 +97,7 @@ function forIn( obj, callback )
  * Gets the internal JavaScript [[Class]] of an object.
  * http://perfectionkills.com/instanceof-considered-harmful-or-how-to-write-a-robust-isarray/
  * @param {*} object
- * @return {string}
+ * @return {String}
  */
 function typeOf( object )
 {
@@ -109,7 +109,7 @@ function typeOf( object )
  * @internal
  * @description Determines whether an object is a function.
  * @param {*} object
- * @return {boolean}
+ * @return {Boolean}
  */
 function isFunc( object ) {
     return typeOf( object ) === "function";
@@ -119,7 +119,7 @@ function isFunc( object ) {
  * @internal
  * @description Determines whether an object is an array.
  * @param {*} object
- * @return {boolean}
+ * @return {Boolean}
  */
 function isArray( object ) {
     return typeOf( object ) === "array";
@@ -138,8 +138,8 @@ function isString( object ) {
  * @description
  * Removes trailing whitespace from a string.
  * http://stackoverflow.com/a/2308157/740996
- * @param {string} value
- * @return {string}
+ * @param {String} value
+ * @return {String}
  */
 function trim( value ) {
     return value.trim ? value.trim() : value.replace( /^\s+|\s+$/g, "" );
@@ -168,8 +168,8 @@ function keys( object )
  * @internal
  * @description Determines whether a property exists on the object itself (as opposed to being in the prototype.)
  * @param {Object} obj
- * @param {string} prop
- * @return {boolean}
+ * @param {String} prop
+ * @return {Boolean}
  */
 function hasOwn( obj, prop ) {
     return Object.prototype.hasOwnProperty.call( obj, prop );
@@ -181,7 +181,7 @@ function hasOwn( obj, prop ) {
  * Searches an array for the specified item and returns its index. Returns -1 if the item is not found.
  * @param {Array} array
  * @param {*} item
- * @return {number}
+ * @return {Number}
  */
 function indexOf( array, item )
 {
@@ -207,7 +207,7 @@ function indexOf( array, item )
  * @description Determines whether an object was created using "{}" or "new Object".
  * https://github.com/jquery/jquery/blob/a5037cb9e3851b171b49f6d717fb40e59aa344c2/src/core.js#L237
  * @param {Object} obj
- * @return {boolean}
+ * @return {Boolean}
  */
 function isPlainObject( obj )
 {
@@ -244,7 +244,7 @@ function isPlainObject( obj )
  * @description
  * Executes a callback for each item in the set, producing a new array containing the return values.
  * @param {Array|Object} items
- * @param {function()} callback
+ * @param {Function} callback
  * @param {*} context
  * @return {Array}
  */
@@ -266,8 +266,8 @@ function map( items, callback, context )
 /**
  * @internal
  * @description Safely combines multiple path segments.
- * @param {...string} paths
- * @return {string}
+ * @param {...String} paths
+ * @return {String}
  */
 function pathCombine()
 {
@@ -341,7 +341,7 @@ function fake( callback, run )
  * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
  *
  * @param {Object} obj The object on which to define the property.
- * @param {string} prop The name of the property to be defined or modified.
+ * @param {String} prop The name of the property to be defined or modified.
  * @param {Object} descriptor The descriptor for the property being defined or modified.
  */
 function defineProperty( obj, prop, descriptor )

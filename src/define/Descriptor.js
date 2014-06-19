@@ -22,10 +22,6 @@ var Descriptor = new Class( function()
     ACCESS[ PROTECTED ] = 2;
     ACCESS[ PRIVATE ] = 3;
 
-    // A regex for testing the use of _super inside a function.
-    // http://ejohn.org/blog/simple-javascript-inheritance/
-    var CALL_SUPER = /xyz/.test( function() { xyz = 0; } ) ? /\b_super\b/ : /.*/;
-
     return {
         /**
          * @constructor
@@ -71,7 +67,6 @@ var Descriptor = new Class( function()
 
         theMembers: function( template, members )
         {
-            var ctorValidated = false;
             members = isObject( members ) ? members : {};
 
             forEach( keys( members ), function( key )
@@ -112,20 +107,11 @@ var Descriptor = new Class( function()
                     member.virtual = info.virtual;
                 }
 
-                if ( info.name === CTOR )
-                {
-                    validateConstructor( template, member );
-                    ctorValidated = true;
-                }
-
                 member.name = info.name;
                 member.access = info.access;
                 member.virtual = info.virtual;
                 template.members.add( info.name, member );
             });
-
-            if ( !ctorValidated )
-                validateConstructor( template, new Method() );
         }
     };
 
@@ -134,7 +120,7 @@ var Descriptor = new Class( function()
     /**
      * @private
      * @description Gets the member info by parsing the member name.
-     * @param {string} name
+     * @param {String} name
      * @return {MemberInfo}
      */
     function parse( name )
@@ -190,27 +176,11 @@ var Descriptor = new Class( function()
 
     /**
      * @private
-     * @description Checks whether the constructor calls its parent if required.
-     * @param {Template} template
-     * @param {Method} method
-     */
-    function validateConstructor( template, method )
-    {
-        if ( !method.callsuper && template.parent !== null )
-        {
-            var base = template.parent.members.get( CTOR );
-            if ( base !== null && base.params.length > 0 )
-                throw error( "DefinitionError", "Constructor must call the parent constructor explicitly because it contains parameters." );    
-        }
-    }
-
-    /**
-     * @private
      * @description Checks if member name collides with another member.
      * @param {Template} template The type to check.
-     * @param {string} name The member name.
-     * @param {bool} [base] True if the type being checked is a base type.
-     * @return {bool}
+     * @param {String} name The member name.
+     * @param {Boolean} [base] True if the type being checked is a base type.
+     * @return {Boolean}
      */
     function alreadyDefined( template, name, base )
     {
@@ -248,7 +218,6 @@ var Descriptor = new Class( function()
         var member = new Method();
         member.method = method;
         member.params = params;
-        member.callsuper = CALL_SUPER.test( method );
         return member;
     }
 
@@ -315,10 +284,9 @@ var Descriptor = new Class( function()
             if ( member.get.method === null )
             {
                 member.get.method = function() {
-                    return this._value();
+                    return this.$value();
                 };
             }
-            member.get.callsuper = CALL_SUPER.test( member.get.method );
         }
 
         if ( member.set !== null )
@@ -327,10 +295,9 @@ var Descriptor = new Class( function()
             if ( member.set.method === null )
             {
                 member.set.method = function( value ) {
-                    this._value( value );
+                    this.$value( value );
                 };
             }
-            member.set.callsuper = CALL_SUPER.test( member.set.method );
         }
 
         validateProperty( template, member );

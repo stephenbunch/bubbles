@@ -14,10 +14,10 @@ describe( "Property", function()
         var A = type.Class({
             foo: {
                 get: function() {
-                    return this._value() * 2;
+                    return this.$value() * 2;
                 },
                 set: function( value ) {
-                    this._value( value * 2 );
+                    this.$value( value * 2 );
                 }
             }
         });
@@ -31,20 +31,20 @@ describe( "Property", function()
         var A = type.Class({
             $foo: {
                 get: function() {
-                    return "hello " + this._value();
+                    return "hello " + this.$value();
                 },
                 set: function( value ) {
-                    this._value( value );
+                    this.$value( value );
                 }
             }
         });
         var B = A.extend({
             foo: {
                 get: function() {
-                    return this._super();
+                    return this.$super();
                 },
                 set: function( value ) {
-                    this._super( value + "!" );
+                    this.$super( value + "!" );
                 }
             }
         });
@@ -62,7 +62,7 @@ describe( "Property", function()
             foo: {
                 value: 3,
                 get: function() {
-                    return this._value();
+                    return this.$value();
                 }
             }
         });
@@ -80,7 +80,7 @@ describe( "Property", function()
                 get: null,
                 set: function( value )
                 {
-                    this._value( value );
+                    this.$value( value );
                     out = this.foo;
                 }
             }
@@ -101,7 +101,7 @@ describe( "Property", function()
                 set: function( value )
                 {
                     out1 = this.foo;
-                    this._value( value );
+                    this.$value( value );
                     out2 = this.foo;
                 }
             }

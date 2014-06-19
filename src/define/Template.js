@@ -1,7 +1,7 @@
 var Template = new Struct(
 {
     /**
-     * @type {Dictionary.<string, Event|Method|Property>}
+     * @type {Dictionary.<String, Event|Method|Property>}
      */
     members: null,
 

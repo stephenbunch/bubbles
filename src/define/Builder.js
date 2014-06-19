@@ -11,7 +11,7 @@ var Builder = new Class(
      * @param {Function} type The type to initialize.
      * @param {Object} pub The public interface to initialize on.
      * @param {Array} args Arguments for the constructor.
-     * @param {boolean} ctor Run the constructor.
+     * @param {Boolean} ctor Run the constructor.
      */
     init: function( template, pub, args, ctor )
     {
@@ -19,20 +19,13 @@ var Builder = new Class(
         var scope = this.system.createScope( template );
         scope.pub = pub;
 
-        defineProperty( scope.self, "_pub",
-        {
-            get: function() {
-                return scope.pub;
-            }
-        });
-
         this._build( scope );
         this._morph( scope );
         this._expose( scope );
 
         /**
          * @internal
-         * @description Used in conjunction with _pry to expose the private scope.
+         * @description Used in conjunction with $pry to expose the private scope.
          */
         defineProperty( scope.pub, "__scope__",
         {
@@ -96,14 +89,15 @@ var Builder = new Class(
             scope.parent = this.system.createScope( scope.template.parent );
             scope.parent.derived = scope;
             scope.parent.pub = scope.pub;
-            defineProperty( scope.parent.self, "_pub",
-            {
-                get: function() {
-                    return scope.pub;
-                }
-            });
             this._build( scope.parent );
         }
+
+        defineProperty( scope.self, "$pub",
+        {
+            get: function() {
+                return scope.pub;
+            }
+        });
 
         // Add proxies to parent members.
         if ( scope.template.parent !== null )
@@ -253,7 +247,7 @@ var Builder = new Class(
                 defineProperty( scope.pub, member.name,
                 {
                     get: function() {
-                        return scope.self[ member.name ]._pub;
+                        return scope.self[ member.name ].$pub;
                     },
                     set: function( value ) {
                         scope.self[ member.name ] = value;

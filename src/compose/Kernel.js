@@ -49,7 +49,7 @@ var Kernel = new Type( function()
             {
                 if ( value !== null && !isString( value ) )
                     throw error( "ArgumentError", "Value must be a string or `null`." );
-                this._value( value );
+                this.$value( value );
             }
         },
 
@@ -65,7 +65,7 @@ var Kernel = new Type( function()
             context( [], function() {} );
 
             this.requireContext = context;
-            return this._pub;
+            return this.$pub;
         },
 
         /**
@@ -124,7 +124,7 @@ var Kernel = new Type( function()
             }
             else
                 delete this.container[ service ];
-            return this._pub;
+            return this.$pub;
         },
 
         /**
@@ -171,7 +171,7 @@ var Kernel = new Type( function()
         register: function( graph )
         {
             this.registerGraph( "", graph );
-            return this._pub;
+            return this.$pub;
         },
 
         /**
@@ -191,7 +191,7 @@ var Kernel = new Type( function()
                 handler: handler
             });
 
-            return this._pub;
+            return this.$pub;
         },
 
         /**

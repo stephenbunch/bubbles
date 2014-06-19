@@ -76,7 +76,7 @@ var Task = new Class( function()
      * @description Satisfies 2.3 of the Promise/A+ spec.
      * @param {Task} promise
      * @param {*} x
-     * @return {boolean}
+     * @return {Boolean}
      */
     function resolve( promise, x )
     {

@@ -5,7 +5,6 @@ var Method = new Class(
      */
     ctor: function()
     {
-        this.callsuper = false;
         this.params = [];
         this.access = null;
         this.virtual = false;
@@ -29,13 +28,13 @@ var Method = new Class(
                 var _super = scope.parent.self[ this.name ];
                 scope.self[ this.name ] = function()
                 {
-                    var temp = scope.self._super;
-                    scope.self._super = _super;
+                    var temp = scope.self.$super;
+                    scope.self.$super = _super;
                     var result = self.method.apply( scope.self, arguments );
                     if ( temp === undefined )
-                        delete scope.self._super;
+                        delete scope.self.$super;
                     else
-                        scope.self._super = temp;
+                        scope.self.$super = temp;
                     return result;
                 };
             }
@@ -57,34 +56,39 @@ var Method = new Class(
         var self = this;
         scope.self.ctor = function()
         {
-            var _super = scope.self._super;
+            var _super = scope.self.$super;
             var _superOverridden = false;
+            var _superCalled = false;
 
             // Hide the constructor because it should never be called again.
             delete scope.self.ctor;
 
-            // Call the parent constructor if it is parameterless. Otherwise, assign it to this._super.
+            // Call the parent constructor if it is parameterless. Otherwise, assign it to this.$super.
             if ( scope.template.parent !== null && scope.template.parent.members.contains( CTOR ) )
             {
                 if ( scope.template.parent.members.get( CTOR ).params.length > 0 )
                 {
-                    scope.self._super = scope.parent.self.ctor;
+                    scope.self.$super = function()
+                    {
+                        _superCalled = true;
+                        scope.parent.self.ctor.apply( undefined, arguments );
+                    };
                     _superOverridden = true;
                 }
                 else
                     scope.parent.self.ctor();
             }
 
-            var _include = scope.self._include;
+            var _include = scope.self.$include;
 
             /**
              * @description Transcludes the members of another object.
              * @param {Object} obj
-             * @param {string|Array.<string>|Object} [member] The member {string} or members {Array.<string>} to
+             * @param {String|Array.<string>|Object} [member] The member {string} or members {Array.<string>} to
              * transclude. Or a key/value pair of members and the names to use.
-             * @param {string} [name] The name to transclude the member as.
+             * @param {String} [name] The name to transclude the member as.
              */
-            scope.self._include = function( obj, member, name )
+            scope.self.$include = function( obj, member, name )
             {
                 var i = 0, prop, len;
                 if ( !member )
@@ -113,63 +117,86 @@ var Method = new Class(
 
             if ( _superOverridden )
             {
+                if ( !_superCalled )
+                    throw error( "InvalidOperationError", "Constructor must call the parent constructor explicitly because it contains parameters." );
+
                 if ( _super === undefined )
-                    delete scope.self._super;
+                    delete scope.self.$super;
                 else
-                    scope.self._super = _super;
+                    scope.self.$super = _super;
             }
 
             if ( _include === undefined )
-                delete scope.self._include;
+                delete scope.self.$include;
             else
-                scope.self._include = _include;
+                scope.self.$include = _include;
         };
     },
 
     /**
-     * @param {Scope} scope
-     * @param {Object} obj
-     * @param {string} member
-     * @param {string} name
+     * @private
+     * @description Transcludes a given member and returns true if the member is already defined.
+     * @param {Scope} scope The scope with which to transclude the member.
+     * @param {Object} obj The object containing the member to transclude.
+     * @param {String} member The member to transclude.
+     * @param {String} name The name to transclude the member as.
+     * @return {Boolean}
      */
     _transclude: function( scope, obj, member, name )
     {
-        if ( scope.template.members.get( name ) !== null )
-            return;
+        // Indicates whether the member has been defined by a derived type. The implication is that the
+        // member should not be transcluded on the public interface since all type instances share the
+        // same public interface.
+        var defined = false;
 
-        var descriptor = Object.getOwnPropertyDescriptor( obj, member );
-        var usesValue = false;
+        if ( scope.derived )
+            defined = this._transclude( scope.derived, obj, member, name );
 
-        // Prototype members won't have a property descriptor.
-        if ( descriptor === undefined || "value" in descriptor )
+        if ( scope.template.members.get( name ) === null )
         {
-            if ( isFunc( obj[ member ] ) )
+            var descriptor = Object.getOwnPropertyDescriptor( obj, member );
+            var usesValue = false;
+            var isMethod = false;
+
+            // Prototype members won't have a property descriptor.
+            if ( descriptor === undefined || "value" in descriptor )
             {
-                scope.self[ name ] = proxy( obj[ member ], obj );
-                scope.pub[ name ] = scope.self[ name ];
-                return;
+                if ( isFunc( obj[ member ] ) )
+                {
+                    scope.self[ name ] = proxy( obj[ member ], obj );
+                    if ( !defined )
+                        scope.pub[ name ] = scope.self[ name ];
+                    isMethod = true;
+                }
+                usesValue = true;
             }
-            usesValue = true;
+
+            if ( !isMethod )
+            {
+                var get;
+                var set;
+
+                if ( usesValue || descriptor.get !== undefined )
+                {
+                    get = function() {
+                        return obj[ member ];
+                    };
+                }
+
+                if ( usesValue || descriptor.set !== undefined )
+                {
+                    set = function( value ) {
+                        obj[ member ] = value;
+                    };
+                }
+
+                defineProperty( scope.self, name, { get: get, set: set });
+                if ( !defined )
+                    defineProperty( scope.pub, name, { get: get, set: set });
+            }
         }
-
-        var get;
-        var set;
-
-        if ( usesValue || descriptor.get !== undefined )
-        {
-            get = function() {
-                return obj[ member ];
-            };
-        }
-
-        if ( usesValue || descriptor.set !== undefined )
-        {
-            set = function( value ) {
-                obj[ member ] = value;
-            };
-        }
-
-        defineProperty( scope.self, name, { get: get, set: set });
-        defineProperty( scope.pub, name, { get: get, set: set });
+        else
+            defined = true;
+        return defined;
     }
 });

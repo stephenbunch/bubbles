@@ -114,19 +114,6 @@ describe( "Descriptor", function()
         });
     });
 
-    it( "should throw an error if the parent constructor contains parameters and is not called from the child constructor", function()
-    {
-        var A = type.Class({
-            ctor: function( a ) {}
-        });
-        expect( function()
-        {
-            A.extend();
-        }).to.throwException( function( e ) {
-            expect( e ).to.be.a( type.error( "DefinitionError" ) );
-        });
-    });
-
     it( "can extend native javascript types", function()
     {
         var A = function() {};
@@ -274,7 +261,7 @@ describe( "Descriptor", function()
             });
             var B = A.extend({
                 _$foo: function() {
-                    return this._super() + " world";
+                    return this.$super() + " world";
                 }
             });
             var C = B.extend();

@@ -68,7 +68,7 @@ var Event = new Class( function()
                     handlers[ i ].apply( undefined, arguments );
             });
 
-            raise._pub = new Delegate( function() {
+            raise.$pub = new Delegate( function() {
                 throw error( "InvalidOperationError", "The event '" + self.name + "' cannot be raised except from within its own type." );
             });
 
@@ -80,7 +80,7 @@ var Event = new Class( function()
                 set: function( value )
                 {
                     // Make sure two delegates were added together, and that the left operand is ourself.
-                    if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise._pub ) )
+                    if ( Delegate.operands.length === 2 && ( Delegate.operands[0] === raise || Delegate.operands[0] === raise.$pub ) )
                     {
                         var handler = Delegate.operands[1];
 
