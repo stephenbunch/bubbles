@@ -37,6 +37,27 @@ describe( "Event", function()
             a.onFoo();
             expect( called ).to.equal( true );
         });
+
+        it( "should work inside derived type", function()
+        {
+            var out;
+            var A = type.Class({
+                foo: type.Event,
+                raiseFoo: function() {
+                    this.foo( "hello world" );
+                }
+            });
+            var B = A.extend({
+                ctor: function() {
+                    this.foo += function( message ) {
+                        out = message;
+                    };
+                }
+            });
+            var b = new B();
+            b.raiseFoo();
+            expect( out ).to.equal( "hello world" );
+        });
     });
 
     describe( "invoke", function()

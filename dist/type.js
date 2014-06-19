@@ -987,34 +987,64 @@ var Builder = new Class(
      */
     _proxy: function( parent, child )
     {
-        forEach( parent.template.members.values, function( member )
+        var i = 0, len = parent.template.members.values.length;
+        for ( ; i < len; i++ )
         {
+            var member = parent.template.members.values[ i ];
+
             // If the parent member is private or if it's been overridden by the child, don't make a reference.
             if ( member.access === PRIVATE || child.template.members.get( member.name ) )
-                return;
+                continue;
 
-            if ( member instanceof Method || member instanceof Event )
-            {
+            if ( member instanceof Method )
                 child.self[ member.name ] = parent.self[ member.name ];
-            }
+            else if ( member instanceof Event )
+                this._proxyEvent( parent, child.self, member );
             else if ( member instanceof Property )
-            {
-                var accessors = {};
-                if ( member.get && member.get.access !== PRIVATE )
-                {
-                    accessors.get = function() {
-                        return parent.self[ member.name ];
-                    };
-                }
-                if ( member.set && member.set.access !== PRIVATE )
-                {
-                    accessors.set = function( value ) {
-                        parent.self[ member.name ] = value;
-                    };
-                }
-                defineProperty( child.self, member.name, accessors );
+                this._proxyProperty( parent, child.self, member, [ PUBLIC, PROTECTED ] );
+        }
+    },
+
+    /**
+     * @param {Scope} source
+     * @param {Object} target
+     * @param {Event} member
+     */
+    _proxyEvent: function( source, target, member )
+    {
+        defineProperty( target, member.name,
+        {
+            get: function() {
+                return source.self[ member.name ].$pub;
+            },
+            set: function( value ) {
+                source.self[ member.name ] = value;
             }
         });
+    },
+
+    /**
+     * @param {Scope} source
+     * @param {Object} target
+     * @param {Property} member
+     * @param {Array.<String>} access
+     */
+    _proxyProperty: function( source, target, member, access )
+    {
+        var accessors = {};
+        if ( member.get && access.indexOf( member.get.access ) > -1 )
+        {
+            accessors.get = function() {
+                return source.self[ member.name ];
+            };
+        }
+        if ( member.set && access.indexOf( member.set.access ) > -1 )
+        {
+            accessors.set = function( value ) {
+                source.self[ member.name ] = value;
+            };
+        }
+        defineProperty( target, member.name, accessors );
     },
 
     _morph: function( scope )
@@ -1093,45 +1123,20 @@ var Builder = new Class(
         if ( scope.template.parent !== null )
             this._expose( scope.parent );
 
-        forEach( scope.template.members.values, function( member )
+        var i = 0, len = scope.template.members.values.length;
+        for ( ; i < len; i++ )
         {
+            var member = scope.template.members.values[ i ];
             if ( member.access !== PUBLIC )
-                return;
+                continue;
 
             if ( member instanceof Method )
-            {
                 scope.pub[ member.name ] = scope.self[ member.name ];
-            }
             else if ( member instanceof Event )
-            {
-                defineProperty( scope.pub, member.name,
-                {
-                    get: function() {
-                        return scope.self[ member.name ].$pub;
-                    },
-                    set: function( value ) {
-                        scope.self[ member.name ] = value;
-                    }
-                });
-            }
+                this._proxyEvent( scope, scope.pub, member );
             else if ( member instanceof Property )
-            {
-                var accessors = {};
-                if ( member.get && member.get.access === PUBLIC )
-                {
-                    accessors.get = function() {
-                        return scope.self[ member.name ];
-                    };
-                }
-                if ( member.set && member.set.access === PUBLIC )
-                {
-                    accessors.set = function( value ) {
-                        scope.self[ member.name ] = value;
-                    };
-                }
-                defineProperty( scope.pub, member.name, accessors );
-            }
-        });
+                this._proxyProperty( scope, scope.pub, member, [ PUBLIC ] );
+        }
     }
 });
 
