@@ -1,0 +1,21 @@
+{
+    "name": "TypeJS",
+    "version": "1.0.0",
+    "main": "dist/type.js",
+    "ignore": [
+        "src",
+        "test",
+        ".gitignore",
+        ".travis.yml",
+        "bower.json",
+        "config.ru",
+        "Gemfile",
+        "Gemfile.lock",
+        "Gruntfile.js",
+        "index.html",
+        "memory.html",
+        "package.json",
+        "README.md",
+        "theory.html"
+    ]
+}
