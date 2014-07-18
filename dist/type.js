@@ -1,9 +1,9 @@
 /*!
- * typejs v0.1.0
+ * typejs v1.0.0
  * (c) 2014 Stephen Bunch https://github.com/stephenbunch/typejs
  * License: MIT
  */
-//@ sourceMappingURL=type.map
+//# sourceMappingURL=type.map
 ( function( global ) {
 "use strict";
 

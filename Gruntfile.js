@@ -96,7 +96,7 @@ module.exports = function( grunt )
 
             var src = banner;
             if ( options.sourceMap )
-                src += "//@ sourceMappingURL=" + mapName + "\n";
+                src += "//# sourceMappingURL=" + mapName + "\n";
 
             var offset = src.split( "\n" ).length - 1;
 
