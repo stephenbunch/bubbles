@@ -47,7 +47,9 @@ var _exports = {
      * @description Creates a new lazy object.
      * @return {Lazy}
      */
-    Lazy: Lazy
+    Lazy: Lazy,
+
+    ns: ns
 };
 
 if ( typeof module !== "undefined" && module.exports )

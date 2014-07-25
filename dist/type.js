@@ -414,6 +414,19 @@ function loop( callback )
     }
 }
 
+function ns( path, root )
+{
+    var props = path.split( "." ), i = 0, len = props.length;
+    var obj = root || window;
+    for ( ; i < len; i++ )
+    {
+        if ( !hasOwn( obj, props[ i ] ) )
+            obj[ props[ i ] ] = {};
+        obj = obj[ props[ i ] ];
+    }
+    return obj;
+}
+
 var Class = function( methods )
 {
     methods = methods || {};
@@ -3108,7 +3121,9 @@ var _exports = {
      * @description Creates a new lazy object.
      * @return {Lazy}
      */
-    Lazy: Lazy
+    Lazy: Lazy,
+
+    ns: ns
 };
 
 if ( typeof module !== "undefined" && module.exports )

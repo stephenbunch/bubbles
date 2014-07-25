@@ -363,3 +363,16 @@ function loop( callback )
             break;
     }
 }
+
+function ns( path, root )
+{
+    var props = path.split( "." ), i = 0, len = props.length;
+    var obj = root || window;
+    for ( ; i < len; i++ )
+    {
+        if ( !hasOwn( obj, props[ i ] ) )
+            obj[ props[ i ] ] = {};
+        obj = obj[ props[ i ] ];
+    }
+    return obj;
+}
