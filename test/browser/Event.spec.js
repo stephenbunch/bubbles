@@ -136,5 +136,25 @@ describe( "Event", function()
             a.onFoo();
             expect( called ).to.equal( 3 );
         });
+
+        it( "should not cause an error inside a handler of the same event", function() {
+            var A = type.Class({
+                foo: type.Event,
+                onFoo: function() {
+                    this.foo();
+                }
+            });
+            var a = new A();
+            var called = 0;
+            var handler = function() {
+                a.foo -= handler;
+                called++;
+            };
+            a.foo += handler;
+            a.foo += handler;
+            a.onFoo();
+            a.onFoo();
+            expect( called ).to.equal( 2 );
+        });
     });
 });

@@ -1572,9 +1572,10 @@ var Event = new Class( function()
             var handlers = [];
             var raise = new Delegate( function()
             {
-                var i = 0, len = handlers.length;
+                var run = handlers.slice();
+                var i = 0, len = run.length;
                 for ( ; i < len; i++ )
-                    handlers[ i ].apply( undefined, arguments );
+                    run[ i ].apply( undefined, arguments );
             });
 
             raise.$pub = new Delegate( function() {
