@@ -17,8 +17,3 @@ $ rackup
 $ npm install
 $ grunt
 ```
-
-## Debug Tests
-1. Run `node-inspector`
-2. Run `node --debug-brk $(which grunt) mocha`
-3. Launch http://127.0.0.1:8080/debug?port=5858 in Chrome.

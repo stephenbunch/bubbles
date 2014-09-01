@@ -679,17 +679,40 @@ var Task = new Class( function()
             this.resolve = function( result )
             {
                 done( FULFILLED, result );
-                return this;
+                return self;
             };
 
             this.reject = function( reason )
             {
                 done( REJECTED, reason );
-                return this;
+                return self;
+            };
+
+            this.finally = function( callback )
+            {
+                return self.then(
+                    function( result )
+                    {
+                        var value = callback.apply( undefined, arguments );
+                        if ( value && hasOwn( value, "then" ) )
+                            return value;
+                        else
+                            return result;
+                    },
+                    function( reason )
+                    {
+                        var result = callback( reason );
+                        if ( result && hasOwn( result, "then" ) )
+                            return result;
+                        else
+                            throw reason;
+                    }
+                );
             };
 
             this.promise = {
-                then: this.then
+                then: this.then,
+                finally: this.finally
             };
 
             if ( action )

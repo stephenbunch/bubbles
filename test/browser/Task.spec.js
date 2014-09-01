@@ -7,6 +7,7 @@ describe( "Task", function()
             var task = type.Task();
             var promise = task.promise;
             expect( promise.then ).to.be.a( "function" );
+            expect( promise.finally ).to.be.a( "function" );
             expect( promise.resolve ).to.be.undefined;
             expect( promise.reject ).to.be.undefined;
         });
@@ -14,7 +15,7 @@ describe( "Task", function()
 
     describe( ".splat()", function()
     {
-        it( "should behave as .then(), but split the result into separate parameters", function()
+        it( "should behave as .then(), but split the result into separate parameters", function( done )
         {
             var def = type.Task();
             def.splat( function( a, b, c )
@@ -22,8 +23,68 @@ describe( "Task", function()
                 expect( a ).to.equal( 1 );
                 expect( b ).to.equal( 2 );
                 expect( c ).to.equal( 3 );
+                done();
             }, null, false );
             def.resolve([ 1, 2, 3 ]);
+        });
+    });
+
+    describe( ".finally()", function()
+    {
+        it( "should always be called", function( done )
+        {
+            var task = type.Task();
+            var pending = 2;
+            var onComplete = function() {
+                if ( --pending === 0 )
+                    done();
+            };
+            task.finally( onComplete );
+            task.resolve();
+            task = type.Task();
+            task.finally( onComplete );
+            task.reject();
+        });
+
+        it( "should not modify the result", function( done )
+        {
+            var task = type.Task();
+            var onComplete = function() {
+                return "world";
+            };
+            var pending = 2;
+            task.finally( onComplete ).then( function( result ) {
+                expect( result ).to.equal( "hello" );
+                if ( --pending === 0 )
+                    done();
+            });
+            task.resolve( "hello" );
+            task = type.Task();
+            task.finally( onComplete ).then( null, function( reason ) {
+                expect( reason.message ).to.equal( "test" );
+                if ( --pending === 0 )
+                    done();
+            });
+            task.reject( new Error( "test" ) );
+        });
+
+        it( "should return result if result is thenable", function( done )
+        {
+            var task = type.Task();
+            var pending = 2;
+            var onComplete = function() {
+                return type.Task().resolve( "world" ).promise;
+            };
+            var onSuccess = function( result ) {
+                expect( result ).to.equal( "world" );
+                if ( --pending === 0 )
+                    done();
+            };
+            task.finally( onComplete ).then( onSuccess );
+            task.resolve( "hello" );
+            task = type.Task();
+            task.finally( onComplete ).then( onSuccess );
+            task.reject( new Error( "hello" ) );
         });
     });
 
