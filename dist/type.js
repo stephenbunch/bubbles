@@ -725,6 +725,12 @@ var Task = new Class( function()
                 }
             });
 
+            defineProperty( this.promise, "value", {
+                get: function() {
+                    return value;
+                }
+            });
+
             if ( action )
             {
                 setImmediate( function() {
