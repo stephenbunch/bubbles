@@ -40,13 +40,17 @@ var Task = new Class( function()
 
             this.resolve = function( result )
             {
-                done( FULFILLED, result );
+                setImmediate( function() {
+                    done( FULFILLED, result );
+                });
                 return self;
             };
 
             this.reject = function( reason )
             {
-                done( REJECTED, reason );
+                setImmediate( function() {
+                    done( REJECTED, reason );
+                });
                 return self;
             };
 
@@ -76,6 +80,12 @@ var Task = new Class( function()
                 then: this.then,
                 finally: this.finally
             };
+
+            defineProperty( this, "value", {
+                get: function() {
+                    return value;
+                }
+            });
 
             if ( action )
             {

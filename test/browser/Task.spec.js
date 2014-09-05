@@ -88,6 +88,20 @@ describe( "Task", function()
         });
     });
 
+    describe( ".value", function()
+    {
+        it( "should return null until the task is resolved", function( done )
+        {
+            var task = type.Task();
+            task.resolve( "hello" );
+            expect( task.value ).to.be.null;
+            task.then( function() {
+                expect( task.value ).to.equal( "hello" );
+                done();
+            });
+        });
+    });
+
     describe( "Task.when()", function()
     {
         it( "should combine multiple promises into a single promise", function( done )
