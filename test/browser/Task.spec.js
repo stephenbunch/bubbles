@@ -122,4 +122,15 @@ describe( "Task", function()
             def1.resolve( 1 );
         });
     });
+
+    describe( "Task.from()", function()
+    {
+        it( "should return a resolved promise", function( done )
+        {
+            type.Task.from( "hello" ).then( function( result ) {
+                expect( result ).to.equal( "hello" );
+                done();
+            });
+        });
+    });
 });

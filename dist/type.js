@@ -903,6 +903,10 @@ Task.chain = function( segments )
     return promise;
 };
 
+Task.from = function( value ) {
+    return new Task().resolve( value ).promise;
+};
+
 var Accessor = new Struct(
 {
     access: null,
