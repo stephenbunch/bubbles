@@ -90,17 +90,14 @@ describe( "Task", function()
 
     describe( ".value", function()
     {
-        it( "should return null until the task is resolved", function( done )
+        it( "should return null until the task is resolved", function()
         {
             var task = type.Task();
-            task.resolve( "hello" );
             expect( task.value ).to.be.null;
             expect( task.promise.value ).to.be.null;
-            task.then( function() {
-                expect( task.value ).to.equal( "hello" );
-                expect( task.promise.value ).to.equal( "hello" );
-                done();
-            });
+            task.resolve( "hello" );
+            expect( task.value ).to.equal( "hello" );
+            expect( task.promise.value ).to.equal( "hello" );
         });
     });
 

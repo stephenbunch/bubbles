@@ -678,17 +678,13 @@ var Task = new Class( function()
 
             this.resolve = function( result )
             {
-                setImmediate( function() {
-                    done( FULFILLED, result );
-                });
+                done( FULFILLED, result );
                 return self;
             };
 
             this.reject = function( reason )
             {
-                setImmediate( function() {
-                    done( REJECTED, reason );
-                });
+                done( REJECTED, reason );
                 return self;
             };
 
