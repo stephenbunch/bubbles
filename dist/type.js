@@ -790,11 +790,7 @@ var Task = new Class( function()
             });
 
             if ( action )
-            {
-                setImmediate( function() {
-                    action.call( undefined, self.resolve, self.reject );
-                });
-            }
+                action.call( undefined, self.resolve, self.reject );
         },
 
         splat: function( onFulfilled, onRejected )
