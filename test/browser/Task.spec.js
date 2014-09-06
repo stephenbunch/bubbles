@@ -1,5 +1,16 @@
 describe( "Task", function()
 {
+    describe( "initial callback to resolve the promise", function()
+    {
+        it( "should be executed in the same event loop", function()
+        {
+            var task = type.Task( function( resolve ) {
+                resolve( "hello" );
+            });
+            expect( task.value ).to.equal( "hello" );
+        });
+    });
+
     describe( ".promise", function()
     {
         it( "should return a read-only interface to the task that is also Promise/A+ compliant", function()
