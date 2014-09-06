@@ -343,7 +343,7 @@ var setImmediate = ( function()
         // http://dbaron.org/log/20100309-faster-timeouts
 
         var timeouts = [];
-        var messageName = "zero-timeout-message";
+        var messageName = "https://github.com/stephenbunch/typejs/zero-timeout-message";
 
         // Like setTimeout, but only takes a function argument.  There's
         // no time argument (always zero) and no arguments (you have to
@@ -423,6 +423,68 @@ function ns( path, root )
         if ( !hasOwn( obj, props[ i ] ) )
             obj[ props[ i ] ] = {};
         obj = obj[ props[ i ] ];
+    }
+    return obj;
+}
+
+function merge( obj, mixin, members )
+{
+    function copy( member, name )
+    {
+        var descriptor = Object.getOwnPropertyDescriptor( mixin, member );
+        var usesValue = false;
+        var isMethod = false;
+        // Prototype members won't have a property descriptor.
+        if ( descriptor === undefined || "value" in descriptor )
+        {
+            if ( isFunc( mixin[ member ] ) )
+            {
+                obj[ name ] = proxy( mixin[ member ], mixin );
+                isMethod = true;
+            }
+            usesValue = true;
+        }
+        if ( !isMethod )
+        {
+            var get;
+            var set;
+            if ( usesValue || descriptor.get !== undefined )
+            {
+                get = function() {
+                    return mixin[ member ];
+                };
+            }
+            if ( usesValue || descriptor.set !== undefined )
+            {
+                set = function( value ) {
+                    mixin[ member ] = value;
+                };
+            }
+            defineProperty( obj, name,
+            {
+                get: get,
+                set: set
+            });
+        }
+    }
+    var i = 0, prop, len;
+    if ( !members )
+    {
+        for ( prop in mixin )
+            copy( prop, prop );
+    }
+    else if ( isArray( members ) )
+    {
+        len = members.length;
+        for ( ; i < len; i++ )
+            copy( members[ i ], members[ i ] );
+    }
+    else
+    {
+        var props = keys( members );
+        len = props.length;
+        for ( ; i < len; i++ )
+            copy( props[ i ], members[ props[ i ] ] );
     }
     return obj;
 }
@@ -1752,32 +1814,29 @@ var Method = new Class(
             /**
              * @description Transcludes the members of another object.
              * @param {Object} obj
-             * @param {String|Array.<string>|Object} [member] The member {string} or members {Array.<string>} to
+             * @param {Array.<string>|Object} [members] The members {Array.<string>} to
              * transclude. Or a key/value pair of members and the names to use.
-             * @param {String} [name] The name to transclude the member as.
              */
-            scope.self.$include = function( obj, member, name )
+            scope.self.$include = function( obj, members )
             {
                 var i = 0, prop, len;
-                if ( !member )
+                if ( !members )
                 {
                     for ( prop in obj )
                         self._transclude( scope, obj, prop, prop );
                 }
-                else if ( isString( member ) )
-                    self._transclude( scope, obj, member, name || member );
-                else if ( isArray( member ) )
+                else if ( isArray( members ) )
                 {
-                    len = member.length;
+                    len = members.length;
                     for ( ; i < len; i++ )
-                        self._transclude( scope, obj, member[ i ], member[ i ] );
+                        self._transclude( scope, obj, members[ i ], members[ i ] );
                 }
                 else
                 {
-                    var props = keys( member );
+                    var props = keys( members );
                     len = props.length;
                     for ( ; i < len; i++ )
-                        self._transclude( scope, obj, props[ i ], member[ props[ i ] ] );
+                        self._transclude( scope, obj, props[ i ], members[ props[ i ] ] );
                 }
             };
 
@@ -3115,8 +3174,6 @@ var Recipe = new Struct(
 var _exports = {
     Class: Type,
     Event: Descriptor.Event,
-    Simple: Class,
-    Struct: Struct,
 
     extend: Type.extend,
 
@@ -3163,7 +3220,10 @@ var _exports = {
      */
     Lazy: Lazy,
 
-    ns: ns
+    ns: ns,
+
+    setImmediate: setImmediate,
+    merge: merge
 };
 
 if ( typeof module !== "undefined" && module.exports )

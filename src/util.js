@@ -293,7 +293,7 @@ var setImmediate = ( function()
         // http://dbaron.org/log/20100309-faster-timeouts
 
         var timeouts = [];
-        var messageName = "zero-timeout-message";
+        var messageName = "https://github.com/stephenbunch/typejs/zero-timeout-message";
 
         // Like setTimeout, but only takes a function argument.  There's
         // no time argument (always zero) and no arguments (you have to
@@ -373,6 +373,68 @@ function ns( path, root )
         if ( !hasOwn( obj, props[ i ] ) )
             obj[ props[ i ] ] = {};
         obj = obj[ props[ i ] ];
+    }
+    return obj;
+}
+
+function merge( obj, mixin, members )
+{
+    function copy( member, name )
+    {
+        var descriptor = Object.getOwnPropertyDescriptor( mixin, member );
+        var usesValue = false;
+        var isMethod = false;
+        // Prototype members won't have a property descriptor.
+        if ( descriptor === undefined || "value" in descriptor )
+        {
+            if ( isFunc( mixin[ member ] ) )
+            {
+                obj[ name ] = proxy( mixin[ member ], mixin );
+                isMethod = true;
+            }
+            usesValue = true;
+        }
+        if ( !isMethod )
+        {
+            var get;
+            var set;
+            if ( usesValue || descriptor.get !== undefined )
+            {
+                get = function() {
+                    return mixin[ member ];
+                };
+            }
+            if ( usesValue || descriptor.set !== undefined )
+            {
+                set = function( value ) {
+                    mixin[ member ] = value;
+                };
+            }
+            defineProperty( obj, name,
+            {
+                get: get,
+                set: set
+            });
+        }
+    }
+    var i = 0, prop, len;
+    if ( !members )
+    {
+        for ( prop in mixin )
+            copy( prop, prop );
+    }
+    else if ( isArray( members ) )
+    {
+        len = members.length;
+        for ( ; i < len; i++ )
+            copy( members[ i ], members[ i ] );
+    }
+    else
+    {
+        var props = keys( members );
+        len = props.length;
+        for ( ; i < len; i++ )
+            copy( props[ i ], members[ props[ i ] ] );
     }
     return obj;
 }

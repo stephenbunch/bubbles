@@ -1,8 +1,6 @@
 var _exports = {
     Class: Type,
     Event: Descriptor.Event,
-    Simple: Class,
-    Struct: Struct,
 
     extend: Type.extend,
 
@@ -49,7 +47,10 @@ var _exports = {
      */
     Lazy: Lazy,
 
-    ns: ns
+    ns: ns,
+
+    setImmediate: setImmediate,
+    merge: merge
 };
 
 if ( typeof module !== "undefined" && module.exports )

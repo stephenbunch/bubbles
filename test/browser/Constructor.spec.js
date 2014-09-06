@@ -181,11 +181,6 @@ describe( "Constructor", function()
                 bar: null
             });
             var B = type.Class({
-                ctor: function( a ) {
-                    this.$include( a, "foo", "bar" );
-                }
-            });
-            var C = type.Class({
                 ctor: function( a )
                 {
                     this.$include( a, {
@@ -195,11 +190,8 @@ describe( "Constructor", function()
                 }
             });
             var b = new B( new A() );
-            expect( b.foo ).to.equal( undefined );
-            expect( b.bar ).to.equal( 2 );
-            var c = new C( new A() );
-            expect( c.baz ).to.equal( 2 );
-            expect( c.qux ).to.equal( 4 );
+            expect( b.baz ).to.equal( 2 );
+            expect( b.qux ).to.equal( 4 );
         });
 
         it( "can transclude events", function()
@@ -212,7 +204,7 @@ describe( "Constructor", function()
             });
             var B = type.Class({
                 ctor: function( a ) {
-                    this.$include( a, "click" );
+                    this.$include( a, [ "click" ] );
                 },
                 test: function() {
                     this.click( "hello" );
