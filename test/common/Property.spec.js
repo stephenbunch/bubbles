@@ -126,6 +126,7 @@ describe( "Property", function()
 
     it( "can specify separate access modifers for 'get' and 'set'", function()
     {
+        "use strict";
         var A = type.Class({
             ctor: function() {
                 this.foo = 1;
@@ -133,21 +134,30 @@ describe( "Property", function()
             foo: { get: null, __set: null }
         });
         var a = new A();
-        expect( a.foo ).to.equal( 1 );
-        a.foo = 2;
+        expect( function() {
+            a.foo = 2;
+        }).to.throwException( function(e) {
+            expect( e ).to.be.a( TypeError );
+        });
         expect( a.foo ).to.equal( 1 );
     });
 
     it( "should throw an error if writing to a read-only property or reading from a write-only property", function()
     {
+        "use strict";
         var A = type.Class({ foo: { get: null } });
         var a = new A();
-        a.foo = 2;
-        expect( a.foo ).to.equal( null );
+        expect( function() {
+            a.foo = 2;
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( TypeError );
+        });
+        expect( a.foo ).to.be.null;
     });
 
     it( "can be protected with a private setter", function()
     {
+        "use strict";
         var A = type.Class({ _foo: { get: null, __set: null, value: "hello" } });
         var B = A.extend({
             read: function() {
@@ -160,11 +170,15 @@ describe( "Property", function()
         var b = new B();
         expect( b.foo ).to.be.undefined;
         expect( b.read() ).to.equal( "hello" );
-        b.write( "test" );
+        expect( function() {
+            b.write( "test" );
+        }).to.throwException( function( e ) {
+            expect( e ).to.be.a( TypeError );
+        });
         expect( b.read() ).to.equal( "hello" );
     });
 
-    it( "should be enumerable (except in IE8)", function()
+    it( "should be enumerable", function()
     {
         var A = type.Class({ foo: 2 });
         var a = new A();

@@ -1,9 +1,8 @@
 /*!
- * type v1.0.0
- * (c) 2014 Stephen Bunch https://github.com/stephenbunch/typejs
+ * type v0.0.1
+ * (c) 2014 Stephen Bunch https://github.com/stephenbunch/type
  * License: MIT
  */
-//# sourceMappingURL=type.map
 ( function( global ) {
 "use strict";
 
@@ -3239,3 +3238,4 @@ else
 
 } ( typeof global === "undefined" ? window : global ) );
 
+//# sourceMappingURL=type.js.map
