@@ -343,7 +343,7 @@ var setImmediate = ( function()
         // http://dbaron.org/log/20100309-faster-timeouts
 
         var timeouts = [];
-        var messageName = "https://github.com/stephenbunch/typejs/zero-timeout-message";
+        var messageName = "https://github.com/stephenbunch/type/zero-timeout-message";
 
         // Like setTimeout, but only takes a function argument.  There's
         // no time argument (always zero) and no arguments (you have to
@@ -3043,7 +3043,7 @@ var Kernel = new Type( function()
             else if ( !BROWSER )
             {
                 this.moduleLoader = function( module ) {
-                    return new Task().resolve( global.require( module ) ).promise;
+                    return new Task().resolve( require( module ) ).promise;
                 };
             }
         },
