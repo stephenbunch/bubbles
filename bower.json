@@ -1,5 +1,5 @@
 {
-    "name": "typejs",
+    "name": "type",
     "version": "1.0.0",
     "main": "dist/type.js",
     "ignore": [
