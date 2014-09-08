@@ -262,4 +262,27 @@ describe( "Constructor", function()
             expect( d.foo() ).to.equal( "world" );
         });
     });
+
+    describe( "this.$merge()", function()
+    {
+        it( "should work like this.$include(), but should not expose the transcluded members on the public interface", function()
+        {
+            var A = type.Class({
+                ctor: function( obj ) {
+                    this.$merge( obj );
+                },
+
+                test: function() {
+                    return this.foo();
+                }
+            });
+            var a = new A({
+                foo: function() {
+                    return "hello";
+                }
+            });
+            expect( a.test() ).to.equal( "hello" );
+            expect( a.foo ).to.be.undefined;
+        });
+    });
 });
