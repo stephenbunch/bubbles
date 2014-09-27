@@ -225,7 +225,11 @@ var Kernel = new Type( function()
             else if ( !BROWSER )
             {
                 this.moduleLoader = function( module ) {
-                    return new Task().resolve( require( module ) ).promise;
+                    try {
+                        return new Task().resolve( require( module ) ).promise;
+                    } catch ( e ) {
+                        return new Task().reject( e ).promise;
+                    }
                 };
             }
         },
