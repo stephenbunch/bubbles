@@ -1,6 +1,6 @@
 /*!
  * type v0.0.1
- * (c) 2014 Stephen Bunch https://github.com/stephenbunch/type
+ * (c) 2015 Stephen Bunch https://github.com/stephenbunch/type
  * License: MIT
  */
 ( function( global ) {
@@ -2436,6 +2436,7 @@ var Box = new Class(
                         child.parent = component;
                         child.order = index;
                         component.children[ index ] = child;
+                        self._checkForCircularDepenency( child );
                         pending.push( child );
                     }
                     else
@@ -2445,6 +2446,7 @@ var Box = new Class(
                             child.parent = component;
                             child.order = index;
                             component.children[ index ] = child;
+                            self._checkForCircularDepenency( child );
                         });
                     }
                 });
@@ -2452,6 +2454,25 @@ var Box = new Class(
             return pending.length;
         });
         return result;
+    },
+
+    _checkForCircularDepenency: function( component )
+    {
+        var node = component.parent;
+        var last = component.recipe.name;
+        while ( node )
+        {
+            if ( node.recipe.name === component.recipe.name )
+            {
+                throw error(
+                    "InvalidOperationError",
+                    "Detected circular dependency to '" + component.recipe.name + "' through '" +
+                    last.recipe.name + "'."
+                );
+            }
+            last = node;
+            node = node.parent;
+        }
     },
 
     /**
@@ -2483,6 +2504,7 @@ var Box = new Class(
                 var recipe = self._cookbook.search( svc );
                 if ( recipe )
                 {
+                    recipe.name = service;
                     recipe.factory = factory;
                     recipe.lazy = lazy;
                     callback( self._prepare( recipe ) );
@@ -2530,14 +2552,23 @@ var Chef = new Class(
     {
         var self = this;
         var task = new Task();
-        var box = new Box( this._cookbook, idea );
+        var box;
 
-        if ( box.missing.length )
-            load();
-        else
-            task.resolve( box.component );
+        try
+        {
+            box = new Box( this._cookbook, idea );
+            if ( box.missing.length )
+                load();
+            else
+                task.resolve( box.component );
 
-        return task.promise;
+            return task.promise;
+        }
+        catch ( err )
+        {
+            task.reject( err );
+            return task.promise;
+        }
 
         function load() {
             self._load( self._getNames( box.missing ) ).then( done, fail, false );

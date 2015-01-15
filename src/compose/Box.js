@@ -81,6 +81,7 @@ var Box = new Class(
                         child.parent = component;
                         child.order = index;
                         component.children[ index ] = child;
+                        self._checkForCircularDepenency( child );
                         pending.push( child );
                     }
                     else
@@ -90,6 +91,7 @@ var Box = new Class(
                             child.parent = component;
                             child.order = index;
                             component.children[ index ] = child;
+                            self._checkForCircularDepenency( child );
                         });
                     }
                 });
@@ -97,6 +99,25 @@ var Box = new Class(
             return pending.length;
         });
         return result;
+    },
+
+    _checkForCircularDepenency: function( component )
+    {
+        var node = component.parent;
+        var last = component.recipe.name;
+        while ( node )
+        {
+            if ( node.recipe.name === component.recipe.name )
+            {
+                throw error(
+                    "InvalidOperationError",
+                    "Detected circular dependency to '" + component.recipe.name + "' through '" +
+                    last.recipe.name + "'."
+                );
+            }
+            last = node;
+            node = node.parent;
+        }
     },
 
     /**
@@ -128,6 +149,7 @@ var Box = new Class(
                 var recipe = self._cookbook.search( svc );
                 if ( recipe )
                 {
+                    recipe.name = service;
                     recipe.factory = factory;
                     recipe.lazy = lazy;
                     callback( self._prepare( recipe ) );

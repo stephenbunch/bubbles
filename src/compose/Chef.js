@@ -19,14 +19,23 @@ var Chef = new Class(
     {
         var self = this;
         var task = new Task();
-        var box = new Box( this._cookbook, idea );
+        var box;
 
-        if ( box.missing.length )
-            load();
-        else
-            task.resolve( box.component );
+        try
+        {
+            box = new Box( this._cookbook, idea );
+            if ( box.missing.length )
+                load();
+            else
+                task.resolve( box.component );
 
-        return task.promise;
+            return task.promise;
+        }
+        catch ( err )
+        {
+            task.reject( err );
+            return task.promise;
+        }
 
         function load() {
             self._load( self._getNames( box.missing ) ).then( done, fail, false );

@@ -141,6 +141,34 @@ describe( "Kernel", function()
                 done();
             });
         });
+
+        it( "should throw an error when a circular dependency is detected", function( done )
+        {
+            var kernel = type.Kernel();
+            kernel.delegate( "foo", function() {
+                return type.Task().resolve([ "bar", function() {} ]);
+            });
+            kernel.delegate( "bar", function() {
+                return type.Task().resolve([ "baz", function() {} ]);
+            });
+            kernel.delegate( "baz", function() {
+                return type.Task().resolve([ "foo", function() {} ]);
+            });
+            kernel.get( "foo" ).then( null, function( err )
+            {
+                expect( err.name ).to.equal( "InvalidOperationError" );
+
+                kernel = type.Kernel();
+                kernel.bind( "foo" ).to([ "bar", function() {} ]);
+                kernel.bind( "bar" ).to([ "baz", function() {} ]);
+                kernel.bind( "baz" ).to([ "foo", function() {} ]);
+                kernel.get( "foo" ).then( null, function( err )
+                {
+                    expect( err.name ).to.equal( "InvalidOperationError" );
+                    done();
+                });
+            });
+        });
     });
 
     describe( ".register()", function()

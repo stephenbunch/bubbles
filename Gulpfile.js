@@ -137,6 +137,10 @@ gulp.task( "karma", [ "build" ], function()
     gulp.watch([ "src/**/*", "test/**/*" ], [ "build", karma.run ]);
 });
 
+gulp.task( "watch", [ "build" ], function() {
+    gulp.watch([ "src/**/*", "test/**/*" ], [ "build" ]);
+});
+
 gulp.task( "default", function( done ) {
     sequence( "build", "test", done );
 });
