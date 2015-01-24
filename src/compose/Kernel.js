@@ -30,7 +30,7 @@ var Kernel = new Type( function()
     });
 
     return {
-        ctor: function()
+        ctor: function( pathPrefix )
         {
             this.container = {};
             this.delegatingHandlers = [];
@@ -41,6 +41,9 @@ var Kernel = new Type( function()
             this.detectModuleSupport();
 
             this.chef = new Chef( new Cookbook( this.container ), this.chef_onLoad );
+
+            if ( pathPrefix )
+                this.pathPrefix = pathPrefix;
         },
 
         pathPrefix: {

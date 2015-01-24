@@ -1,5 +1,17 @@
 describe( "Kernel", function()
 {
+    describe( '.ctor()', function()
+    {
+        it( 'should accept an optional pathPrefix argument', function()
+        {
+            var kernel = type.Kernel();
+            expect( kernel.pathPrefix ).to.be.null;
+
+            kernel = type.Kernel( 'foo' );
+            expect( kernel.pathPrefix ).to.equal( 'foo' );
+        });
+    });
+
     describe( ".bind()", function()
     {
         it( "should return a BindingSelector", function()
