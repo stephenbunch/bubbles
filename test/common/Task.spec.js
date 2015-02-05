@@ -79,23 +79,30 @@ describe( "Task", function()
             task.reject( new Error( "test" ) );
         });
 
-        it( "should return result if result is thenable", function( done )
+        it( "should not modify result if result is thenable unless an error is thrown", function()
         {
-            var task = type.Task();
-            var pending = 2;
-            var onComplete = function() {
-                return type.Task().resolve( "world" ).promise;
-            };
-            var onSuccess = function( result ) {
-                expect( result ).to.equal( "world" );
-                if ( --pending === 0 )
-                    done();
-            };
-            task.finally( onComplete ).then( onSuccess );
-            task.resolve( "hello" );
-            task = type.Task();
-            task.finally( onComplete ).then( onSuccess );
-            task.reject( new Error( "hello" ) );
+            var successTask = type.Task().resolve( "hello" );
+            var failTask = type.Task().reject( new Error( "hello" ) );
+            var failFinally = type.Task().reject( new Error( "hello" ) );
+            return type.Task.when(
+                successTask.finally( function() {
+                    return type.Task().resolve( "world" ).promise;
+                }).then( function( result ) {
+                    expect( result ).to.equal( "hello" );
+                }),
+
+                failTask.finally( function() {
+                    return type.Task().resolve( "world" ).promise;
+                }).then( null, function( err ) {
+                    expect( err.message ).to.equal( "hello" );
+                }),
+
+                failFinally.finally( function() {
+                    return type.Task().reject( new Error( "world" ) ).promise;
+                }).then( null, function( err ) {
+                    expect( err.message ).to.equal( "world" );
+                })
+            );
         });
     });
 

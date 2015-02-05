@@ -1,5 +1,5 @@
 /*!
- * type v0.0.1
+ * type v1.0.1
  * (c) 2015 Stephen Bunch https://github.com/stephenbunch/type
  * License: MIT
  */
@@ -756,7 +756,11 @@ var Task = new Class( function()
                     {
                         var value = callback.apply( undefined, arguments );
                         if ( value && hasOwn( value, "then" ) )
-                            return value;
+                        {
+                            return value.then( function() {
+                                return result;
+                            });
+                        }
                         else
                             return result;
                     },
@@ -764,7 +768,11 @@ var Task = new Class( function()
                     {
                         var result = callback( reason );
                         if ( result && hasOwn( result, "then" ) )
-                            return result;
+                        {
+                            return result.then( function() {
+                                throw reason;
+                            });
+                        }
                         else
                             throw reason;
                     }

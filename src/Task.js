@@ -57,7 +57,11 @@ var Task = new Class( function()
                     {
                         var value = callback.apply( undefined, arguments );
                         if ( value && hasOwn( value, "then" ) )
-                            return value;
+                        {
+                            return value.then( function() {
+                                return result;
+                            });
+                        }
                         else
                             return result;
                     },
@@ -65,7 +69,11 @@ var Task = new Class( function()
                     {
                         var result = callback( reason );
                         if ( result && hasOwn( result, "then" ) )
-                            return result;
+                        {
+                            return result.then( function() {
+                                throw reason;
+                            });
+                        }
                         else
                             throw reason;
                     }
