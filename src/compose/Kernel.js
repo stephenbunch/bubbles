@@ -40,7 +40,8 @@ var Kernel = new Type( function()
 
             this.detectModuleSupport();
 
-            this.chef = new Chef( new Cookbook( this.container ), this.chef_onLoad );
+            this.cookbook = new Cookbook( this.container );
+            this.chef = new Chef( this.cookbook, this.chef_onLoad );
 
             if ( pathPrefix )
                 this.pathPrefix = pathPrefix;
@@ -142,15 +143,24 @@ var Kernel = new Type( function()
             args = makeArray( arguments );
             args.shift( 0 );
             return this.chef.create( target ).then(
-                function( box )
+                function( component )
                 {
-                    var factory = self.chef.createFactory( box );
-                    return box.recipe.factory ? factory : factory.apply( undefined, args );
+                    var factory = self.chef.createFactory( component );
+                    return component.recipe.factory ? factory : factory.apply( undefined, args );
                 },
                 function( reason ) {
                     throw reason;
                 }
             );
+        },
+
+        resolve: function( target, args )
+        {
+            var box = new Box( this.cookbook, target );
+            if ( box.missing.length > 0 )
+                throw error( "InvalidOperationError", "The following services are missing: " + box.missing.join( ", " ) );
+            var factory = this.chef.createFactory( box.component );
+            return box.component.recipe.factory ? factory : factory.apply( undefined, args );
         },
 
         /**

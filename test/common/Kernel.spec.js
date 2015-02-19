@@ -183,6 +183,35 @@ describe( "Kernel", function()
         });
     });
 
+    describe( ".resolve()", function()
+    {
+        it( "should behave as .get(), but synchronously", function()
+        {
+            var kernel = type.Kernel();
+            kernel.bind( "foo" ).toConstant( 2 );
+            expect( kernel.resolve( "foo" ) ).to.equal( 2 );
+
+            expect(
+                kernel.resolve([ "foo", function( foo ) {
+                    return foo * foo;
+                }])
+            ).to.equal( 4 );
+        });
+
+        it( "should throw an error if services are missing", function()
+        {
+            var kernel = type.Kernel();
+            kernel.bind( "bar" ).to([ "foo", function( foo ) {
+                return foo * 2;
+            }]);
+            expect( function() {
+                kernel.resolve( "bar" );
+            }).to.throwException( function( e ) {
+                expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
+            });
+        });
+    });
+
     describe( ".register()", function()
     {
         it( "should register an object graph by convention", function( done )
