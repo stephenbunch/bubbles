@@ -1,5 +1,5 @@
 /*!
- * type v1.0.2
+ * type v1.0.3
  * (c) 2015 Stephen Bunch https://github.com/stephenbunch/type
  * License: MIT
  */
