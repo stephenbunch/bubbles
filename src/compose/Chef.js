@@ -15,7 +15,7 @@ var Chef = new Class(
      * @param {*} idea
      * @return {Promise.<Component>}
      */
-    create: function( idea )
+    create: function( idea, options )
     {
         var self = this;
         var task = new Task();
@@ -37,8 +37,22 @@ var Chef = new Class(
             return task.promise;
         }
 
-        function load() {
-            self._load( self._getNames( box.missing ) ).then( done, fail, false );
+        function load()
+        {
+            self._load( self._getNames( box.missing ),
+            {
+                fail: function( error, service )
+                {
+                    if ( options.yield )
+                    {
+                        return function() {
+                            return undefined;
+                        };
+                    }
+                    else
+                        throw error;
+                }
+            }).then( done, fail, false );
         }
 
         function done( result )

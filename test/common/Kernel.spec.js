@@ -183,6 +183,27 @@ describe( "Kernel", function()
         });
     });
 
+    describe( ".getOrYield()", function()
+    {
+        it( "should set missing dependencies to undefined", function( done )
+        {
+            var kernel = type.Kernel();
+            kernel.bind( "bar" ).toConstant( 2 );
+            kernel.getOrYield([ "foo", "bar", function( foo, bar )
+            {
+                return {
+                    foo: foo,
+                    bar: bar
+                };
+            }]).then( function( result )
+            {
+                expect( result.foo ).to.equal( undefined );
+                expect( result.bar ).to.equal( 2 );
+                done();
+            });
+        });
+    });
+
     describe( ".resolve()", function()
     {
         it( "should behave as .get(), but synchronously", function()
@@ -209,6 +230,24 @@ describe( "Kernel", function()
             }).to.throwException( function( e ) {
                 expect( e ).to.be.a( type.error( "InvalidOperationError" ) );
             });
+        });
+    });
+
+    describe( ".resolveOrYield()", function()
+    {
+        it( "should set missing dependencies to undefined", function()
+        {
+            var kernel = type.Kernel();
+            kernel.bind( "bar" ).toConstant( 2 );
+            var result = kernel.resolveOrYield([ "foo", "bar", function( foo, bar )
+            {
+                return {
+                    foo: foo,
+                    bar: bar
+                };
+            }]);
+            expect( result.foo ).to.equal( undefined );
+            expect( result.bar ).to.equal( 2 );
         });
     });
 

@@ -132,35 +132,45 @@ var Kernel = new Type( function()
         },
 
         /**
-         * @description Resolves a target and its dependencies.
+         * @description Resolves a target and its dependencies asynchronously.
          * @param {string|function()|Array} target
          * @param {...Object} [args]
          * @return {Promise.<TService>}
          */
         get: function( target, args )
         {
-            var self = this;
-            args = makeArray( arguments );
-            args.shift( 0 );
-            return this.chef.create( target ).then(
-                function( component )
-                {
-                    var factory = self.chef.createFactory( component );
-                    return component.recipe.factory ? factory : factory.apply( undefined, args );
-                },
-                function( reason ) {
-                    throw reason;
-                }
-            );
+            return this.resolveTargetAsync( target, {
+                args: this.shiftArgs( arguments )
+            });
         },
 
+        getOrYield: function( target, args )
+        {
+            return this.resolveTargetAsync( target, {
+                args: this.shiftArgs( arguments ),
+                yield: true
+            });
+        },
+
+        /**
+         * @description Resolves a target and its dependencies synchronously.
+         * @param {string|function()|Array} target
+         * @param {...Object} [args]
+         * @return {TService}
+         */
         resolve: function( target, args )
         {
-            var box = new Box( this.cookbook, target );
-            if ( box.missing.length > 0 )
-                throw error( "InvalidOperationError", "The following services are missing: " + box.missing.join( ", " ) );
-            var factory = this.chef.createFactory( box.component );
-            return box.component.recipe.factory ? factory : factory.apply( undefined, args );
+            return this.resolveTarget( target, {
+                args: this.shiftArgs( arguments )
+            });
+        },
+
+        resolveOrYield: function( target, args )
+        {
+            return this.resolveTarget( target, {
+                args: this.shiftArgs( arguments ),
+                yield: true
+            });
         },
 
         /**
@@ -216,6 +226,47 @@ var Kernel = new Type( function()
             return this.moduleLoader( module );
         },
 
+        __shiftArgs: function( args ) {
+            args = makeArray( args );
+            args.shift(0);
+            return args;
+        },
+
+        __resolveTarget: function( target, options )
+        {
+            var box = new Box( this.cookbook, target );
+            if ( box.missing.length > 0 && !options.yield )
+                throw error( "InvalidOperationError", "The following services are missing: " + box.missing.join( ", " ) );
+            else
+            {
+                var bindings = {};
+                forEach( box.missing, function( service )
+                {
+                    bindings[ service ] = function() {
+                        return undefined;
+                    };
+                });
+                box.update( bindings );
+            }
+            var factory = this.chef.createFactory( box.component );
+            return box.component.recipe.factory ? factory : factory.apply( undefined, options.args );
+        },
+
+        __resolveTargetAsync: function( target, options )
+        {
+            var self = this;
+            return this.chef.create( target, options ).then(
+                function( component )
+                {
+                    var factory = self.chef.createFactory( component );
+                    return component.recipe.factory ? factory : factory.apply( undefined, options.args );
+                },
+                function( reason ) {
+                    throw reason;
+                }
+            );
+        },
+
         __detectModuleSupport: function()
         {
             var self = this;
@@ -227,9 +278,7 @@ var Kernel = new Type( function()
                 this.moduleLoader = function( module )
                 {
                     var task = new Task();
-                    self.requireContext( [ module ], function( result ) {
-                        task.resolve( result );
-                    });
+                    self.requireContext( [ module ], task.resolve, task.reject );
                     return task.promise;
                 };
             }
@@ -306,7 +355,7 @@ var Kernel = new Type( function()
             return path;
         },
 
-        __chef_onLoad: function( services )
+        __chef_onLoad: function( services, options )
         {
             var self = this;
             var promises = [];
@@ -328,12 +377,22 @@ var Kernel = new Type( function()
                 });
                 if ( !handled )
                 {
-                    if ( self.moduleLoader === null )
-                    {
-                        promises.push( new Task().reject( new error( "InvalidOperationError", "The service '" + service + "' has not been registered." ) ).promise );
-                        return false;
-                    }
-                    promises.push( self.moduleLoader( self.resolvePath( service.replace( /\./g, "/" ) ) ) );
+                    promises.push(
+                        (
+                            self.moduleLoader === null ?
+                            new Task().reject(
+                                new error( "InvalidOperationError", "The service '" + service + "' has not been registered." )
+                            ).promise :
+                            self.moduleLoader( self.resolvePath( service.replace( /\./g, "/" ) ) )
+                        ).then( undefined, function( error )
+                        {
+                            if ( options.fail ) {
+                                return options.fail( error, service );
+                            } else {
+                                throw error;
+                            }
+                        })
+                    );
                 }
             });
             return Task.when( promises );
