@@ -11,6 +11,24 @@ describe( "Task", function()
         });
     });
 
+    describe( ".then() callback", function()
+    {
+        it( "should be able to return a promise with `then` on its prototype", function( done )
+        {
+            var obj = {
+                then: function( resolve ) {
+                    resolve( 2 );
+                }
+            };
+            type.Task().resolve().then( function() {
+                return Object.create( obj );
+            }).then( function( result ) {
+                expect( result ).to.equal( 2 );
+                done();
+            });
+        });
+    });
+
     describe( ".promise", function()
     {
         it( "should return a read-only interface to the task that is also Promise/A+ compliant", function()

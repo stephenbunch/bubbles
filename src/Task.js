@@ -56,7 +56,7 @@ var Task = new Class( function()
                     function( result )
                     {
                         var value = callback.apply( undefined, arguments );
-                        if ( value && hasOwn( value, "then" ) )
+                        if ( value && typeof value.then === "function" )
                         {
                             return value.then( function() {
                                 return result;
@@ -68,7 +68,7 @@ var Task = new Class( function()
                     function( reason )
                     {
                         var result = callback( reason );
-                        if ( result && hasOwn( result, "then" ) )
+                        if ( result && typeof result.then === "function" )
                         {
                             return result.then( function() {
                                 throw reason;
@@ -132,8 +132,9 @@ var Task = new Class( function()
             try
             {
                 // 2.3.3.1
-                if ( hasOwn( x, "then" ) )
-                    then = x.then;
+                then = x.then;
+                if ( typeof x !== "object" || typeof then !== "function" )
+                    then = undefined;
             }
             catch ( e )
             {
